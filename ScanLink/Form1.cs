@@ -402,7 +402,7 @@ namespace ScanLink
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Preview failed: {ex.Message}", "Preview Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ErrorDialog.ShowError("Preview Error", $"Preview failed: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}", this);
                 statusLabel.Text = "Preview failed. Please check your settings.";
                 statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
             }
@@ -859,6 +859,41 @@ namespace ScanLink
                         int labelHeightDots = (int)numericUpDown_height.Value;
                         int gapMM = (int)numericUpDown_gap.Value;
                         
+                        // Validate and auto-correct parameters according to ARGOX SDK constraints
+                        string corrections = "";
+                        if (labelWidthDots < 2)
+                        {
+                            corrections += $"Width corrected from {labelWidthDots} to 2 pixels. ";
+                            labelWidthDots = 2;
+                        }
+                        if (labelHeightDots < 1)
+                        {
+                            corrections += $"Height corrected from {labelHeightDots} to 1 pixel. ";
+                            labelHeightDots = 1;
+                        }
+                        else if (labelHeightDots > 32000)
+                        {
+                            corrections += $"Height corrected from {labelHeightDots} to 32000 pixels. ";
+                            labelHeightDots = 32000;
+                        }
+                        if (gapMM < 16)
+                        {
+                            corrections += $"Gap corrected from {gapMM} to 16 pixels (minimum required). ";
+                            gapMM = 16;
+                        }
+                        else if (gapMM > 600)
+                        {
+                            corrections += $"Gap corrected from {gapMM} to 600 pixels (maximum allowed). ";
+                            gapMM = 600;
+                        }
+                        
+                        // Show corrections to user if any were made
+                        if (!string.IsNullOrEmpty(corrections))
+                        {
+                            statusLabel.Text = $"⚠️ Parameter corrections: {corrections}";
+                            statusLabel.ForeColor = System.Drawing.Color.FromArgb(255, 193, 7); // Warning color
+                        }
+                        
                         // Set the actual label dimensions
                         PPLBEmulation.SetUtil.SetLabelLength(PPLBMediaTrack.Gap_Mode, labelHeightDots, gapMM);
                         PPLBEmulation.SetUtil.SetPrintWidth(labelWidthDots);
@@ -1012,6 +1047,41 @@ namespace ScanLink
                 int labelWidthDots = (int)numericUpDown_width.Value;
                 int labelHeightDots = (int)numericUpDown_height.Value;
                 int gapMM = (int)numericUpDown_gap.Value;
+                
+                // Validate and auto-correct parameters according to ARGOX SDK constraints
+                string corrections = "";
+                if (labelWidthDots < 2)
+                {
+                    corrections += $"Width corrected from {labelWidthDots} to 2 pixels. ";
+                    labelWidthDots = 2;
+                }
+                if (labelHeightDots < 1)
+                {
+                    corrections += $"Height corrected from {labelHeightDots} to 1 pixel. ";
+                    labelHeightDots = 1;
+                }
+                else if (labelHeightDots > 32000)
+                {
+                    corrections += $"Height corrected from {labelHeightDots} to 32000 pixels. ";
+                    labelHeightDots = 32000;
+                }
+                if (gapMM < 16)
+                {
+                    corrections += $"Gap corrected from {gapMM} to 16 pixels (minimum required). ";
+                    gapMM = 16;
+                }
+                else if (gapMM > 600)
+                {
+                    corrections += $"Gap corrected from {gapMM} to 600 pixels (maximum allowed). ";
+                    gapMM = 600;
+                }
+                
+                // Show corrections to user if any were made
+                if (!string.IsNullOrEmpty(corrections))
+                {
+                    statusLabel.Text = $"⚠️ Parameter corrections: {corrections}";
+                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(255, 193, 7); // Warning color
+                }
                 
                 PPLBEmulation.SetUtil.SetLabelLength(PPLBMediaTrack.Gap_Mode, labelHeightDots, gapMM);
                 PPLBEmulation.SetUtil.SetPrintWidth(labelWidthDots);

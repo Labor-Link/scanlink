@@ -13,3 +13,4 @@ C:\Users\dell\Documents\scan-link\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanL
 C:\Users\dell\Documents\scan-link\ScanLinkPrinter.Argox\obj\Release\net9.0\refint\ScanLinkPrinter.Argox.dll
 C:\Users\dell\Documents\scan-link\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.pdb
 C:\Users\dell\Documents\scan-link\ScanLinkPrinter.Argox\obj\Release\net9.0\ref\ScanLinkPrinter.Argox.dll
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.sourcelink.json

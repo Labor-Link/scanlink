@@ -63,7 +63,8 @@ namespace ScanLink
                    strStackTrace + Environment.NewLine + ex.StackTrace;
                 strTitle = ex.GetType().Name;
             }
-            MessageBox.Show(strContext, strTitle, MessageBoxButtons.OK, MessageBoxIcon.Hand, MessageBoxDefaultButton.Button1);
+            // Use custom error dialog that allows copying
+            ErrorDialog.ShowError(strTitle, strContext);
         }
     }
 }

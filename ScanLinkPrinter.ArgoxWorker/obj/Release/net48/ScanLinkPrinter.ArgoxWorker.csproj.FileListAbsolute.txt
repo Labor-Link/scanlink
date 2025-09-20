@@ -11,3 +11,4 @@ C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\
 C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.exe
 C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.pdb
 C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.exe.config
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.sourcelink.json
