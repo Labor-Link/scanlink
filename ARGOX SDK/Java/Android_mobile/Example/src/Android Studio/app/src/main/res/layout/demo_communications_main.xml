@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    android:id="@+id/layout"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:padding="20dp"
+    android:orientation="vertical"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <Button
+        android:id="@+id/btnPrinter"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:padding="20dp"
+        android:layout_marginBottom="20dp"
+        android:text="Auto Search Connected Printer" />
+    <Button
+        android:id="@+id/btnWifi"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:padding="20dp"
+        android:layout_marginBottom="20dp"
+        android:text="Connect via WIFI" />
+    <Button
+        android:id="@+id/btnBluetooth"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:padding="20dp"
+        android:layout_marginBottom="20dp"
+        android:text="Connect via Bluetooth" />
+    <Button
+        android:id="@+id/btnUsb"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:padding="20dp"
+        android:layout_marginBottom="20dp"
+        android:text="Connect via USB" />
+
+</LinearLayout>

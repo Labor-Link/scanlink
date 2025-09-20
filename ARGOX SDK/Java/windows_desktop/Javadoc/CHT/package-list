@@ -1,0 +1,9 @@
+com.argox.sdk.barcodeprinter
+com.argox.sdk.barcodeprinter.connection
+com.argox.sdk.barcodeprinter.connection.file
+com.argox.sdk.barcodeprinter.connection.printer
+com.argox.sdk.barcodeprinter.connection.tcp
+com.argox.sdk.barcodeprinter.emulation
+com.argox.sdk.barcodeprinter.emulation.pplb
+com.argox.sdk.barcodeprinter.emulation.pplz
+com.argox.sdk.barcodeprinter.util

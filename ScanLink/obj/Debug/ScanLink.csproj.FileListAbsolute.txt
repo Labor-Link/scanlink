@@ -1,0 +1,10 @@
+C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.csproj.AssemblyReference.cache
+C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.Form1.resources
+C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.csproj.GenerateResource.cache
+C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.csproj.CoreCompileInputs.cache
+C:\Users\dell\Documents\scan-link\ScanLink\bin\Debug\ScanLink.exe
+C:\Users\dell\Documents\scan-link\ScanLink\bin\Debug\ScanLink.pdb
+C:\Users\dell\Documents\scan-link\ScanLink\bin\Debug\BarcodePrinter_API.dll
+C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
+C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.exe
+C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.pdb

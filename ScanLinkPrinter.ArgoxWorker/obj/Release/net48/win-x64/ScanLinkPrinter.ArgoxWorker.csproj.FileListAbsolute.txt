@@ -1,0 +1,13 @@
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\bin\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.exe.config
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\bin\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.exe
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\bin\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.pdb
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\bin\Release\net48\win-x64\BarcodePrinter_API.dll
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.csproj.CoreCompileInputs.cache
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLink.1B66D95B.Up2Date
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.exe
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.pdb
+C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\win-x64\ScanLinkPrinter.ArgoxWorker.exe.config

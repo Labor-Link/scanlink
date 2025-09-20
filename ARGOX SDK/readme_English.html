@@ -1,0 +1,192 @@
+<html>
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<title>ARGOX SDK</title>
+<header align="right">
+<a href="readme_CHT.html">繁體中文</a>
+<span>|</span>
+<a href="readme_English.html">English</a>
+</header>
+</head>
+<body>
+<h1>ARGOX SDK</h1>
+
+<h2>Supported programming language and platforms</h2>
+<ul>
+<li><a href="#DOTNET">.NET Framework</a></li>
+<ol>
+<li><a href="#DOTNET_WINDOWS">Windows</a></li>
+</ol>
+<li><a href="#Java">Java</a></li>
+<ol>
+<li><a href="#Java_ANDROID">Android</a></li>
+<li><a href="#Java_WINDOWS_LINUX">Windows</a></li>
+<li><a href="#Java_WINDOWS_LINUX">Linux</a></li>
+</ol>
+</ul>
+
+<h2 id="DOTNET">.NET Framework</h2>
+
+<h3 id="DOTNET_WINDOWS">1. Supported Platforms</h3>
+<ol>
+<li>Windows</li>
+</ol>
+
+<h3>2. Requirements</h3>
+<ol>
+<li>Requires Microsoft Visual Studio 2008 or later in order to compile/execute the sample programs in the ARGOX SDK.</li>
+<li>Requires Windows XP or later.</li>
+<li>Requires Microsoft .NET Framework v3.5 Service Pack 1: Install <a href="http://www.microsoft.com/download/en/details.aspx?id=22">Windows .NET Framework 3.5 Service Pack 1</a></li>
+</ol>
+
+<h3>3. Supported Functions</h3>
+<ol>
+<li>Supported Emulators</li>
+<ul>
+<li>PPLB</li>
+<li>PPLZ</li>
+</ul>
+<li>Supported Transmission Interface</li>
+<ul>
+<li>File</li>
+<li>Serial Port</li>
+<li>Parallel Port</li>
+<li>USB</li>
+<li>TCP/IP</li>
+</ul>
+</ol>
+
+<h3>4. Directory Contents</h3>
+<ol>
+<a href="./.NET Framework/windows_desktop">/windows_desktop</a>
+<ul>
+<li><a href="./.NET Framework/windows_desktop/Doc">/Doc</a> => Related documentation</li>
+<li><a href="./.NET Framework/windows_desktop/Example">/Example</a> => Sample programs, including C#</li>
+<ul>
+<li><a href="./.NET Framework/windows_desktop/Example/src">/src</a> => Source code of sample program</li>
+<li><a href="./.NET Framework/windows_desktop/Example/release">/release</a> => Executable file of the sample program</li>
+</ul>
+<li><a href="./.NET Framework/windows_desktop/Library">/Library</a> => Class libraries and XML files for IntelliSense</li>
+</ul>
+</ol>
+
+<h3>5. Tips and Reminders</h3>
+<ol>
+<li>To execute Argox's sample application or other applications developed with the ARGOX SDK, Microsoft .NET Framework v3.5 must be installed on the desktop system. 
+	If it is not installed, a message will be displayed to notify the user that the application requires Microsoft .NET Framework version to be installed on the desktop system.</li>
+<li>It is recommended to put the class library and application in the same directory to avoid issues with the application being unable to execute or unable to locate the class library.</li>
+<li>It is recommended to put the XML files and the class library in the same directory, so as to support the IntelliSense feature, which makes it more convenient to use this class library.</li>
+<li>If the execution result is different from what is expected, use the file transmission interface. You will get a command file that should be transmitted to the printer. 
+    Please use it to confirm whether the command is correct.</li>
+<li>If your desired transmission interface is not supported, use the file transmission interface. You will get a command file that should be transmitted to the printer, or use the function to get the byte[] command data. 
+    And then you can control the transmission interface, send the file content or the obtained byte[] command data through the transmission interface you control.</li>
+</ol>
+
+
+<h2 id="Java">Java</h2>
+
+<h3 id="Java_ANDROID">1.1. Supported Platforms</h3>
+<ol>
+<li>Android</li>
+</ol>
+
+<h3>1.2. Requirements</h3>
+<ol>
+<li>Required Android Studio 3.4.1 or later in order to compile/execute the sample programs in the ARGOX SDK.</li>
+<li>Required Android 4.3 (API Level 19) or higher system version, then can execute the sample programs in the ARGOX SDK.</li>
+<li>USB connection requires mobile phone to support USB HOST function</li>
+<li>The bluetooth connection requires the mobile phone to support bluetooth 3.0 or higher</li>
+</ol>
+
+<h3>1.3. Supported Functions</h3>
+<ol>
+<li>Supported Emulators</li>
+<ul>
+<li>PPLB</li>
+<li>PPLZ</li>
+</ul>
+<li>Supported Transmission Interface</li>
+<ul>
+<li>File</li>
+<li>USB</li>
+<li>TCP/IP</li>
+<li>Bluetooth</li>
+</ul>
+</ol>
+
+<h3>1.4. Directory Contents</h3>
+<ol>
+<a href="./Java/Android_mobile">/Android_mobile</a>
+<ul>
+<li><a href="./Java/Android_mobile/Javadoc">/Javadoc</a> => Related documentation</li>
+<li><a href="./Java/Android_mobile/Example">/Example</a> => Sample programs, including Android Studio</li>
+<ul>
+<li><a href="./Java/Android_mobile/Example/src">/src</a> => Source code of sample program</li>
+<li><a href="./Java/Android_mobile/Example/release">/release</a> => The installation file of the sample program</li>
+</ul>
+<li><a href="./Java/Android_mobile/Library">/Library</a> => aar file/jar file and jar file for IntelliSense</li>
+</ul>
+</ol>
+
+<h3>1.5. Tips and Reminders</h3>
+<ol>
+<li>If the execution result is different from what is expected, use the file transmission interface. You will get a command file that should be transmitted to the printer. 
+    Please use it to confirm whether the command is correct.</li>
+<li>If your desired transmission interface is not supported, use the file transmission interface. You will get a command file that should be transmitted to the printer, or use the function to get the byte[] command data. 
+    And then you can control the transmission interface, send the file content or the obtained byte[] command data through the transmission interface you control.</li>
+</ol>
+
+<h3 id="Java_WINDOWS_LINUX">2.1. Supported Platforms</h3>
+<ol>
+<li>Windows</li>
+<li>Linux</li>
+</ol>
+
+<h3>2.2. Requirements</h3>
+<ol>
+<li>Required NetBeans IDE 12.0 or later in order to compile/execute the sample programs in the ARGOX SDK.</li>
+<li>Required JDK8 x64 or higher system version, then can execute the sample programs in the ARGOX SDK.</li>
+<li>Requires JDK8 x64: Install <a href="https://www.oracle.com/tw/java/technologies/javase/javase8-archive-downloads.html">JDK8 x64</a></li>
+</ol>
+
+<h3>2.3. Supported Functions</h3>
+<ol>
+<li>Supported Emulators</li>
+<ul>
+<li>PPLB</li>
+<li>PPLZ</li>
+</ul>
+<li>Supported Transmission Interface</li>
+<ul>
+<li>File</li>
+<li>TCP/IP</li>
+<li>Printer Device</li>
+</ul>
+</ol>
+
+<h3>2.4. Directory Contents</h3>
+<ol>
+<a href="./Java/windows_desktop">/windows_desktop</a>
+<ul>
+<li><a href="./Java/windows_desktop/Javadoc">/Javadoc</a> => Related documentation</li>
+<li><a href="./Java/windows_desktop/Example">/Example</a> => Sample programs, including NetBeans</li>
+<ul>
+<li><a href="./Java/windows_desktop/Example/src">/src</a> => Source code of sample program</li>
+<li><a href="./Java/windows_desktop/Example/release">/release</a> => Executable file of the sample program</li>
+</ul>
+<li><a href="./Java/windows_desktop/Library">/Library</a> => jar file and jar file for IntelliSense</li>
+</ul>
+</ol>
+
+<h3>2.5. Tips and Reminders</h3>
+<ol>
+<li>If the execution result is different from what is expected, use the file transmission interface. You will get a command file that should be transmitted to the printer. 
+    Please use it to confirm whether the command is correct.</li>
+<li>If your desired transmission interface is not supported, use the file transmission interface. You will get a command file that should be transmitted to the printer, or use the function to get the byte[] command data. 
+    And then you can control the transmission interface, send the file content or the obtained byte[] command data through the transmission interface you control.</li>
+</ol>
+
+<a href="mailto:ken_ke@argox.com?subject=readme.html">Send a suggestion regarding the content of this page.</a>
+
+</body>
+</html>

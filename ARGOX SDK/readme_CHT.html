@@ -1,0 +1,186 @@
+<html>
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=utf-8">
+<title>ARGOX SDK</title>
+<header align="right">
+<a href="readme_CHT.html">繁體中文</a>
+<span>|</span>
+<a href="readme_English.html">English</a>
+</header>
+</head>
+<body>
+<h1>ARGOX SDK</h1>
+
+<h2>支援的程式語言和平台</h2>
+<ul>
+<li><a href="#DOTNET">.NET Framework</a></li>
+<ol>
+<li><a href="#DOTNET_WINDOWS">Windows</a></li>
+</ol>
+<li><a href="#Java">Java</a></li>
+<ol>
+<li><a href="#Java_ANDROID">Android</a></li>
+<li><a href="#Java_WINDOWS_LINUX">Windows</a></li>
+<li><a href="#Java_WINDOWS_LINUX">Linux</a></li>
+</ol>
+</ul>
+
+<h2 id="DOTNET">.NET Framework</h2>
+
+<h3 id="DOTNET_WINDOWS">1. 支援的平台</h3>
+<ol>
+<li>Windows</li>
+</ol>
+
+<h3>2. 需求</h3>
+<ol>
+<li>需要 Microsoft Visual Studio 2008 或更新的版本, 才能編譯/執行 ARGOX SDK 中的範例程式.</li>
+<li>需要 Windows XP 或更新的版本.</li>
+<li>需要 Microsoft .NET Framework v3.5 Service Pack 1: 安裝 <a href="http://www.microsoft.com/download/en/details.aspx?id=22">Windows .NET Framework 3.5 Service Pack 1</a></li>
+</ol>
+
+<h3>3. 支援的功能</h3>
+<ol>
+<li>支援的模擬器</li>
+<ul>
+<li>PPLB</li>
+<li>PPLZ</li>
+</ul>
+<li>支援的傳輸介面</li>
+<ul>
+<li>檔案</li>
+<li>序列埠</li>
+<li>並列埠</li>
+<li>USB</li>
+<li>TCP/IP</li>
+</ul>
+</ol>
+
+<h3>4. 目錄內容</h3>
+<ol>
+<a href="./.NET Framework/windows_desktop">/windows_desktop</a>
+<ul>
+<li><a href="./.NET Framework/windows_desktop/Doc">/Doc</a> => 相關的說明文件</li>
+<li><a href="./.NET Framework/windows_desktop/Example">/Example</a> => 範例程式, 包含 C#</li>
+<ul>
+<li><a href="./.NET Framework/windows_desktop/Example/src">/src</a> => 範例程式的程式碼</li>
+<li><a href="./.NET Framework/windows_desktop/Example/release">/release</a> => 範例程式的可執行檔</li>
+</ul>
+<li><a href="./.NET Framework/windows_desktop/Library">/Library</a> => 類別庫和給智能感知功能 (IntelliSense) 用的 XML 檔</li>
+</ul>
+</ol>
+
+<h3>5. 提示和建議</h3>
+<ol>
+<li>執行立象科技的範例應用程式或是任何其他使用 ARGOX SDK 開發的應用程式, 必須在桌上型系統上安裝 Microsoft .NET Framework v3.5 版本. 
+	如果沒有安裝的話則會出現一個訊息, 告知此應用程式需要一個 Microsoft .NET Framework 版本安裝在桌上型系統上.</li>
+<li>建議將此類別庫放在和應用程式同一目錄, 這樣子可避免應用程式無法使用或找不到此類別庫的問題.</li>
+<li>建議將 XML 檔和類別庫放在一起, 這樣子就會支援智能感知功能 (IntelliSense) 功能, 使你更加方便的使用此類別庫.</li>
+<li>當執行結果和預期不同時, 請利用檔案的傳輸介面, 你將會得到一個原本應該傳送至印表機的指令檔案, 請利用它來確認指令的正確性.</li>
+<li>當你想要使用的傳輸介面不支援時, 請利用檔案的傳輸介面, 你將會得到一個原本應該傳送至印表機的指令檔案, 或是利用函式取得 byte[] 的指令資料, 然後由你來控制傳輸介面, 將檔案內容或取得的 byte[] 指令資料經由你控制的傳輸介面來傳送.</li>
+</ol>
+
+
+<h2 id="Java">Java</h2>
+
+<h3 id="Java_ANDROID">1.1. 支援的平台</h3>
+<ol>
+<li>Android</li>
+</ol>
+
+<h3>1.2. 需求</h3>
+<ol>
+<li>需要 Android Studio 3.4.1 或更新的版本, 才能編譯/執行 ARGOX SDK 中的範例程式.</li>
+<li>需要 Android 4.3(API Level 19) 以上的系統版本, 才能執行 ARGOX SDK 中的範例程式.</li>
+<li>USB 連線需要手機支援 USB HOST 功能</li>
+<li>藍芽連線需要手機支援藍芽 3.0 以上</li>
+</ol>
+
+<h3>1.3. 支援的功能</h3>
+<ol>
+<li>支援的模擬器</li>
+<ul>
+<li>PPLB</li>
+<li>PPLZ</li>
+</ul>
+<li>支援的傳輸介面</li>
+<ul>
+<li>檔案</li>
+<li>USB</li>
+<li>TCP/IP</li>
+<li>藍芽</li>
+</ul>
+</ol>
+
+<h3>1.4. 目錄內容</h3>
+<ol>
+<a href="./Java/Android_mobile">/Android_mobile</a>
+<ul>
+<li><a href="./Java/Android_mobile/Javadoc">/Javadoc</a> => 相關的說明文件</li>
+<li><a href="./Java/Android_mobile/Example">/Example</a> => 範例程式, 包含 Android Studio</li>
+<ul>
+<li><a href="./Java/Android_mobile/Example/src">/src</a> => 範例程式的程式碼</li>
+<li><a href="./Java/Android_mobile/Example/release">/release</a> => 範例程式的安裝檔</li>
+</ul>
+<li><a href="./Java/Android_mobile/Library">/Library</a> => aar 檔/jar 檔和給智能感知功能 (IntelliSense) 用的 jar 檔</li>
+</ul>
+</ol>
+
+<h3>1.5. 提示和建議</h3>
+<ol>
+<li>當執行結果和預期不同時, 請利用檔案的傳輸介面, 你將會得到一個原本應該傳送至印表機的指令檔案, 請利用它來確認指令的正確性.</li>
+<li>當你想要使用的傳輸介面不支援時, 請利用檔案的傳輸介面, 你將會得到一個原本應該傳送至印表機的指令檔案, 或是利用函式取得 byte[] 的指令資料, 然後由你來控制傳輸介面, 將檔案內容或取得的 byte[] 指令資料經由你控制的傳輸介面來傳送.</li>
+</ol>
+
+<h3 id="Java_WINDOWS_LINUX">2.1. 支援的平台</h3>
+<ol>
+<li>Windows</li>
+<li>Linux</li>
+</ol>
+
+<h3>2.2. 需求</h3>
+<ol>
+<li>需要 NetBeans IDE 12.0 或更新的版本, 才能編譯/執行 ARGOX SDK 中的範例程式.</li>
+<li>需要 JDK8 x64 以上的系統版本, 才能執行 ARGOX SDK 中的範例程式.</li>
+<li>需要 JDK8 x64: 安裝 <a href="https://www.oracle.com/tw/java/technologies/javase/javase8-archive-downloads.html">JDK8 x64</a></li>
+</ol>
+
+<h3>2.3. 支援的功能</h3>
+<ol>
+<li>支援的模擬器</li>
+<ul>
+<li>PPLB</li>
+<li>PPLZ</li>
+</ul>
+<li>支援的傳輸介面</li>
+<ul>
+<li>檔案</li>
+<li>TCP/IP</li>
+<li>印表機裝置</li>
+</ul>
+</ol>
+
+<h3>2.4. 目錄內容</h3>
+<ol>
+<a href="./Java/windows_desktop">/windows_desktop</a>
+<ul>
+<li><a href="./Java/windows_desktop/Javadoc">/Javadoc</a> => 相關的說明文件</li>
+<li><a href="./Java/windows_desktop/Example">/Example</a> => 範例程式, 包含 NetBeans</li>
+<ul>
+<li><a href="./Java/windows_desktop/Example/src">/src</a> => 範例程式的程式碼</li>
+<li><a href="./Java/windows_desktop/Example/release">/release</a> => 範例程式的可執行檔</li>
+</ul>
+<li><a href="./Java/windows_desktop/Library">/Library</a> => jar 檔和給智能感知功能 (IntelliSense) 用的 jar 檔</li>
+</ul>
+</ol>
+
+<h3>2.5. 提示和建議</h3>
+<ol>
+<li>當執行結果和預期不同時, 請利用檔案的傳輸介面, 你將會得到一個原本應該傳送至印表機的指令檔案, 請利用它來確認指令的正確性.</li>
+<li>當你想要使用的傳輸介面不支援時, 請利用檔案的傳輸介面, 你將會得到一個原本應該傳送至印表機的指令檔案, 或是利用函式取得 byte[] 的指令資料, 然後由你來控制傳輸介面, 將檔案內容或取得的 byte[] 指令資料經由你控制的傳輸介面來傳送.</li>
+</ol>
+
+<a href="mailto:ken_ke@argox.com?subject=readme.html">發送有關此網頁內容的意見.</a>
+
+</body>
+</html>
