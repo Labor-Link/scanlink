@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ScanLinkPrinter.Argox")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b768d58ae0b9d2e176b2fcd04efeeb572b396aad")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+22e0d9f6621a266f630c58bf505cfaf986d3114d")]
 [assembly: System.Reflection.AssemblyProductAttribute("ScanLinkPrinter.Argox")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ScanLinkPrinter.Argox")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

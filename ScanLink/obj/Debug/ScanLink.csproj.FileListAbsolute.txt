@@ -1,10 +1,52 @@
-C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.csproj.AssemblyReference.cache
-C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.Form1.resources
-C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.csproj.GenerateResource.cache
-C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.csproj.CoreCompileInputs.cache
-C:\Users\dell\Documents\scan-link\ScanLink\bin\Debug\ScanLink.exe
-C:\Users\dell\Documents\scan-link\ScanLink\bin\Debug\ScanLink.pdb
-C:\Users\dell\Documents\scan-link\ScanLink\bin\Debug\BarcodePrinter_API.dll
-C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
-C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.exe
-C:\Users\dell\Documents\scan-link\ScanLink\obj\Debug\ScanLink.pdb
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\bin\Debug\ScanLink.exe
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\bin\Debug\ScanLink.pdb
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\bin\Debug\BarcodePrinter_API.dll
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\obj\Debug\ScanLink.csproj.AssemblyReference.cache
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\obj\Debug\ScanLink.Form1.resources
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\obj\Debug\ScanLink.csproj.GenerateResource.cache
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\obj\Debug\ScanLink.csproj.CoreCompileInputs.cache
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\obj\Debug\ScanLink.exe
+C:\Users\cw\Documents\new_code_1\scanlink\ScanLink\obj\Debug\ScanLink.pdb
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\bin\Debug\ScanLink.exe
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\bin\Debug\ScanLink.pdb
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\bin\Debug\BarcodePrinter_API.dll
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\obj\Debug\ScanLink.csproj.AssemblyReference.cache
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\obj\Debug\ScanLink.Form1.resources
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\obj\Debug\ScanLink.csproj.GenerateResource.cache
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\obj\Debug\ScanLink.csproj.CoreCompileInputs.cache
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\obj\Debug\ScanLink.exe
+C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLink\obj\Debug\ScanLink.pdb
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\bin\Debug\ScanLink.exe
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\bin\Debug\ScanLink.pdb
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\bin\Debug\BarcodePrinter_API.dll
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.AssemblyReference.cache
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\obj\Debug\ScanLink.Form1.resources
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.GenerateResource.cache
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.CoreCompileInputs.cache
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\obj\Debug\ScanLink.exe
+C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLink\obj\Debug\ScanLink.pdb
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\bin\Debug\ScanLink.exe
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\bin\Debug\ScanLink.pdb
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\bin\Debug\BarcodePrinter_API.dll
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.AssemblyReference.cache
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.Form1.resources
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.GenerateResource.cache
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.CoreCompileInputs.cache
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.exe
+C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.pdb
+E:\documents\new_code - almost UI\scanlink\ScanLink\bin\Debug\ScanLink.exe
+E:\documents\new_code - almost UI\scanlink\ScanLink\bin\Debug\BarcodePrinter_API.dll
+E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.AssemblyReference.cache
+E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.Form1.resources
+E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.GenerateResource.cache
+E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.CoreCompileInputs.cache
+E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
+E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.exe
+E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.pdb
+E:\documents\new_code - almost UI\scanlink\ScanLink\bin\Debug\ScanLink.pdb
+E:\documents\new_code - almost UI\scanlink\ScanLink\bin\Debug\scanner_detection.ps1
+E:\documents\new_code - almost UI\scanlink\ScanLink\bin\Debug\scan_capture.ps1
