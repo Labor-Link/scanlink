@@ -93,10 +93,22 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
   </ItemGroup>
+  <!-- Ensure ScanLinkScanner scripts are copied flat to bin root on build -->
   <ItemGroup>
+    <None Include="ScanLinkScanner\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Filename)%(Extension)</Link>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="ApiAuthService.cs" />
+    <Compile Include="ScanLogUploadService.cs" />
+    <Compile Include="EmployeeSelectionDialog.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ShowException.cs" />
     <Compile Include="ErrorDialog.cs">
@@ -107,6 +119,10 @@
     </Compile>
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ScannerListener.cs" />
+    <Compile Include="ScannerManagementForm.cs">
+      <SubType>Form</SubType>
     </Compile>
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
