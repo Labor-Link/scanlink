@@ -101,6 +101,11 @@ namespace ScanLink
             this.numericUpDown_width = new System.Windows.Forms.NumericUpDown();
             this.label_height = new System.Windows.Forms.Label();
             this.numericUpDown_height = new System.Windows.Forms.NumericUpDown();
+            this.label_xCoordinate = new System.Windows.Forms.Label();
+            this.numericUpDown_xCoordinate = new System.Windows.Forms.NumericUpDown();
+            this.label_x2Coordinate = new System.Windows.Forms.Label();
+            this.numericUpDown_x2Coordinate = new System.Windows.Forms.NumericUpDown();
+            this.checkBox_twoUp = new System.Windows.Forms.CheckBox();
             this.label_gap = new System.Windows.Forms.Label();
             this.numericUpDown_gap = new System.Windows.Forms.NumericUpDown();
             this.alignmentPanel = new System.Windows.Forms.Panel();
@@ -123,6 +128,10 @@ namespace ScanLink
             this.statusPanel = new System.Windows.Forms.Panel();
             this.statusLabel = new System.Windows.Forms.Label();
             this.toolTip = new System.Windows.Forms.ToolTip(this.components);
+            this.label_CropID = new System.Windows.Forms.Label();
+            this.comboBox_CropID = new System.Windows.Forms.ComboBox();
+            this.cropIdLabel = new System.Windows.Forms.Label();
+            this.cropIdComboBox = new System.Windows.Forms.ComboBox();
             this.loginPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.loginMainLogoPictureBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.startpanelLogoPictureBox)).BeginInit();
@@ -146,6 +155,7 @@ namespace ScanLink
             this.dimensionsPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_width)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_height)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_xCoordinate)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_gap)).BeginInit();
             this.alignmentPanel.SuspendLayout();
             this.qualityPanel.SuspendLayout();
@@ -546,6 +556,8 @@ namespace ScanLink
             this.scannerContentPanel.Controls.Add(this.lineNumberTextBox);
             this.scannerContentPanel.Controls.Add(this.productIdLabel);
             this.scannerContentPanel.Controls.Add(this.productIdComboBox);
+            this.scannerContentPanel.Controls.Add(this.cropIdLabel);
+            this.scannerContentPanel.Controls.Add(this.cropIdComboBox);
             this.scannerContentPanel.Controls.Add(this.applyFiltersButton);
             this.scannerContentPanel.Controls.Add(this.clearFiltersButton);
             this.scannerContentPanel.Controls.Add(this.activeScannersLabel);
@@ -810,6 +822,29 @@ namespace ScanLink
             this.productIdComboBox.Name = "productIdComboBox";
             this.productIdComboBox.Size = new System.Drawing.Size(150, 23);
             this.productIdComboBox.TabIndex = 17;
+
+            // 
+            // cropIdLabel
+            // 
+            this.cropIdLabel.AutoSize = true;
+            this.cropIdLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cropIdLabel.ForeColor = System.Drawing.Color.Black;
+            this.cropIdLabel.Location = new System.Drawing.Point(190, 290);
+            this.cropIdLabel.Name = "cropIdLabel";
+            this.cropIdLabel.Size = new System.Drawing.Size(51, 15);
+            this.cropIdLabel.TabIndex = 18;
+            this.cropIdLabel.Text = "Crop ID:";
+
+            // 
+            // cropIdComboBox
+            // 
+            this.cropIdComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cropIdComboBox.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cropIdComboBox.FormattingEnabled = true;
+            this.cropIdComboBox.Location = new System.Drawing.Point(190, 310);
+            this.cropIdComboBox.Name = "cropIdComboBox";
+            this.cropIdComboBox.Size = new System.Drawing.Size(150, 23);
+            this.cropIdComboBox.TabIndex = 19;
             
             // 
             // applyFiltersButton
@@ -1051,10 +1086,12 @@ namespace ScanLink
             this.barcodeTextPanel.Controls.Add(this.button_FetchEmployees);
             this.barcodeTextPanel.Controls.Add(this.label_ProductID);
             this.barcodeTextPanel.Controls.Add(this.comboBox_ProductID);
+            this.barcodeTextPanel.Controls.Add(this.label_CropID);
+            this.barcodeTextPanel.Controls.Add(this.comboBox_CropID);
             this.barcodeTextPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.barcodeTextPanel.Location = new System.Drawing.Point(20, 20);
             this.barcodeTextPanel.Name = "barcodeTextPanel";
-            this.barcodeTextPanel.Size = new System.Drawing.Size(600, 60);
+            this.barcodeTextPanel.Size = new System.Drawing.Size(600, 85);
             this.barcodeTextPanel.TabIndex = 0;
             
             // 
@@ -1112,22 +1149,33 @@ namespace ScanLink
             this.comboBox_ProductID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBox_ProductID.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.comboBox_ProductID.FormattingEnabled = true;
-            this.comboBox_ProductID.Items.AddRange(new object[] {
-            "p1",
-            "p2",
-            "p3",
-            "p4",
-            "p5",
-            "p6",
-            "p7",
-            "p8",
-            "p9",
-            "p10"});
             this.comboBox_ProductID.Location = new System.Drawing.Point(120, 35);
             this.comboBox_ProductID.Name = "comboBox_ProductID";
-            this.comboBox_ProductID.Size = new System.Drawing.Size(383, 20);
+            this.comboBox_ProductID.Size = new System.Drawing.Size(180, 20);
             this.comboBox_ProductID.TabIndex = 1;
-            this.comboBox_ProductID.SelectedIndex = 0; 
+
+            // 
+            // label_CropID
+            // 
+            this.label_CropID.AutoSize = true;
+            this.label_CropID.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_CropID.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(73)))), ((int)(((byte)(94)))));
+            this.label_CropID.Location = new System.Drawing.Point(320, 40);
+            this.label_CropID.Name = "label_CropID";
+            this.label_CropID.Size = new System.Drawing.Size(52, 15);
+            this.label_CropID.TabIndex = 0;
+            this.label_CropID.Text = "Crop ID"; 
+            
+            // 
+            // comboBox_CropID
+            // 
+            this.comboBox_CropID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBox_CropID.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.comboBox_CropID.FormattingEnabled = true;
+            this.comboBox_CropID.Location = new System.Drawing.Point(380, 35);
+            this.comboBox_CropID.Name = "comboBox_CropID";
+            this.comboBox_CropID.Size = new System.Drawing.Size(123, 20);
+            this.comboBox_CropID.TabIndex = 2;
             
             // 
             // label_count
@@ -1292,12 +1340,17 @@ namespace ScanLink
             this.dimensionsPanel.Controls.Add(this.numericUpDown_width);
             this.dimensionsPanel.Controls.Add(this.label_height);
             this.dimensionsPanel.Controls.Add(this.numericUpDown_height);
+            this.dimensionsPanel.Controls.Add(this.label_xCoordinate);
+            this.dimensionsPanel.Controls.Add(this.numericUpDown_xCoordinate);
+            this.dimensionsPanel.Controls.Add(this.label_x2Coordinate);
+            this.dimensionsPanel.Controls.Add(this.numericUpDown_x2Coordinate);
             this.dimensionsPanel.Controls.Add(this.label_gap);
             this.dimensionsPanel.Controls.Add(this.numericUpDown_gap);
+            this.dimensionsPanel.Controls.Add(this.checkBox_twoUp);
             this.dimensionsPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.dimensionsPanel.Location = new System.Drawing.Point(20, 178);
             this.dimensionsPanel.Name = "dimensionsPanel";
-            this.dimensionsPanel.Size = new System.Drawing.Size(520, 90);
+            this.dimensionsPanel.Size = new System.Drawing.Size(520, 125);
             this.dimensionsPanel.TabIndex = 1;
             
             // 
@@ -1351,28 +1404,91 @@ namespace ScanLink
             this.numericUpDown_height.ValueChanged += new System.EventHandler(this.numericUpDown_height_ValueChanged);
             
             // 
+            // label_xCoordinate
+            // 
+            this.label_xCoordinate.AutoSize = true;
+            this.label_xCoordinate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_xCoordinate.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_xCoordinate.Location = new System.Drawing.Point(5, 50);
+            this.label_xCoordinate.Name = "label_xCoordinate";
+            this.label_xCoordinate.Size = new System.Drawing.Size(73, 15);
+            this.label_xCoordinate.TabIndex = 4;
+            this.label_xCoordinate.Text = "X Coordinate";
+            
+            // 
+            // numericUpDown_xCoordinate
+            // 
+            this.numericUpDown_xCoordinate.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.numericUpDown_xCoordinate.Location = new System.Drawing.Point(120, 47);
+            this.numericUpDown_xCoordinate.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
+            this.numericUpDown_xCoordinate.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this.numericUpDown_xCoordinate.Name = "numericUpDown_xCoordinate";
+            this.numericUpDown_xCoordinate.Size = new System.Drawing.Size(100, 23);
+            this.numericUpDown_xCoordinate.TabIndex = 5;
+            this.numericUpDown_xCoordinate.ValueChanged += new System.EventHandler(this.numericUpDown_xCoordinate_ValueChanged);
+            
+            // 
+            // label_x2Coordinate
+            // 
+            this.label_x2Coordinate.AutoSize = true;
+            this.label_x2Coordinate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_x2Coordinate.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_x2Coordinate.Location = new System.Drawing.Point(300, 50);
+            this.label_x2Coordinate.Name = "label_x2Coordinate";
+            this.label_x2Coordinate.Size = new System.Drawing.Size(80, 15);
+            this.label_x2Coordinate.TabIndex = 8;
+            this.label_x2Coordinate.Text = "X2 Coordinate";
+            
+            // 
+            // numericUpDown_x2Coordinate
+            // 
+            this.numericUpDown_x2Coordinate.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.numericUpDown_x2Coordinate.Location = new System.Drawing.Point(400, 47);
+            this.numericUpDown_x2Coordinate.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
+            this.numericUpDown_x2Coordinate.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this.numericUpDown_x2Coordinate.Name = "numericUpDown_x2Coordinate";
+            this.numericUpDown_x2Coordinate.Size = new System.Drawing.Size(100, 23);
+            this.numericUpDown_x2Coordinate.TabIndex = 9;
+            this.numericUpDown_x2Coordinate.Enabled = false;
+            this.numericUpDown_x2Coordinate.ValueChanged += new System.EventHandler(this.numericUpDown_x2Coordinate_ValueChanged);
+            
+            // 
             // label_gap
             // 
             this.label_gap.AutoSize = true;
             this.label_gap.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.label_gap.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.label_gap.Location = new System.Drawing.Point(5, 50);
+            this.label_gap.Location = new System.Drawing.Point(5, 85);
             this.label_gap.Name = "label_gap";
             this.label_gap.Size = new System.Drawing.Size(28, 15);
-            this.label_gap.TabIndex = 4;
+            this.label_gap.TabIndex = 6;
             this.label_gap.Text = "Gap";
             
             // 
             // numericUpDown_gap
             // 
             this.numericUpDown_gap.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.numericUpDown_gap.Location = new System.Drawing.Point(120, 47);
+            this.numericUpDown_gap.Location = new System.Drawing.Point(120, 82);
             this.numericUpDown_gap.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
             this.numericUpDown_gap.Name = "numericUpDown_gap";
             this.numericUpDown_gap.Size = new System.Drawing.Size(100, 23);
-            this.numericUpDown_gap.TabIndex = 5;
+            this.numericUpDown_gap.TabIndex = 7;
             this.numericUpDown_gap.Value = new decimal(new int[] { 2, 0, 0, 0 });
             this.numericUpDown_gap.ValueChanged += new System.EventHandler(this.numericUpDown_gap_ValueChanged);
+            
+            // 
+            // checkBox_twoUp
+            // 
+            this.checkBox_twoUp.AutoSize = true;
+            this.checkBox_twoUp.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.checkBox_twoUp.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.checkBox_twoUp.Location = new System.Drawing.Point(300, 84);
+            this.checkBox_twoUp.Name = "checkBox_twoUp";
+            this.checkBox_twoUp.Size = new System.Drawing.Size(185, 19);
+            this.checkBox_twoUp.TabIndex = 10;
+            this.checkBox_twoUp.Text = "Print two stickers horizontally";
+            this.checkBox_twoUp.UseVisualStyleBackColor = true;
+            this.checkBox_twoUp.CheckedChanged += new System.EventHandler(this.checkBox_twoUp_CheckedChanged);
             
             // 
             // alignmentPanel
@@ -1658,6 +1774,8 @@ namespace ScanLink
             this.dimensionsPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_width)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_height)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_xCoordinate)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_x2Coordinate)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_gap)).EndInit();
             this.alignmentPanel.ResumeLayout(false);
             this.alignmentPanel.PerformLayout();
@@ -1787,6 +1905,8 @@ namespace ScanLink
         private System.Windows.Forms.Button button_FetchEmployees;
         private System.Windows.Forms.Label label_ProductID;
         private System.Windows.Forms.ComboBox comboBox_ProductID;
+        private System.Windows.Forms.Label label_CropID;
+        private System.Windows.Forms.ComboBox comboBox_CropID;
         private System.Windows.Forms.Label label_count;
         private System.Windows.Forms.NumericUpDown numericUpDown_count;
         private System.Windows.Forms.Panel actionPanel;
@@ -1811,6 +1931,11 @@ namespace ScanLink
         private System.Windows.Forms.NumericUpDown numericUpDown_width;
         private System.Windows.Forms.Label label_height;
         private System.Windows.Forms.NumericUpDown numericUpDown_height;
+        private System.Windows.Forms.Label label_xCoordinate;
+        private System.Windows.Forms.NumericUpDown numericUpDown_xCoordinate;
+        private System.Windows.Forms.Label label_x2Coordinate;
+        private System.Windows.Forms.NumericUpDown numericUpDown_x2Coordinate;
+        private System.Windows.Forms.CheckBox checkBox_twoUp;
         private System.Windows.Forms.Label label_gap;
         private System.Windows.Forms.NumericUpDown numericUpDown_gap;
         private System.Windows.Forms.Panel alignmentPanel;
@@ -1861,6 +1986,8 @@ namespace ScanLink
         private System.Windows.Forms.Button logoutButtonPrinter;
         private System.Windows.Forms.Button logoutButtonScanner;
         // private System.Windows.Forms.TextBox barcodeInputTextBox;
+        private System.Windows.Forms.Label cropIdLabel;
+        private System.Windows.Forms.ComboBox cropIdComboBox;
         // private System.Windows.Forms.Button sendBarcodeButton;
         private System.Windows.Forms.Button manageScannersButton;
         private System.Windows.Forms.Button button_manualUpload;
