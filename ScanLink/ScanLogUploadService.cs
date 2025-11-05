@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,14 +27,21 @@ namespace ScanLink
         {
             _authService = authService;
             
-            // Prefer ProgramData for write permissions; fallback to bin or source
+            // Always use ProgramData for the API upload queue file
             string programDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink");
             try { Directory.CreateDirectory(programDataDir); } catch {}
-            string binScannerDir = AppDomain.CurrentDomain.BaseDirectory;
-            string binFile = Path.Combine(programDataDir, "api_upload_logs.json");
-            string projectRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", ".."));
-            string srcFile = Path.Combine(projectRoot, "ScanLink", "ScanLinkScanner", "api_upload_logs.json");
-            _apiLogsFilePath = File.Exists(binFile) ? binFile : (File.Exists(Path.Combine(binScannerDir, "api_upload_logs.json")) ? Path.Combine(binScannerDir, "api_upload_logs.json") : srcFile);
+            _apiLogsFilePath = Path.Combine(programDataDir, "api_upload_logs.json");
+            try
+            {
+                if (!File.Exists(_apiLogsFilePath))
+                {
+                    File.WriteAllText(_apiLogsFilePath, "[]");
+                }
+            }
+            catch {}
+
+            // Ensure modern TLS is enabled for HTTPS requests
+            try { ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12; } catch {}
         }
 
         public void Start()
@@ -139,6 +147,8 @@ namespace ScanLink
             // Prefer explicit 'user' claim for userId, then 'userId', then 'sub'
             string userId = GetTokenValue(tokenPayload, "user")
                             ?? GetTokenValue(tokenPayload, "userId")
+                            ?? GetTokenValue(tokenPayload, "user_id")
+                            ?? GetTokenValue(tokenPayload, "id")
                             ?? GetTokenValue(tokenPayload, "sub")
                             ?? "";
             // Prefer EMPLOYEE authorities 'sites.first'; fallback to active site
@@ -150,6 +160,8 @@ namespace ScanLink
                 if (string.IsNullOrEmpty(siteId)) siteId = _authService.GetActiveSiteId() ?? "";
             }
             catch { siteId = _authService.GetActiveSiteId() ?? ""; }
+
+            OnLogMessage($"Enriching logs with userId='{(string.IsNullOrEmpty(userId) ? "" : userId)}' siteId='{(string.IsNullOrEmpty(siteId) ? "" : siteId)}'");
 
             foreach (var log in logs)
             {
@@ -166,10 +178,40 @@ namespace ScanLink
                 // Ensure all required fields are present
                 if (!log.ContainsKey("scanStatus")) log["scanStatus"] = "SCANNED";
                 if (!log.ContainsKey("errorMessage")) log["errorMessage"] = "";
-                if (!log.ContainsKey("status")) log["status"] = "ACTIVE";
+
+                // Ensure cropId field exists (default empty string for now)
+                if (!log.ContainsKey("cropId")) log["cropId"] = "";
             }
 
             return logs;
+        }
+
+        // Public method to enrich and persist without attempting upload
+        public void EnrichLogsFileOnce()
+        {
+            try
+            {
+                if (!File.Exists(_apiLogsFilePath)) return;
+                string fileContent = File.ReadAllText(_apiLogsFilePath);
+                if (string.IsNullOrWhiteSpace(fileContent)) return;
+
+                JavaScriptSerializer serializer = new JavaScriptSerializer();
+                var logs = serializer.Deserialize<List<Dictionary<string, object>>>(fileContent);
+                if (logs == null)
+                {
+                    var single = serializer.Deserialize<Dictionary<string, object>>(fileContent);
+                    if (single != null) logs = new List<Dictionary<string, object>> { single };
+                }
+                if (logs == null || logs.Count == 0) return;
+
+                var enriched = EnrichLogsWithTokenData(logs);
+                File.WriteAllText(_apiLogsFilePath, serializer.Serialize(enriched));
+                OnLogMessage($"Enriched and persisted {enriched.Count} log(s) to file without upload");
+            }
+            catch (Exception ex)
+            {
+                OnLogMessage($"Error enriching logs file: {ex.Message}");
+            }
         }
 
         private string GetTokenValue(Dictionary<string, object> tokenPayload, string key)
@@ -198,29 +240,58 @@ namespace ScanLink
                     return false;
                 }
 
+                // Map to API schema (snake_case keys) without mutating file structure
+                var apiReadyLogs = logs.Select(MapToApiSchema).ToList();
+
                 // Serialize logs to JSON
                 JavaScriptSerializer serializer = new JavaScriptSerializer();
-                string jsonPayload = serializer.Serialize(logs);
+                string jsonPayload = serializer.Serialize(apiReadyLogs);
 
                 // Create HTTP request
                 using (var client = new HttpClient())
                 {
                     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                     
                     var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
                     
+                    OnLogMessage($"Posting {apiReadyLogs.Count} log(s) to API");
                     var response = await client.PostAsync(apiUrl, content);
 
+                    string responseBody = await response.Content.ReadAsStringAsync();
                     if (response.IsSuccessStatusCode)
                     {
-                        OnLogMessage("Logs uploaded successfully");
-                        return true;
+                        // Some APIs return 200 with per-item failures; require totalSuccessful == count
+                        try
+                        {
+                            var resp = serializer.Deserialize<Dictionary<string, object>>(responseBody) ?? new Dictionary<string, object>();
+                            int totalSuccessful = 0;
+                            if (resp.ContainsKey("totalSuccessful"))
+                            {
+                                int.TryParse(resp["totalSuccessful"]?.ToString(), out totalSuccessful);
+                            }
+                            if (totalSuccessful >= apiReadyLogs.Count)
+                            {
+                                OnLogMessage($"Logs uploaded successfully: {responseBody}");
+                                return true;
+                            }
+                            else
+                            {
+                                OnLogMessage($"Partial/failed upload reported by API: {responseBody}");
+                                return false;
+                            }
+                        }
+                        catch
+                        {
+                            // If cannot parse, assume success
+                            OnLogMessage($"Logs uploaded successfully (unparsed response): {responseBody}");
+                            return true;
+                        }
                     }
                     else
                     {
-                        string errorContent = await response.Content.ReadAsStringAsync();
-                        OnLogMessage($"Failed to upload logs: {response.StatusCode} - {errorContent}");
-                        // If unauthorized, prompt for re-login via log message
+                        OnLogMessage($"Failed to upload logs: {response.StatusCode} - {responseBody}");
                         if (response.StatusCode == HttpStatusCode.Unauthorized)
                         {
                             OnLogMessage("Authentication failed (401). Please login again.");
@@ -231,7 +302,8 @@ namespace ScanLink
             }
             catch (Exception ex)
             {
-                OnLogMessage($"Error during API upload: {ex.Message}");
+                var inner = ex.InnerException != null ? $" | Inner: {ex.InnerException.Message}" : string.Empty;
+                OnLogMessage($"Error during API upload: {ex.Message}{inner}");
                 return false;
             }
         }
@@ -298,7 +370,8 @@ namespace ScanLink
                     {
                         try
                         {
-                            string payload = serializer.Serialize(new List<Dictionary<string, object>> { entry });
+                            var apiEntry = MapToApiSchema(entry);
+                            string payload = serializer.Serialize(new List<Dictionary<string, object>> { apiEntry });
                             var content = new System.Net.Http.StringContent(payload, Encoding.UTF8, "application/json");
                             var response = await client.PostAsync(apiUrl, content);
                             if (response.IsSuccessStatusCode)
@@ -365,6 +438,60 @@ namespace ScanLink
         private void OnLogMessage(string message)
         {
             LogMessage?.Invoke(this, $"[ScanLogUpload] {message}");
+        }
+
+        private Dictionary<string, object> MapToApiSchema(Dictionary<string, object> log)
+        {
+            string GetString(string key)
+            {
+                return log.ContainsKey(key) && log[key] != null ? log[key].ToString() : null;
+            }
+
+            string ts = GetString("timestamp");
+            string formattedTs = ts;
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(ts))
+                {
+                    // If ISO/offset provided, normalize to "yyyy-MM-dd HH:mm:ss" in UTC; otherwise leave as-is
+                    bool looksIsoOrOffset = ts.Contains("T") || ts.EndsWith("Z", StringComparison.OrdinalIgnoreCase) || ts.Contains("+") || ts.LastIndexOf('-') > 10;
+                    if (looksIsoOrOffset)
+                    {
+                        if (DateTimeOffset.TryParse(ts, out var dto))
+                        {
+                            formattedTs = dto.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss");
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            var userId = GetString("userId");
+            var siteId = GetString("siteId");
+
+            var mapped = new Dictionary<string, object>
+            {
+                // Include both snake_case and camelCase to satisfy backend variations
+                { "user_id", userId },
+                { "userId", userId },
+                { "site_id", siteId },
+                { "siteId", siteId },
+                { "timestamp", formattedTs },
+                { "line_number", GetString("lineNumber") },
+                { "block_number", GetString("blockNumber") },
+                { "product_code", GetString("productCode") },
+                { "parsed_info", GetString("parsedInfo") },
+                { "scan_status", GetString("scanStatus") ?? "SCANNED" },
+                { "error_message", GetString("errorMessage") ?? string.Empty },
+                { "crop_id", GetString("cropId") },
+                { "cropId", GetString("cropId") }
+            };
+
+            // Remove nulls to avoid API validation issues
+            var keysToRemove = mapped.Where(kv => kv.Value == null).Select(kv => kv.Key).ToList();
+            foreach (var k in keysToRemove) mapped.Remove(k);
+
+            return mapped;
         }
 
         public void Dispose()

@@ -22,9 +22,9 @@ if (-not (Test-Path $ApiLogsFile)) {
     Add-Content -Path $ApiLogsFile -Value "[]"
 }
 
-# Get all connected scanners using the unified detection
-Write-Host "Detecting connected scanners..." -ForegroundColor Cyan
-$allScanners = Get-ScannerDevices -UseDetailedMethods $false
+# Get all connected COM port scanners using the unified detection
+Write-Host "Detecting connected COM port scanners..." -ForegroundColor Cyan
+$allScanners = Get-ComPortScanners -UseDetailedMethods $false
 
 # Ensure $allScanners is always an array
 if ($allScanners -is [array]) {
@@ -35,23 +35,26 @@ if ($allScanners -is [array]) {
 }
 
 if ($allScanners.Count -eq 0) {
-    Write-Host "WARNING: No scanner devices found." -ForegroundColor Yellow
+    Write-Host "WARNING: No COM port scanner devices found." -ForegroundColor Yellow
+    Write-Host "Please ensure:" -ForegroundColor Yellow
+    Write-Host "  1. Scanner is connected via USB" -ForegroundColor White
+    Write-Host "  2. USB-COM driver is installed (e.g., Datalogic USB-COM driver)" -ForegroundColor White
+    Write-Host "  3. Scanner is configured for USB-COM mode (not HID keyboard mode)" -ForegroundColor White
+    Write-Host "  4. Check Device Manager > Ports (COM & LPT) for the scanner" -ForegroundColor White
 } else {
-    Write-Host "`nDetected $($allScanners.Count) Scanner Device(s):" -ForegroundColor Green
+    Write-Host "`nDetected $($allScanners.Count) COM Port Scanner(s):" -ForegroundColor Green
     for ($i = 0; $i -lt $allScanners.Count; $i++) {
         $scanner = $allScanners[$i]
         Write-Host "  Scanner #$($i + 1): $($scanner.DeviceName)" -ForegroundColor White
-        Write-Host "    PNPDeviceID: $($scanner.PNPDeviceID)" -ForegroundColor Yellow
+        Write-Host "    COM Port: $($scanner.ComPort)" -ForegroundColor Yellow
+        Write-Host "    PNPDeviceID: $($scanner.PNPDeviceID)" -ForegroundColor DarkYellow
         Write-Host "    Serial: $($scanner.SerialNumber)" -ForegroundColor White
         Write-Host "    Manufacturer: $($scanner.Manufacturer)" -ForegroundColor White
-        if ($scanner.SecondaryInterface) {
-            Write-Host "    Secondary Interface: $($scanner.SecondaryInterface)" -ForegroundColor DarkYellow
-        }
     }
 }
 Write-Host ""
 
-# Function to load scanner assignments (LineID and BlockID) from file
+# Function to load scanner assignments (LineID, BlockID, and COM settings) from file
 function Load-ScannerAssignments {
     $assignments = @{}
     try {
@@ -59,8 +62,13 @@ function Load-ScannerAssignments {
         if (Test-Path $assignmentsPath) {
             $assignmentLines = Get-Content -Path $assignmentsPath
             $currentPNPDeviceID = $null
+            $currentComPort = ""
             $currentLineID = ""
             $currentBlockID = ""
+            $currentBaudRate = "9600"
+            $currentParity = "None"
+            $currentDataBits = "8"
+            $currentStopBits = "One"
             
             foreach ($line in $assignmentLines) {
                 $trimmedLine = $line.Trim()
@@ -68,24 +76,49 @@ function Load-ScannerAssignments {
                 if ($trimmedLine.StartsWith("PNPDeviceID:")) {
                     $currentPNPDeviceID = $trimmedLine.Substring("PNPDeviceID:".Length).Trim()
                 }
+                elseif ($trimmedLine.StartsWith("COM Port:")) {
+                    $currentComPort = $trimmedLine.Substring("COM Port:".Length).Trim()
+                }
                 elseif ($trimmedLine.StartsWith("Line ID:")) {
                     $currentLineID = $trimmedLine.Substring("Line ID:".Length).Trim()
                 }
                 elseif ($trimmedLine.StartsWith("Block ID:")) {
                     $currentBlockID = $trimmedLine.Substring("Block ID:".Length).Trim()
+                }
+                elseif ($trimmedLine.StartsWith("Baud Rate:")) {
+                    $currentBaudRate = $trimmedLine.Substring("Baud Rate:".Length).Trim()
+                }
+                elseif ($trimmedLine.StartsWith("Parity:")) {
+                    $currentParity = $trimmedLine.Substring("Parity:".Length).Trim()
+                }
+                elseif ($trimmedLine.StartsWith("Data Bits:")) {
+                    $currentDataBits = $trimmedLine.Substring("Data Bits:".Length).Trim()
+                }
+                elseif ($trimmedLine.StartsWith("Stop Bits:")) {
+                    $currentStopBits = $trimmedLine.Substring("Stop Bits:".Length).Trim()
                     
                     # Save the complete entry
                     if ($currentPNPDeviceID) {
                         $assignments[$currentPNPDeviceID] = @{
+                            ComPort = $currentComPort
                             LineID = $currentLineID
                             BlockID = $currentBlockID
+                            BaudRate = $currentBaudRate
+                            Parity = $currentParity
+                            DataBits = $currentDataBits
+                            StopBits = $currentStopBits
                         }
                     }
                     
                     # Reset for next entry
                     $currentPNPDeviceID = $null
+                    $currentComPort = ""
                     $currentLineID = ""
                     $currentBlockID = ""
+                    $currentBaudRate = "9600"
+                    $currentParity = "None"
+                    $currentDataBits = "8"
+                    $currentStopBits = "One"
                 }
             }
         }
@@ -100,6 +133,7 @@ function Load-ScannerAssignments {
 $scannerAssignments = Load-ScannerAssignments
 if ($scannerAssignments.Count -gt 0) {
     Write-Host "Loaded scanner assignments from file." -ForegroundColor Cyan
+    Write-Host "  Total assigned scanners: $($scannerAssignments.Count)" -ForegroundColor White
 }
 
 # Create a function to get scanner info by PNPDeviceID
@@ -108,10 +142,6 @@ function Get-ScannerByPNPDeviceID {
     
     foreach ($scanner in $allScanners) {
         if ($scanner.PNPDeviceID -eq $PNPDeviceID) {
-            return $scanner
-        }
-        # Also check secondary interface
-        if ($scanner.SecondaryInterface -eq $PNPDeviceID) {
             return $scanner
         }
     }
@@ -135,7 +165,8 @@ function Add-ApiUploadLog {
         [string]$blockNumber,
         [string]$productCode,
         [string]$parsedInfo,
-        [string]$scanStatus
+        [string]$scanStatus,
+        [string]$cropId
     )
     
     try {
@@ -147,8 +178,8 @@ function Add-ApiUploadLog {
         $apiLogs = $apiLogsContent | ConvertFrom-Json -ErrorAction SilentlyContinue
         if (-not $apiLogs) { $apiLogs = @() }
         
-        # Create timestamp in required format
-        $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        # Create timestamp in required format (UTC for API logs)
+        $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
         
         # Create new API log entry
         $newApiLog = [PSCustomObject]@{
@@ -160,8 +191,8 @@ function Add-ApiUploadLog {
             productCode = $productCode
             scanStatus = "SCANNED"
             errorMessage = ""
-            status = "ACTIVE"
             parsedInfo = $parsedInfo
+            cropId = $cropId
         }
         
         # Add new log to array
@@ -182,7 +213,7 @@ function Add-ApiUploadLog {
 function Add-ScanRecord {
     param(
         [string]$code,
-        [string]$detectedScannerPNPId = $null,  # Optional: specific scanner PNPDeviceID
+        [string]$detectedScannerPNPId = $null,  # Required: specific scanner PNPDeviceID from C#
         [string]$sourceScanner = "Unknown"      # Optional: source scanner name
     )
     
@@ -200,12 +231,33 @@ function Add-ScanRecord {
         
         $employeeId = $null
         $productId = $null
-        if ($code -and $code.Contains('|')) {
-            $parts = $code.Split('|')
+        $cropId = $null
+
+        # Sanitize barcode: trim, remove AIM Symbology Identifier (e.g., ]C1) and non-printables
+        $cleanCode = $code
+        if ($cleanCode) { $cleanCode = $cleanCode.Trim() }
+        if ($cleanCode -and $cleanCode.StartsWith(']') -and $cleanCode.Length -ge 3) {
+            # Remove leading AIM identifier like ]C1, ]A0, etc.
+            $cleanCode = $cleanCode.Substring(3)
+        }
+        if ($cleanCode) {
+            $cleanCode = ($cleanCode.ToCharArray() | Where-Object { [int]$_ -ge 32 -and [int]$_ -le 126 }) -join ''
+        }
+
+        if ($cleanCode -and $cleanCode.Contains('|')) {
+            $parts = $cleanCode.Split('|')
             if ($parts.Length -ge 2) {
                 $employeeId = $parts[0].Trim()
                 $productId = $parts[1].Trim()
+                if ($parts.Length -ge 3) { $cropId = $parts[2].Trim() }
             }
+        }
+        elseif ($cleanCode -and $cleanCode.Length -ge 16) {
+            try {
+                $employeeId = $cleanCode.Substring(0,10)
+                $productId = $cleanCode.Substring(10,3)
+                $cropId = $cleanCode.Substring(13,3)
+            } catch {}
         }
         
         # Determine which scanner was used
@@ -225,6 +277,7 @@ function Add-ScanRecord {
         $pnpId = ""
         $serial = ""
         $friendlyName = ""
+        $comPort = ""
         $isDatalogic = $false
         $lineID = ""
         $blockID = ""
@@ -233,7 +286,8 @@ function Add-ScanRecord {
             $pnpId = $scannerInfo.PNPDeviceID
             $serial = $scannerInfo.SerialNumber
             $friendlyName = $scannerInfo.DeviceName
-            $isDatalogic = ($pnpId -like "*VID_05F9*")
+            $comPort = $scannerInfo.ComPort
+            $isDatalogic = ($scannerInfo.Manufacturer -eq 'Datalogic')
             
             $vidMatch = [regex]::Match($pnpId, 'VID_([0-9A-F]{4})', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
             $pidMatch = [regex]::Match($pnpId, 'PID_([0-9A-F]{4})', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
@@ -252,19 +306,21 @@ function Add-ScanRecord {
         $newRecord = [PSCustomObject]@{
             date = Get-Date -Format "yyyy-MM-dd"
             time = Get-Date -Format "HH:mm:ss"
-            barcode = $code
+            barcode = ($cleanCode ?? $code)
             employeeId = $employeeId
             productId = $productId
+            cropId = $cropId
             sourceScanner = $sourceScanner
             device = [PSCustomObject]@{
                 vid = $vid
                 serial = $serial
                 pnpId = $pnpId
+                comPort = $comPort
                 friendlyName = $friendlyName
                 isDatalogic = $isDatalogic
                 manufacturer = if ($scannerInfo) { $scannerInfo.Manufacturer } else { "Unknown" }
                 status = if ($scannerInfo) { $scannerInfo.Status } else { "Unknown" }
-                secondaryInterface = if ($scannerInfo -and $scannerInfo.SecondaryInterface) { $scannerInfo.SecondaryInterface } else { $null }
+                connectionType = "USB-COM"
                 lineID = $lineID
                 blockID = $blockID
             }
@@ -284,17 +340,17 @@ function Add-ScanRecord {
         # Also create a simple CSV backup for compatibility
         $csvFile = Join-Path $ProgramDataDir "scans_backup.csv"
         if (-not (Test-Path $csvFile)) {
-            Add-Content -Path $csvFile -Value "Timestamp,Barcode,EmployeeId,ProductId,DeviceVid,DeviceSerial,DevicePnpId,DeviceFriendlyName,LineID,BlockID"
+            Add-Content -Path $csvFile -Value "Timestamp,Barcode,EmployeeId,ProductId,CropId,DeviceVid,DeviceSerial,DevicePnpId,DeviceComPort,DeviceFriendlyName,LineID,BlockID"
         }
-        $csvLine = "$($newRecord.date) $($newRecord.time),$($newRecord.barcode),$($newRecord.employeeId),$($newRecord.productId),$($newRecord.device.vid),$($newRecord.device.serial),$($newRecord.device.pnpId),$($newRecord.device.friendlyName),$($newRecord.device.lineID),$($newRecord.device.blockID)"
+        $csvLine = "$($newRecord.date) $($newRecord.time),$($newRecord.barcode),$($newRecord.employeeId),$($newRecord.productId),$($newRecord.cropId),$($newRecord.device.vid),$($newRecord.device.serial),$($newRecord.device.pnpId),$($newRecord.device.comPort),$($newRecord.device.friendlyName),$($newRecord.device.lineID),$($newRecord.device.blockID)"
         Add-Content -Path $csvFile -Value $csvLine
         
         # Create API upload log (userId and siteId will be filled by C# service from token)
-        Add-ApiUploadLog -userId "" -siteId "" -lineNumber $lineID -blockNumber $blockID -productCode $productId -parsedInfo $employeeId -scanStatus $serial
+        Add-ApiUploadLog -userId "" -siteId "" -lineNumber $lineID -blockNumber $blockID -productCode $productId -parsedInfo $employeeId -scanStatus $serial -cropId $cropId
         
         Write-Host "Scan recorded: $code" -ForegroundColor Green
         if ($scannerInfo) {
-            Write-Host "  Scanner: $($scannerInfo.DeviceName) ($($scannerInfo.PNPDeviceID))" -ForegroundColor Yellow
+            Write-Host "  Scanner: $($scannerInfo.DeviceName) (COM $($scannerInfo.ComPort))" -ForegroundColor Yellow
             if ($lineID -or $blockID) {
                 Write-Host "  Line ID: $lineID, Block ID: $blockID" -ForegroundColor Cyan
             }
@@ -316,6 +372,7 @@ function Show-ScanStats {
                 $totalScans = $records.Count
                 $todayScans = ($records | Where-Object { $_.date -eq (Get-Date -Format "yyyy-MM-dd") }).Count
                 $datalogicScans = ($records | Where-Object { $_.device.isDatalogic -eq $true }).Count
+                $comPortScans = ($records | Where-Object { $_.device.connectionType -eq "USB-COM" }).Count
                 
                 Write-Host "`n=== Scan Statistics ===" -ForegroundColor Cyan
                 [Console]::Out.Flush()
@@ -324,6 +381,8 @@ function Show-ScanStats {
                 Write-Host "Today's scans: $todayScans" -ForegroundColor White
                 [Console]::Out.Flush()
                 Write-Host "Datalogic scans: $datalogicScans" -ForegroundColor White
+                [Console]::Out.Flush()
+                Write-Host "COM Port scans: $comPortScans" -ForegroundColor White
                 [Console]::Out.Flush()
                 Write-Host "=======================`n" -ForegroundColor Cyan
                 [Console]::Out.Flush()
@@ -343,24 +402,39 @@ if (-not [string]::IsNullOrWhiteSpace($Barcode)) {
 }
 else {
     # Continuously read from stdin for barcodes from the C# application
+    # C# will send data in format: "PNPDeviceID|BarcodeData"
     try {
-        Write-Host "Ready. Waiting for barcode input from UI..." -ForegroundColor DarkYellow
-        Write-Host "All connected scanners will be monitored for barcode input." -ForegroundColor Cyan
+        Write-Host "Ready. Waiting for barcode input from C# COM Port Manager..." -ForegroundColor DarkYellow
+        Write-Host "All connected COM port scanners are monitored by C# application." -ForegroundColor Cyan
+        Write-Host "This script processes scan records received from C#." -ForegroundColor Cyan
         [Console]::Out.Flush()
         while ($true) {
-            $code = [Console]::In.ReadLine()
-            if ($code -eq $null) { # StandardInput stream has closed
+            $inputLine = [Console]::In.ReadLine()
+            if ($inputLine -eq $null) { # StandardInput stream has closed
                 Write-Host "[DEBUG-PS] StandardInput stream closed. Exiting loop." -ForegroundColor DarkGray
                 [Console]::Out.Flush()
                 break
             }
-            if ([string]::IsNullOrWhiteSpace($code)) {
+            if ([string]::IsNullOrWhiteSpace($inputLine)) {
                 continue 
             }
-            # Record scan with automatic scanner detection
-            # Use the first available scanner as default (since we can't determine which scanner sent the data)
-            $defaultScannerPNPId = if ($allScanners.Count -gt 0) { $allScanners[0].PNPDeviceID } else { $null }
-            Add-ScanRecord -code $code -detectedScannerPNPId $defaultScannerPNPId -sourceScanner "Scanner Input"
+            
+            # Parse input format: "PNPDeviceID|BarcodeData"
+            $scannerPNPId = $null
+            $barcodeData = $inputLine
+            
+            if ($inputLine.Contains('|')) {
+                $inputParts = $inputLine.Split('|', 2)
+                if ($inputParts.Length -ge 2) {
+                    $scannerPNPId = $inputParts[0].Trim()
+                    $barcodeData = $inputParts[1].Trim()
+                }
+            }
+            
+            # Record scan with specific scanner identification
+            if (-not [string]::IsNullOrWhiteSpace($barcodeData)) {
+                Add-ScanRecord -code $barcodeData -detectedScannerPNPId $scannerPNPId -sourceScanner "COM Port Scanner"
+            }
         }
     }
     catch {
