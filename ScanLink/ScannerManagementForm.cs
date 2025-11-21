@@ -4,9 +4,11 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
+using System.Management;
 
 namespace ScanLink
 {
@@ -27,6 +29,7 @@ namespace ScanLink
             public string SerialNumber { get; set; }
             public string PNPDeviceID { get; set; }
             public string ComPort { get; set; }
+            public string ConnectionType { get; set; } = "USB-COM";
             public string LineID { get; set; }
             public string BlockID { get; set; }
             public string BaudRate { get; set; } = "9600";
@@ -35,6 +38,468 @@ namespace ScanLink
             public string StopBits { get; set; } = "One";
             public string Status { get; set; }
             public bool IsCurrentlyConnected { get; set; }
+
+            public string AssignmentKey
+            {
+                get
+                {
+                    string conn = string.IsNullOrWhiteSpace(ConnectionType) ? "USB-COM" : ConnectionType;
+                    string id = string.IsNullOrWhiteSpace(PNPDeviceID) ? "UNKNOWN" : PNPDeviceID;
+                    return $"{conn}::{id}";
+                }
+            }
+
+            public string ModeDisplay
+            {
+                get
+                {
+                    switch ((ConnectionType ?? "USB-COM").ToUpperInvariant())
+                    {
+                        case "USB-HID-KEYBOARD":
+                            return "HID-KBD";
+                        case "USB-HID-RAW":
+                            return "HID-RAW";
+                        default:
+                            return "USB-COM";
+                    }
+                }
+            }
+
+            public string GetComPortDisplay()
+            {
+                if ((ConnectionType ?? string.Empty).StartsWith("USB-HID", StringComparison.OrdinalIgnoreCase))
+                {
+                    return ModeDisplay;
+                }
+                return string.IsNullOrWhiteSpace(ComPort) ? "Auto" : ComPort;
+            }
+        }
+
+        private void LoadHidScanners()
+        {
+            try
+            {
+                LogDebug("Scanning for HID-mode scanners...");
+                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID LIKE 'HID\\\\VID_%'");
+                var hidDevices = searcher.Get();
+
+                var connectedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (ManagementObject device in hidDevices)
+                {
+                    string deviceId = device["PNPDeviceID"]?.ToString();
+                    if (string.IsNullOrWhiteSpace(deviceId))
+                    {
+                        continue;
+                    }
+
+                    string name = device["Name"]?.ToString();
+                    string description = device["Description"]?.ToString();
+                    string manufacturer = device["Manufacturer"]?.ToString();
+                    string vid = ExtractVid(deviceId);
+
+                    if (!IsLikelyScannerDevice(name, description, manufacturer, vid))
+                    {
+                        continue;
+                    }
+
+                    string connectionType = DetermineHidConnectionType(name, description);
+
+                    var scanner = new ScannerInfo
+                    {
+                        PNPDeviceID = deviceId,
+                        ConnectionType = connectionType,
+                        SerialNumber = !string.IsNullOrWhiteSpace(name) ? name : deviceId,
+                        LineID = "",
+                        BlockID = "",
+                        IsCurrentlyConnected = true,
+                        Status = "Connected"
+                    };
+
+                    var merged = AddOrUpdateScanner(scanner, updateConnectionState: true);
+                    if (merged != null)
+                    {
+                        merged.ConnectionType = connectionType;
+                        merged.IsCurrentlyConnected = true;
+                        merged.Status = "Connected";
+                        if (string.IsNullOrWhiteSpace(merged.SerialNumber))
+                        {
+                            merged.SerialNumber = scanner.SerialNumber;
+                        }
+                        connectedKeys.Add(merged.AssignmentKey);
+                        LogDebug($"HID scanner detected: {merged.PNPDeviceID} [{merged.ModeDisplay}]");
+                    }
+                }
+
+                foreach (var scanner in detectedScanners.Where(s => (s.ConnectionType ?? string.Empty).StartsWith("USB-HID", StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (!connectedKeys.Contains(scanner.AssignmentKey))
+                    {
+                        scanner.IsCurrentlyConnected = false;
+                    }
+                }
+
+                LogDebug($"HID scanner detection complete. Found {connectedKeys.Count} connected HID scanner(s).");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"Failed to enumerate HID scanners: {ex.Message}");
+            }
+        }
+
+        private void RefreshComPortStatusFromWmi()
+        {
+            try
+            {
+                LogDebug("Refreshing COM-port scanners via WMI...");
+                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%(COM%'");
+                var devices = searcher.Get();
+
+                var connectedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (ManagementObject device in devices)
+                {
+                    string deviceId = device["PNPDeviceID"]?.ToString();
+                    if (string.IsNullOrWhiteSpace(deviceId))
+                    {
+                        continue;
+                    }
+
+                    string name = device["Name"]?.ToString() ?? string.Empty;
+                    string description = device["Description"]?.ToString() ?? string.Empty;
+                    string manufacturer = device["Manufacturer"]?.ToString() ?? string.Empty;
+                    string vid = ExtractVid(deviceId);
+
+                    if (!IsLikelyScannerDevice(name, description, manufacturer, vid))
+                    {
+                        continue;
+                    }
+
+                    string comPort = string.Empty;
+                    var nameMatch = Regex.Match(name, @"\((COM\d+)\)", RegexOptions.IgnoreCase);
+                    if (nameMatch.Success)
+                    {
+                        comPort = nameMatch.Groups[1].Value;
+                    }
+                    if (string.IsNullOrWhiteSpace(comPort))
+                    {
+                        var match = Regex.Match(description, @"(COM\d+)", RegexOptions.IgnoreCase);
+                        if (match.Success)
+                        {
+                            comPort = match.Groups[1].Value;
+                        }
+                    }
+
+                    if (string.IsNullOrWhiteSpace(comPort))
+                    {
+                        continue;
+                    }
+
+                    comPort = comPort.ToUpperInvariant();
+
+                    var scanner = new ScannerInfo
+                    {
+                        PNPDeviceID = deviceId,
+                        ConnectionType = "USB-COM",
+                        ComPort = comPort,
+                        SerialNumber = !string.IsNullOrWhiteSpace(name) ? name : deviceId,
+                        IsCurrentlyConnected = true,
+                        Status = "Connected"
+                    };
+
+                    var merged = AddOrUpdateScanner(scanner, updateConnectionState: true);
+                    if (merged != null)
+                    {
+                        merged.ConnectionType = "USB-COM";
+                        merged.ComPort = comPort;
+                        merged.IsCurrentlyConnected = true;
+                        merged.Status = "Connected";
+                        if (string.IsNullOrWhiteSpace(merged.SerialNumber))
+                        {
+                            merged.SerialNumber = scanner.SerialNumber;
+                        }
+                        connectedKeys.Add(merged.AssignmentKey);
+                        LogDebug($"COM scanner detected via WMI: {merged.PNPDeviceID} [{merged.ComPort}]");
+                    }
+                }
+
+                foreach (var scanner in detectedScanners.Where(s => string.Equals(s.ConnectionType, "USB-COM", StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (!connectedKeys.Contains(scanner.AssignmentKey))
+                    {
+                        scanner.IsCurrentlyConnected = false;
+                    }
+                }
+
+                LogDebug($"COM-port scanner refresh complete. Found {connectedKeys.Count} connected COM scanner(s).");
+            }
+            catch (Exception ex)
+            {
+                LogDebug($"Failed to enumerate COM scanners via WMI: {ex.Message}");
+            }
+        }
+
+        private static readonly Dictionary<string, string> KnownScannerVids = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "05F9", "Datalogic" },
+            { "0C2E", "Honeywell" },
+            { "1504", "Zebra" },
+            { "05E0", "Symbol Technologies" },
+            { "1A86", "CH34x" },
+            { "0403", "FTDI" },
+            { "05A9", "Opticon" },
+            { "10C4", "Silabs" }
+        };
+
+        private static readonly string[] ScannerKeywordMatches = new[]
+        {
+            "scanner",
+            "barcode",
+            "imag",
+            "qr",
+            "datalogic",
+            "honeywell",
+            "zebra",
+            "symbol",
+            "opticon",
+            "datamax"
+        };
+
+        private ScannerInfo AddOrUpdateScanner(ScannerInfo incoming, bool updateConnectionState)
+        {
+            if (incoming == null || string.IsNullOrWhiteSpace(incoming.PNPDeviceID))
+            {
+                return null;
+            }
+
+            incoming.ConnectionType = string.IsNullOrWhiteSpace(incoming.ConnectionType) ? "USB-COM" : incoming.ConnectionType;
+
+            var existing = detectedScanners.FirstOrDefault(s =>
+                string.Equals(s.AssignmentKey, incoming.AssignmentKey, StringComparison.OrdinalIgnoreCase));
+
+            if (existing == null)
+            {
+                incoming.SerialNumber = !string.IsNullOrWhiteSpace(incoming.SerialNumber)
+                    ? incoming.SerialNumber
+                    : $"Scanner {detectedScanners.Count + 1}";
+
+                incoming.BaudRate = incoming.BaudRate ?? "9600";
+                incoming.Parity = incoming.Parity ?? "None";
+                incoming.DataBits = incoming.DataBits ?? "8";
+                incoming.StopBits = incoming.StopBits ?? "One";
+                incoming.Status = incoming.Status ?? (incoming.IsCurrentlyConnected ? "Connected" : "Not Connected");
+
+                detectedScanners.Add(incoming);
+                return incoming;
+            }
+
+            if (!string.IsNullOrWhiteSpace(incoming.SerialNumber) &&
+                (string.IsNullOrWhiteSpace(existing.SerialNumber) ||
+                 existing.SerialNumber.StartsWith("Scanner ", StringComparison.OrdinalIgnoreCase)))
+            {
+                existing.SerialNumber = incoming.SerialNumber;
+            }
+
+            existing.ConnectionType = incoming.ConnectionType;
+
+            if (!string.IsNullOrWhiteSpace(incoming.ComPort))
+            {
+                existing.ComPort = incoming.ComPort;
+            }
+
+            if (!string.IsNullOrWhiteSpace(incoming.LineID))
+            {
+                existing.LineID = incoming.LineID;
+            }
+
+            if (!string.IsNullOrWhiteSpace(incoming.BlockID))
+            {
+                existing.BlockID = incoming.BlockID;
+            }
+
+            if (!string.IsNullOrWhiteSpace(incoming.BaudRate))
+            {
+                existing.BaudRate = incoming.BaudRate;
+            }
+
+            if (!string.IsNullOrWhiteSpace(incoming.Parity))
+            {
+                existing.Parity = incoming.Parity;
+            }
+
+            if (!string.IsNullOrWhiteSpace(incoming.DataBits))
+            {
+                existing.DataBits = incoming.DataBits;
+            }
+
+            if (!string.IsNullOrWhiteSpace(incoming.StopBits))
+            {
+                existing.StopBits = incoming.StopBits;
+            }
+
+            if (!string.IsNullOrWhiteSpace(incoming.Status))
+            {
+                existing.Status = incoming.Status;
+            }
+
+            if (updateConnectionState)
+            {
+                existing.IsCurrentlyConnected = incoming.IsCurrentlyConnected;
+            }
+
+            return existing;
+        }
+
+        private static string ExtractVid(string pnpDeviceId)
+        {
+            if (string.IsNullOrWhiteSpace(pnpDeviceId))
+            {
+                return string.Empty;
+            }
+
+            var match = Regex.Match(pnpDeviceId, "VID_([0-9A-F]{4})", RegexOptions.IgnoreCase);
+            return match.Success ? match.Groups[1].Value.ToUpperInvariant() : string.Empty;
+        }
+
+        private static string ExtractPid(string pnpDeviceId)
+        {
+            if (string.IsNullOrWhiteSpace(pnpDeviceId))
+            {
+                return string.Empty;
+            }
+
+            var match = Regex.Match(pnpDeviceId, "PID_([0-9A-F]{4})", RegexOptions.IgnoreCase);
+            return match.Success ? match.Groups[1].Value.ToUpperInvariant() : string.Empty;
+        }
+
+        private static bool IsLikelyScannerDevice(string name, string description, string manufacturer, string vid)
+        {
+            string combined = $"{name} {description} {manufacturer}".ToLowerInvariant();
+            if (ScannerKeywordMatches.Any(keyword => combined.Contains(keyword)))
+            {
+                return true;
+            }
+
+            return !string.IsNullOrWhiteSpace(vid) && KnownScannerVids.ContainsKey(vid);
+        }
+
+        private static string DetermineHidConnectionType(string name, string description)
+        {
+            string combined = $"{name} {description}";
+            if (!string.IsNullOrWhiteSpace(combined) &&
+                combined.IndexOf("keyboard", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "USB-HID-KEYBOARD";
+            }
+
+            return "USB-HID-RAW";
+        }
+
+        private Dictionary<string, ScannerInfo> ParseAssignmentsFile(string[] lines)
+        {
+            var assignments = new Dictionary<string, ScannerInfo>(StringComparer.OrdinalIgnoreCase);
+            if (lines == null || lines.Length == 0)
+            {
+                return assignments;
+            }
+
+            ScannerInfo current = null;
+
+            void CommitCurrent()
+            {
+                if (current == null || string.IsNullOrWhiteSpace(current.PNPDeviceID))
+                {
+                    current = null;
+                    return;
+                }
+
+                current.ConnectionType = string.IsNullOrWhiteSpace(current.ConnectionType) ? "USB-COM" : current.ConnectionType;
+                current.ComPort = current.ComPort == "Auto-detect" ? string.Empty : current.ComPort;
+                current.BaudRate = current.BaudRate ?? "9600";
+                current.Parity = current.Parity ?? "None";
+                current.DataBits = current.DataBits ?? "8";
+                current.StopBits = current.StopBits ?? "One";
+                current.LineID = current.LineID ?? string.Empty;
+                current.BlockID = current.BlockID ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(current.SerialNumber) &&
+                    current.SerialNumber.StartsWith("Scanner", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.SerialNumber = current.PNPDeviceID;
+                }
+                current.SerialNumber = current.SerialNumber ?? current.PNPDeviceID;
+                current.Status = current.Status ?? "Not Connected";
+                current.IsCurrentlyConnected = false;
+
+                assignments[current.AssignmentKey] = current;
+                current = null;
+            }
+
+            foreach (string rawLine in lines)
+            {
+                string line = rawLine.Trim();
+
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    CommitCurrent();
+                    continue;
+                }
+
+                if (line.StartsWith("Scanner #", StringComparison.OrdinalIgnoreCase))
+                {
+                    CommitCurrent();
+                    current = new ScannerInfo
+                    {
+                        SerialNumber = line
+                    };
+                    continue;
+                }
+
+                if (current == null)
+                {
+                    current = new ScannerInfo();
+                }
+
+                if (line.StartsWith("PNPDeviceID:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.PNPDeviceID = line.Substring("PNPDeviceID:".Length).Trim();
+                }
+                else if (line.StartsWith("Connection Type:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.ConnectionType = line.Substring("Connection Type:".Length).Trim();
+                }
+                else if (line.StartsWith("COM Port:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.ComPort = line.Substring("COM Port:".Length).Trim();
+                }
+                else if (line.StartsWith("Line ID:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.LineID = line.Substring("Line ID:".Length).Trim();
+                }
+                else if (line.StartsWith("Block ID:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.BlockID = line.Substring("Block ID:".Length).Trim();
+                }
+                else if (line.StartsWith("Baud Rate:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.BaudRate = line.Substring("Baud Rate:".Length).Trim();
+                }
+                else if (line.StartsWith("Parity:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.Parity = line.Substring("Parity:".Length).Trim();
+                }
+                else if (line.StartsWith("Data Bits:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.DataBits = line.Substring("Data Bits:".Length).Trim();
+                }
+                else if (line.StartsWith("Stop Bits:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.StopBits = line.Substring("Stop Bits:".Length).Trim();
+                }
+            }
+
+            CommitCurrent();
+
+            return assignments;
         }
 
         public ScannerManagementForm()
@@ -167,7 +632,7 @@ namespace ScanLink
             this.AutoScaleDimensions = new SizeF(96F, 96F); // Use DPI-aware scaling
             this.AutoScaleMode = AutoScaleMode.Dpi;
             this.BackColor = Color.FromArgb(248, 249, 250);
-            this.ClientSize = new Size(900, 800); // Increased initial size for debug panel
+            this.ClientSize = new Size(900, 600); // Reduced height for more compact dialog
             this.Controls.Add(this.saveButton);
             this.Controls.Add(this.configHelpButton);
             this.Controls.Add(this.refreshButton);
@@ -445,6 +910,12 @@ namespace ScanLink
                     // Parse the output to extract currently connected scanner information
                     ParseCurrentScanners(output);
                 }
+
+                // Supplement COM-port detection with WMI enumeration
+                RefreshComPortStatusFromWmi();
+                
+                // Detect HID-mode scanners (keyboard/raw)
+                LoadHidScanners();
                 
                 // Update status for all scanners (connected vs not connected)
                 UpdateScannerStatus();
@@ -504,89 +975,20 @@ namespace ScanLink
 
                 System.Diagnostics.Debug.WriteLine($"Loading historical scanners from: {assignmentsPath}");
                 string[] existingLines = File.ReadAllLines(assignmentsPath);
-                string currentPNPDeviceID = null;
-                string currentComPort = "";
-                string currentLineID = "";
-                string currentBlockID = "";
-                string currentBaudRate = "9600";
-                string currentParity = "None";
-                string currentDataBits = "8";
-                string currentStopBits = "One";
-                
-                foreach (string line in existingLines)
+                var assignments = ParseAssignmentsFile(existingLines);
+
+                foreach (var assignment in assignments.Values)
                 {
-                    string trimmedLine = line.Trim();
-                    
-                    if (trimmedLine.StartsWith("PNPDeviceID:"))
-                    {
-                        currentPNPDeviceID = trimmedLine.Substring("PNPDeviceID:".Length).Trim();
-                    }
-                    else if (trimmedLine.StartsWith("COM Port:"))
-                    {
-                        currentComPort = trimmedLine.Substring("COM Port:".Length).Trim();
-                        if (currentComPort == "Auto-detect") currentComPort = "";
-                    }
-                    else if (trimmedLine.StartsWith("Line ID:"))
-                    {
-                        currentLineID = trimmedLine.Substring("Line ID:".Length).Trim();
-                    }
-                    else if (trimmedLine.StartsWith("Block ID:"))
-                    {
-                        currentBlockID = trimmedLine.Substring("Block ID:".Length).Trim();
-                    }
-                    else if (trimmedLine.StartsWith("Baud Rate:"))
-                    {
-                        currentBaudRate = trimmedLine.Substring("Baud Rate:".Length).Trim();
-                    }
-                    else if (trimmedLine.StartsWith("Parity:"))
-                    {
-                        currentParity = trimmedLine.Substring("Parity:".Length).Trim();
-                    }
-                    else if (trimmedLine.StartsWith("Data Bits:"))
-                    {
-                        currentDataBits = trimmedLine.Substring("Data Bits:".Length).Trim();
-                    }
-                    else if (trimmedLine.StartsWith("Stop Bits:"))
-                    {
-                        currentStopBits = trimmedLine.Substring("Stop Bits:".Length).Trim();
-                        
-                        // Add historical scanner (initially marked as not connected) - complete entry
-                        if (!string.IsNullOrEmpty(currentPNPDeviceID))
-                        {
-                            detectedScanners.Add(new ScannerInfo
-                            {
-                                SerialNumber = $"Scanner {detectedScanners.Count + 1}",
-                                PNPDeviceID = currentPNPDeviceID,
-                                ComPort = currentComPort,
-                                LineID = currentLineID,
-                                BlockID = currentBlockID,
-                                BaudRate = currentBaudRate,
-                                Parity = currentParity,
-                                DataBits = currentDataBits,
-                                StopBits = currentStopBits,
-                                Status = "Not Connected",
-                                IsCurrentlyConnected = false
-                            });
-                            
-                            System.Diagnostics.Debug.WriteLine($"Added historical scanner: {currentPNPDeviceID} - COM: {currentComPort}, Line: {currentLineID}, Block: {currentBlockID}");
-                        }
-                        
-                        // Reset for next entry
-                        currentPNPDeviceID = null;
-                        currentComPort = "";
-                        currentLineID = "";
-                        currentBlockID = "";
-                        currentBaudRate = "9600";
-                        currentParity = "None";
-                        currentDataBits = "8";
-                        currentStopBits = "One";
-                    }
+                    assignment.IsCurrentlyConnected = false;
+                    assignment.Status = "Not Connected";
+                    AddOrUpdateScanner(assignment, updateConnectionState: false);
+                    System.Diagnostics.Debug.WriteLine($"Loaded historical scanner assignment: {assignment.ConnectionType} :: {assignment.PNPDeviceID}");
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"Total historical scanners loaded: {detectedScanners.Count}");
+                System.Diagnostics.Debug.WriteLine($"Total historical scanners loaded: {assignments.Count}");
                 
                 // If no historical scanners found, add a test entry to verify functionality
-                if (detectedScanners.Count == 0)
+                if (assignments.Count == 0 && detectedScanners.Count == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("No historical scanners found, adding test entry");
                     detectedScanners.Add(new ScannerInfo
@@ -618,175 +1020,109 @@ namespace ScanLink
             }
         }
 
-        private void LoadExistingAssignments()
-        {
-            try
-            {
-                // Prefer ProgramData; fallback to project source path
-                string assignmentsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink", "scanner_assignments.txt");
-                if (!File.Exists(assignmentsPath))
-                {
-                    assignmentsPath = Path.Combine(Application.StartupPath, "..", "..", "ScanLinkScanner", "scanner_assignments.txt");
-                }
-                
-                if (!File.Exists(assignmentsPath))
-                {
-                    return; // No existing assignments file, nothing to load
-                }
-
-                string[] existingLines = File.ReadAllLines(assignmentsPath);
-                string currentPNPDeviceID = null;
-                string currentLineID = "";
-                string currentBlockID = "";
-                
-                Dictionary<string, ScannerInfo> savedAssignments = new Dictionary<string, ScannerInfo>();
-                
-                foreach (string line in existingLines)
-                {
-                    string trimmedLine = line.Trim();
-                    
-                    if (trimmedLine.StartsWith("PNPDeviceID:"))
-                    {
-                        currentPNPDeviceID = trimmedLine.Substring("PNPDeviceID:".Length).Trim();
-                    }
-                    else if (trimmedLine.StartsWith("Line ID:"))
-                    {
-                        currentLineID = trimmedLine.Substring("Line ID:".Length).Trim();
-                    }
-                    else if (trimmedLine.StartsWith("Block ID:"))
-                    {
-                        currentBlockID = trimmedLine.Substring("Block ID:".Length).Trim();
-                        
-                        // Save the complete entry
-                        if (!string.IsNullOrEmpty(currentPNPDeviceID))
-                        {
-                            savedAssignments[currentPNPDeviceID] = new ScannerInfo
-                            {
-                                PNPDeviceID = currentPNPDeviceID,
-                                LineID = currentLineID,
-                                BlockID = currentBlockID
-                            };
-                        }
-                        
-                        // Reset for next entry
-                        currentPNPDeviceID = null;
-                        currentLineID = "";
-                        currentBlockID = "";
-                    }
-                }
-                
-                // Match detected scanners with saved assignments
-                foreach (var scanner in detectedScanners)
-                {
-                    if (!string.IsNullOrEmpty(scanner.PNPDeviceID) && 
-                        savedAssignments.ContainsKey(scanner.PNPDeviceID))
-                    {
-                        var savedAssignment = savedAssignments[scanner.PNPDeviceID];
-                        scanner.LineID = savedAssignment.LineID;
-                        scanner.BlockID = savedAssignment.BlockID;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Silently fail if we can't load existing assignments
-                // The form will still work, just without pre-populated values
-                System.Diagnostics.Debug.WriteLine($"Error loading existing assignments: {ex.Message}");
-            }
-        }
-
         private void ParseCurrentScanners(string output)
         {
             LogDebug("--- Parsing PowerShell Output ---");
             System.Diagnostics.Debug.WriteLine($"Parsing current scanners output: {output}");
-            string[] lines = output.Split('\n');
-            List<(string pnpId, string comPort)> currentScanners = new List<(string, string)>();
+            string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.None);
+            List<(string pnpId, string comPort, string deviceName)> currentScanners = new List<(string, string, string)>();
 
             for (int i = 0; i < lines.Length; i++)
             {
                 string line = lines[i].Trim();
-                
-                // Look for scanner entries
-                if (line.StartsWith("Scanner #"))
+
+                if (!line.StartsWith("Scanner #", StringComparison.OrdinalIgnoreCase))
                 {
-                    LogDebug($"Found scanner entry: {line}");
-                    string pnpDeviceID = null;
-                    string comPort = null;
-                    
-                    // Look for PNPDeviceID and COM Port in the next few lines
-                    for (int j = i + 1; j < Math.Min(i + 10, lines.Length); j++)
+                    continue;
+                }
+
+                LogDebug($"Found scanner entry: {line}");
+                string pnpDeviceID = null;
+                string comPort = null;
+                string deviceName = null;
+
+                for (int j = i + 1; j < Math.Min(i + 12, lines.Length); j++)
+                {
+                    string nextLine = lines[j].Trim();
+                    if (string.IsNullOrWhiteSpace(nextLine) || nextLine.StartsWith("Scanner #", StringComparison.OrdinalIgnoreCase))
                     {
-                        string nextLine = lines[j].Trim();
-                        if (nextLine.StartsWith("COM Port:"))
-                        {
-                            comPort = nextLine.Substring("COM Port:".Length).Trim();
-                            LogDebug($"  Found COM Port: {comPort}");
-                        }
-                        else if (nextLine.StartsWith("PNPDeviceID:"))
-                        {
-                            pnpDeviceID = nextLine.Substring("PNPDeviceID:".Length).Trim();
-                            LogDebug($"  Found PNPDeviceID: {pnpDeviceID}");
-                        }
-                        
-                        // If we found both, add to list
-                        if (!string.IsNullOrEmpty(pnpDeviceID) && !string.IsNullOrEmpty(comPort))
-                        {
-                            currentScanners.Add((pnpDeviceID, comPort));
-                            LogDebug($"✓ Added scanner: {pnpDeviceID} on {comPort}");
-                            System.Diagnostics.Debug.WriteLine($"Found currently connected scanner: {pnpDeviceID} on {comPort}");
-                            break;
-                        }
+                        break;
+                    }
+
+                    if (nextLine.StartsWith("COM Port:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        comPort = nextLine.Substring("COM Port:".Length).Trim();
+                        LogDebug($"  Found COM Port: {comPort}");
+                    }
+                    else if (nextLine.StartsWith("PNPDeviceID:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        pnpDeviceID = nextLine.Substring("PNPDeviceID:".Length).Trim();
+                        LogDebug($"  Found PNPDeviceID: {pnpDeviceID}");
+                    }
+                    else if (nextLine.StartsWith("DeviceName:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        deviceName = nextLine.Substring("DeviceName:".Length).Trim();
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(pnpDeviceID))
+                {
+                    currentScanners.Add((pnpDeviceID, comPort, deviceName));
+                    LogDebug($"✓ Added scanner from detection: {pnpDeviceID} on {comPort}");
+                    System.Diagnostics.Debug.WriteLine($"Found currently connected COM scanner: {pnpDeviceID} on {comPort}");
+                }
+            }
+
+            LogDebug($"Parsed {currentScanners.Count} currently connected COM scanner(s)");
+            System.Diagnostics.Debug.WriteLine($"Total currently connected COM scanners found: {currentScanners.Count}");
+
+            var connectedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var (pnpId, comPort, deviceName) in currentScanners)
+            {
+                var scanner = new ScannerInfo
+                {
+                    PNPDeviceID = pnpId,
+                    ComPort = comPort,
+                    ConnectionType = "USB-COM",
+                    SerialNumber = string.IsNullOrWhiteSpace(deviceName) ? pnpId : deviceName,
+                    IsCurrentlyConnected = true,
+                    Status = "Connected"
+                };
+
+                var merged = AddOrUpdateScanner(scanner, updateConnectionState: true);
+                if (merged != null)
+                {
+                    merged.ConnectionType = "USB-COM";
+                    merged.ComPort = comPort;
+                    merged.IsCurrentlyConnected = true;
+                    merged.Status = "Connected";
+                    if (string.IsNullOrWhiteSpace(merged.SerialNumber))
+                    {
+                        merged.SerialNumber = scanner.SerialNumber;
+                    }
+                    connectedKeys.Add(merged.AssignmentKey);
+                }
+            }
+
+            foreach (var scanner in detectedScanners)
+            {
+                if (scanner.ConnectionType.Equals("USB-COM", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!connectedKeys.Contains(scanner.AssignmentKey))
+                    {
+                        scanner.IsCurrentlyConnected = false;
                     }
                 }
             }
-            
-            LogDebug($"Parsed {currentScanners.Count} currently connected scanner(s)");
-            System.Diagnostics.Debug.WriteLine($"Total currently connected scanners found: {currentScanners.Count}");
 
-            // Update the detectedScanners list to mark which ones are currently connected
-            foreach (var scanner in detectedScanners)
-            {
-                var match = currentScanners.FirstOrDefault(s => s.pnpId == scanner.PNPDeviceID);
-                if (!string.IsNullOrEmpty(match.pnpId))
-                {
-                    scanner.IsCurrentlyConnected = true;
-                    scanner.Status = "Connected";
-                    scanner.ComPort = match.comPort;
-                    System.Diagnostics.Debug.WriteLine($"Scanner {scanner.PNPDeviceID} marked as CONNECTED on {scanner.ComPort}");
-                }
-                else
-                {
-                    scanner.IsCurrentlyConnected = false;
-                    scanner.Status = "Not Connected";
-                    System.Diagnostics.Debug.WriteLine($"Scanner {scanner.PNPDeviceID} marked as NOT CONNECTED");
-                }
-            }
-
-            // Add any new scanners that are currently connected but not in historical data
-            foreach (var (pnpId, comPort) in currentScanners)
-            {
-                if (!detectedScanners.Any(s => s.PNPDeviceID == pnpId))
-                {
-                    detectedScanners.Add(new ScannerInfo
-                    {
-                        SerialNumber = $"Scanner {detectedScanners.Count + 1}",
-                        PNPDeviceID = pnpId,
-                        ComPort = comPort,
-                        LineID = "",
-                        BlockID = "",
-                        Status = "Connected",
-                        IsCurrentlyConnected = true
-                    });
-                }
-            }
-
-            // If no scanners found in the output and no historical data, create a default entry
-            if (detectedScanners.Count == 0)
+            if (!detectedScanners.Any())
             {
                 detectedScanners.Add(new ScannerInfo
                 {
                     SerialNumber = "No scanners detected",
                     PNPDeviceID = "N/A",
+                    ConnectionType = "USB-COM",
                     LineID = "",
                     BlockID = "",
                     Status = "Not Connected",
@@ -899,7 +1235,7 @@ namespace ScanLink
                 scannerDataGridView.Rows.Add(
                     scanner.SerialNumber,
                     scanner.PNPDeviceID,
-                    scanner.ComPort ?? "N/A",
+                    scanner.GetComPortDisplay(),
                     scanner.LineID,
                     scanner.BlockID,
                     scanner.BaudRate,
@@ -913,6 +1249,38 @@ namespace ScanLink
             // Color-code the rows based on status
             foreach (DataGridViewRow row in scannerDataGridView.Rows)
             {
+                if (row.Index >= 0 && row.Index < detectedScanners.Count)
+                {
+                    var scanner = detectedScanners[row.Index];
+
+                    row.Cells["ComPort"].Value = scanner.GetComPortDisplay();
+                    var statusValue = scanner.IsCurrentlyConnected ? "Connected" : "Not Connected";
+                    row.Cells["Status"].Value = statusValue;
+
+                    if ((scanner.ConnectionType ?? string.Empty).StartsWith("USB-HID", StringComparison.OrdinalIgnoreCase))
+                    {
+                        row.Cells["BaudRate"].ReadOnly = true;
+                        row.Cells["Parity"].ReadOnly = true;
+                        row.Cells["DataBits"].ReadOnly = true;
+                        row.Cells["StopBits"].ReadOnly = true;
+                        row.Cells["BaudRate"].Style.BackColor = Color.LightGray;
+                        row.Cells["Parity"].Style.BackColor = Color.LightGray;
+                        row.Cells["DataBits"].Style.BackColor = Color.LightGray;
+                        row.Cells["StopBits"].Style.BackColor = Color.LightGray;
+                    }
+                    else
+                    {
+                        row.Cells["BaudRate"].ReadOnly = false;
+                        row.Cells["Parity"].ReadOnly = false;
+                        row.Cells["DataBits"].ReadOnly = false;
+                        row.Cells["StopBits"].ReadOnly = false;
+                        row.Cells["BaudRate"].Style.BackColor = SystemColors.Window;
+                        row.Cells["Parity"].Style.BackColor = SystemColors.Window;
+                        row.Cells["DataBits"].Style.BackColor = SystemColors.Window;
+                        row.Cells["StopBits"].Style.BackColor = SystemColors.Window;
+                    }
+                }
+
                 if (row.Cells["Status"].Value?.ToString() == "Connected")
                 {
                     row.DefaultCellStyle.BackColor = Color.LightGreen;
@@ -944,7 +1312,7 @@ namespace ScanLink
                     var result = MessageBox.Show(
                         $"Are you sure you want to delete this scanner configuration?\n\n" +
                         $"PNPDeviceID: {scanner.PNPDeviceID}\n" +
-                        $"COM Port: {scanner.ComPort}\n" +
+                        $"COM Port: {scanner.GetComPortDisplay()}\n" +
                         $"Line ID: {scanner.LineID}\n" +
                         $"Block ID: {scanner.BlockID}",
                         "Confirm Delete",
@@ -1097,82 +1465,67 @@ Need more help? Contact Datalogic support or check their website.";
                 try { Directory.CreateDirectory(Path.GetDirectoryName(savePath)); } catch {}
                 
                 // Load existing assignments from file
-                Dictionary<string, ScannerInfo> existingAssignments = new Dictionary<string, ScannerInfo>();
+                Dictionary<string, ScannerInfo> existingAssignments = new Dictionary<string, ScannerInfo>(StringComparer.OrdinalIgnoreCase);
                 if (File.Exists(savePath))
                 {
                     string[] existingLines = File.ReadAllLines(savePath);
-                    string currentPNPDeviceID = null;
-                    string currentLineID = "";
-                    string currentBlockID = "";
-                    
-                    foreach (string line in existingLines)
-                    {
-                        string trimmedLine = line.Trim();
-                        
-                        if (trimmedLine.StartsWith("PNPDeviceID:"))
-                        {
-                            currentPNPDeviceID = trimmedLine.Substring("PNPDeviceID:".Length).Trim();
-                        }
-                        else if (trimmedLine.StartsWith("Line ID:"))
-                        {
-                            currentLineID = trimmedLine.Substring("Line ID:".Length).Trim();
-                        }
-                        else if (trimmedLine.StartsWith("Block ID:"))
-                        {
-                            currentBlockID = trimmedLine.Substring("Block ID:".Length).Trim();
-                            
-                            // Save the complete entry
-                            if (!string.IsNullOrEmpty(currentPNPDeviceID))
-                            {
-                                existingAssignments[currentPNPDeviceID] = new ScannerInfo
-                                {
-                                    PNPDeviceID = currentPNPDeviceID,
-                                    LineID = currentLineID,
-                                    BlockID = currentBlockID
-                                };
-                            }
-                            
-                            // Reset for next entry
-                            currentPNPDeviceID = null;
-                            currentLineID = "";
-                            currentBlockID = "";
-                        }
-                    }
+                    existingAssignments = ParseAssignmentsFile(existingLines);
                 }
                 
                 // Update or add new scanner assignments
                 foreach (var scanner in detectedScanners)
                 {
-                    if (!string.IsNullOrEmpty(scanner.PNPDeviceID) && scanner.PNPDeviceID != "N/A")
+                    if (string.IsNullOrWhiteSpace(scanner.PNPDeviceID) || scanner.PNPDeviceID == "N/A")
                     {
-                        existingAssignments[scanner.PNPDeviceID] = new ScannerInfo
-                        {
-                            PNPDeviceID = scanner.PNPDeviceID,
-                            LineID = scanner.LineID,
-                            BlockID = scanner.BlockID
-                        };
+                        continue;
                     }
+
+                    var assignment = new ScannerInfo
+                    {
+                        SerialNumber = scanner.SerialNumber,
+                        PNPDeviceID = scanner.PNPDeviceID,
+                        ConnectionType = string.IsNullOrWhiteSpace(scanner.ConnectionType) ? "USB-COM" : scanner.ConnectionType,
+                        ComPort = scanner.ConnectionType != null && scanner.ConnectionType.StartsWith("USB-HID", StringComparison.OrdinalIgnoreCase)
+                            ? scanner.ModeDisplay
+                            : scanner.ComPort,
+                        LineID = scanner.LineID,
+                        BlockID = scanner.BlockID,
+                        BaudRate = string.IsNullOrWhiteSpace(scanner.BaudRate) ? "9600" : scanner.BaudRate,
+                        Parity = string.IsNullOrWhiteSpace(scanner.Parity) ? "None" : scanner.Parity,
+                        DataBits = string.IsNullOrWhiteSpace(scanner.DataBits) ? "8" : scanner.DataBits,
+                        StopBits = string.IsNullOrWhiteSpace(scanner.StopBits) ? "One" : scanner.StopBits
+                    };
+
+                    existingAssignments[assignment.AssignmentKey] = assignment;
                 }
                 
                 // Write updated assignments to file
                 using (StreamWriter writer = new StreamWriter(savePath))
                 {
-                    writer.WriteLine("Scanner Assignments - COM Port Mode - Generated: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    writer.WriteLine("Scanner Assignments - Generated: " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                     writer.WriteLine("=" + new string('=', 70));
                     writer.WriteLine();
 
                     int scannerNum = 1;
-                    foreach (var assignment in existingAssignments.Values)
+                    foreach (var assignment in existingAssignments.Values
+                                 .OrderBy(a => a.ConnectionType ?? "USB-COM")
+                                 .ThenBy(a => a.PNPDeviceID, StringComparer.OrdinalIgnoreCase))
                     {
+                        string connectionType = assignment.ConnectionType ?? "USB-COM";
+                        string comDisplay = connectionType.StartsWith("USB-HID", StringComparison.OrdinalIgnoreCase)
+                            ? assignment.ModeDisplay
+                            : (string.IsNullOrWhiteSpace(assignment.ComPort) ? "Auto-detect" : assignment.ComPort);
+
                         writer.WriteLine($"Scanner #{scannerNum}:");
                         writer.WriteLine($"  PNPDeviceID: {assignment.PNPDeviceID}");
-                        writer.WriteLine($"  COM Port: {assignment.ComPort ?? "Auto-detect"}");
-                        writer.WriteLine($"  Line ID: {assignment.LineID}");
-                        writer.WriteLine($"  Block ID: {assignment.BlockID}");
-                        writer.WriteLine($"  Baud Rate: {assignment.BaudRate}");
-                        writer.WriteLine($"  Parity: {assignment.Parity}");
-                        writer.WriteLine($"  Data Bits: {assignment.DataBits}");
-                        writer.WriteLine($"  Stop Bits: {assignment.StopBits}");
+                        writer.WriteLine($"  Connection Type: {connectionType}");
+                        writer.WriteLine($"  COM Port: {comDisplay}");
+                        writer.WriteLine($"  Line ID: {assignment.LineID ?? ""}");
+                        writer.WriteLine($"  Block ID: {assignment.BlockID ?? ""}");
+                        writer.WriteLine($"  Baud Rate: {assignment.BaudRate ?? "9600"}");
+                        writer.WriteLine($"  Parity: {assignment.Parity ?? "None"}");
+                        writer.WriteLine($"  Data Bits: {assignment.DataBits ?? "8"}");
+                        writer.WriteLine($"  Stop Bits: {assignment.StopBits ?? "One"}");
                         writer.WriteLine();
                         scannerNum++;
                     }

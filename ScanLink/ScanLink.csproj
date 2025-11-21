@@ -109,6 +109,7 @@
   <ItemGroup>
     <Compile Include="ApiAuthService.cs" />
     <Compile Include="ScanLogUploadService.cs" />
+    <Compile Include="ProductCombinationsService.cs" />
     <Compile Include="EmployeeSelectionDialog.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ShowException.cs" />
@@ -121,6 +122,16 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="MultiUserDashboard.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PrinterConnectionDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PrinterConnectionDialog.Designer.cs">
+      <DependentUpon>PrinterConnectionDialog.cs</DependentUpon>
+    </Compile>
+    <Compile Include="RawInputManager.cs" />
     <Compile Include="ScannerListener.cs" />
     <Compile Include="ScannerManagementForm.cs">
       <SubType>Form</SubType>
@@ -128,6 +139,9 @@
     <Compile Include="ScannerComPortManager.cs" />
     <Compile Include="ComPortScannerDetection.cs" />
     <Compile Include="ScannerCommandProtocols.cs" />
+    <Compile Include="SetupDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>

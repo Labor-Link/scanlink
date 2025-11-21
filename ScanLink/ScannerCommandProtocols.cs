@@ -269,12 +269,27 @@ namespace ScanLink
 
             try
             {
-                // Send a simple status query (works with most scanners)
-                SendCommand(port, new byte[] { 0x16 }); // SYN
-                Thread.Sleep(100);
+                // Clear any pending data first
+                port.DiscardInBuffer();
+                port.DiscardOutBuffer();
 
-                // If we can write without exception, consider it responsive
-                return true;
+                // Send a status query command (ENQ - Enquiry, should get ACK/NAK response)
+                SendCommand(port, new byte[] { 0x05 }); // ENQ
+                Thread.Sleep(200); // Wait longer for response
+
+                // Check if we received any response (scanner should respond to ENQ)
+                if (port.BytesToRead > 0)
+                {
+                    // We got a response, so there's likely a scanner
+                    byte[] response = new byte[port.BytesToRead];
+                    port.Read(response, 0, response.Length);
+                    return true;
+                }
+                else
+                {
+                    // No response received, probably no scanner connected
+                    return false;
+                }
             }
             catch
             {

@@ -14,6 +14,8 @@ namespace ScanLink
         private readonly JavaScriptSerializer _jsonSerializer;
         private string _currentToken;
         private DateTime _tokenExpiry;
+        private string _selectedSiteId;
+        private string _selectedSiteName;
 
         public ApiAuthService()
         {
@@ -294,6 +296,38 @@ namespace ScanLink
         {
             _currentToken = null;
             _tokenExpiry = DateTime.MinValue;
+            _selectedSiteId = null;
+            _selectedSiteName = null;
+        }
+
+        /// <summary>
+        /// Sets the selected site for the current session
+        /// </summary>
+        /// <param name="siteId">The selected site ID</param>
+        /// <param name="siteName">The selected site name</param>
+        public void SetSelectedSite(string siteId, string siteName)
+        {
+            _selectedSiteId = siteId;
+            _selectedSiteName = siteName;
+            System.Diagnostics.Debug.WriteLine($"Selected site set: ID={siteId}, Name={siteName}");
+        }
+
+        /// <summary>
+        /// Gets the currently selected site ID
+        /// </summary>
+        /// <returns>The selected site ID or null if not set</returns>
+        public string GetSelectedSiteId()
+        {
+            return _selectedSiteId;
+        }
+
+        /// <summary>
+        /// Gets the currently selected site name
+        /// </summary>
+        /// <returns>The selected site name or null if not set</returns>
+        public string GetSelectedSiteName()
+        {
+            return _selectedSiteName;
         }
 
         /// <summary>
@@ -690,15 +724,24 @@ namespace ScanLink
                 // Respect incoming searchRequest values; only fill missing defaults
                 if (searchRequest.site_ids == null || searchRequest.site_ids.Length == 0)
                 {
-                    // Get site IDs from employee authorities in the current token (no manual defaults)
-                    var tokenPayload = GetCurrentTokenPayload();
-                    if (tokenPayload != null)
+                    // First priority: Use selected site from dashboard
+                    if (!string.IsNullOrEmpty(_selectedSiteId))
                     {
-                        var employeeSiteIds = GetEmployeeAuthoritySiteIdsFromPayload(tokenPayload);
-                        if (employeeSiteIds.Count > 0)
+                        searchRequest.site_ids = new string[] { _selectedSiteId };
+                        System.Diagnostics.Debug.WriteLine($"Using selected site ID: {_selectedSiteId}");
+                    }
+                    // Fallback: Get site IDs from employee authorities in the current token
+                    else
+                    {
+                        var tokenPayload = GetCurrentTokenPayload();
+                        if (tokenPayload != null)
                         {
-                            searchRequest.site_ids = employeeSiteIds.ToArray();
-                            System.Diagnostics.Debug.WriteLine($"Using employee authority site IDs: [{string.Join(", ", employeeSiteIds)}]");
+                            var employeeSiteIds = GetEmployeeAuthoritySiteIdsFromPayload(tokenPayload);
+                            if (employeeSiteIds.Count > 0)
+                            {
+                                searchRequest.site_ids = employeeSiteIds.ToArray();
+                                System.Diagnostics.Debug.WriteLine($"Using employee authority site IDs: [{string.Join(", ", employeeSiteIds)}]");
+                            }
                         }
                     }
                 }
@@ -716,23 +759,32 @@ namespace ScanLink
                 }
                 if (string.IsNullOrWhiteSpace(searchRequest.actionByTypeId))
                 {
-                    // Prefer active site ID from token payload; fallback to first EMPLOYEE site; no manual defaults
-                    var tokenPayload = GetCurrentTokenPayload();
-                    if (tokenPayload != null)
+                    // First priority: Use selected site from dashboard
+                    if (!string.IsNullOrEmpty(_selectedSiteId))
                     {
-                        var activeSiteId = GetActiveSiteIdFromPayload(tokenPayload);
-                        if (!string.IsNullOrWhiteSpace(activeSiteId))
+                        searchRequest.actionByTypeId = _selectedSiteId;
+                        System.Diagnostics.Debug.WriteLine($"Using selected site ID for actionByTypeId: {_selectedSiteId}");
+                    }
+                    // Fallback: Prefer active site ID from token payload; fallback to first EMPLOYEE site
+                    else
+                    {
+                        var tokenPayload = GetCurrentTokenPayload();
+                        if (tokenPayload != null)
                         {
-                            searchRequest.actionByTypeId = activeSiteId;
-                            System.Diagnostics.Debug.WriteLine($"Using active site ID for actionByTypeId: {activeSiteId}");
-                        }
-                        else
-                        {
-                            var employeeSiteIds = GetEmployeeAuthoritySiteIdsFromPayload(tokenPayload);
-                            if (employeeSiteIds.Count > 0)
+                            var activeSiteId = GetActiveSiteIdFromPayload(tokenPayload);
+                            if (!string.IsNullOrWhiteSpace(activeSiteId))
                             {
-                                searchRequest.actionByTypeId = employeeSiteIds[0];
-                                System.Diagnostics.Debug.WriteLine($"Active site not present; using first employee site ID: {employeeSiteIds[0]}");
+                                searchRequest.actionByTypeId = activeSiteId;
+                                System.Diagnostics.Debug.WriteLine($"Using active site ID for actionByTypeId: {activeSiteId}");
+                            }
+                            else
+                            {
+                                var employeeSiteIds = GetEmployeeAuthoritySiteIdsFromPayload(tokenPayload);
+                                if (employeeSiteIds.Count > 0)
+                                {
+                                    searchRequest.actionByTypeId = employeeSiteIds[0];
+                                    System.Diagnostics.Debug.WriteLine($"Active site not present; using first employee site ID: {employeeSiteIds[0]}");
+                                }
                             }
                         }
                     }

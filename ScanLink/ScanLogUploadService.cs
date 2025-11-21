@@ -151,15 +151,8 @@ namespace ScanLink
                             ?? GetTokenValue(tokenPayload, "id")
                             ?? GetTokenValue(tokenPayload, "sub")
                             ?? "";
-            // Prefer EMPLOYEE authorities 'sites.first'; fallback to active site
-            string siteId = "";
-            try
-            {
-                var employeeSiteIds = _authService.GetEmployeeAuthoritySiteIdsFromPayload(tokenPayload) ?? new List<string>();
-                if (employeeSiteIds.Count > 0) siteId = employeeSiteIds[0];
-                if (string.IsNullOrEmpty(siteId)) siteId = _authService.GetActiveSiteId() ?? "";
-            }
-            catch { siteId = _authService.GetActiveSiteId() ?? ""; }
+            // Use the selected site from the dashboard
+            string siteId = _authService.GetSelectedSiteId() ?? "";
 
             OnLogMessage($"Enriching logs with userId='{(string.IsNullOrEmpty(userId) ? "" : userId)}' siteId='{(string.IsNullOrEmpty(siteId) ? "" : siteId)}'");
 
@@ -471,19 +464,15 @@ namespace ScanLink
 
             var mapped = new Dictionary<string, object>
             {
-                // Include both snake_case and camelCase to satisfy backend variations
-                { "user_id", userId },
+                // API expects camelCase field names
                 { "userId", userId },
-                { "site_id", siteId },
                 { "siteId", siteId },
                 { "timestamp", formattedTs },
-                { "line_number", GetString("lineNumber") },
-                { "block_number", GetString("blockNumber") },
-                { "product_code", GetString("productCode") },
-                { "parsed_info", GetString("parsedInfo") },
-                { "scan_status", GetString("scanStatus") ?? "SCANNED" },
-                { "error_message", GetString("errorMessage") ?? string.Empty },
-                { "crop_id", GetString("cropId") },
+                { "lineNumber", GetString("lineNumber") },
+                { "blockNumber", GetString("blockNumber") },
+                { "productId", GetString("productId") },
+                { "parsedInfo", GetString("parsedInfo") },
+                { "scanStatus", GetString("scanStatus") ?? "SCANNED" },
                 { "cropId", GetString("cropId") }
             };
 

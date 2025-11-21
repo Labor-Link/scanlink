@@ -1,79 +1,8 @@
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.CoreCompileInputs.cache
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\BarcodePrinter_API.dll
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLink.1B66D95B.Up2Date
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\dell\Documents\scan-link\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.sourcelink.json
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\BarcodePrinter_API.dll
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.CoreCompileInputs.cache
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.sourcelink.json
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLink.1B66D95B.Up2Date
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\cw\Documents\new_code_1\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\BarcodePrinter_API.dll
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.CoreCompileInputs.cache
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.sourcelink.json
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLink.1B66D95B.Up2Date
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\cw\Documents\new_code_1 -list all scanners with line&block - Current\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\BarcodePrinter_API.dll
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.CoreCompileInputs.cache
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.sourcelink.json
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLink.1B66D95B.Up2Date
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\cw\Documents\new_code_1 -updated before UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\BarcodePrinter_API.dll
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.CoreCompileInputs.cache
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.sourcelink.json
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLink.1B66D95B.Up2Date
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
-C:\Users\cw\Documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\BarcodePrinter_API.dll
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
-E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
