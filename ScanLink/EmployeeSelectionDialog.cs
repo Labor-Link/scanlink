@@ -410,11 +410,6 @@ namespace ScanLink
                     countLabel.Text = "Total: 0 employees";
                 }
             }
-            catch (Exception ex)
-            {
-                // statusLabel.Text = $"Error: {ex.Message}";
-                // statusLabel.ForeColor = Color.FromArgb(231, 76, 60);
-            }
             finally
             {
                 searchButton.Enabled = true;
@@ -495,7 +490,7 @@ namespace ScanLink
                     // statusLabel.ForeColor = Color.FromArgb(231, 76, 60);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Ensure CheckedListBox still has a safe default
                 departmentCheckedListBox.Items.Clear();

@@ -25,7 +25,6 @@ namespace ScanLink
             this.loginPanel = new System.Windows.Forms.Panel();
             this.loginWelcomeLabel = new System.Windows.Forms.Label();
             this.loginMainLogoPictureBox = new System.Windows.Forms.PictureBox();
-            this.startpanelLogoPictureBox = new System.Windows.Forms.PictureBox();
             this.loginGroupBox = new System.Windows.Forms.GroupBox();
             this.loginButton = new System.Windows.Forms.Button();
             this.passwordToggleButton = new System.Windows.Forms.Button();
@@ -34,14 +33,17 @@ namespace ScanLink
             this.usernameTextBox = new System.Windows.Forms.TextBox();
             this.usernameLabel = new System.Windows.Forms.Label();
             this.loginStatusLabel = new System.Windows.Forms.Label();
-            this.startPanel = new System.Windows.Forms.Panel();
-            this.welcomeLabel = new System.Windows.Forms.Label();
-            this.logoutButtonStart = new System.Windows.Forms.Button();
+            this.loadingProgressBar = new System.Windows.Forms.ProgressBar();
+            this.loadingStatusLabel = new System.Windows.Forms.Label();
+            this.printerLoadingSpinner = new System.Windows.Forms.ProgressBar();
+            this.printerLoadingLabel = new System.Windows.Forms.Label();
             this.logoPictureBox = new System.Windows.Forms.PictureBox();
-            this.printerButton = new System.Windows.Forms.Button();
-            this.scannerButton = new System.Windows.Forms.Button();
-            this.printerContentPanel = new System.Windows.Forms.Panel();
-			this.scannerContentPanel = new System.Windows.Forms.Panel();
+            this.dimensionVisualizationPictureBox = new System.Windows.Forms.PictureBox();
+            this.dimensionVisualizationPictureBox_TwoUp = new System.Windows.Forms.PictureBox();
+            this.button_generateBarcode = new System.Windows.Forms.Button();
+            // this.printerContentPanel = new System.Windows.Forms.Panel();
+			this.scannerContentPanel = new System.Windows.Forms.TableLayoutPanel();
+			this.scannerOutputPanel = new System.Windows.Forms.Panel();
 			this.button_manualUpload = new System.Windows.Forms.Button();
             this.scannerDataGridView = new System.Windows.Forms.DataGridView();
             this.scannerOutputTextBox = new System.Windows.Forms.TextBox();
@@ -61,22 +63,29 @@ namespace ScanLink
             this.blockNumberLabel = new System.Windows.Forms.Label();
             this.lineNumberLabel = new System.Windows.Forms.Label();
             this.productIdLabel = new System.Windows.Forms.Label();
-            this.activeScannersLabel = new System.Windows.Forms.Label();
+            this.cropIdLabel = new System.Windows.Forms.Label();
+            this.cropIdComboBox = new System.Windows.Forms.ComboBox();
             this.todayScansLabel = new System.Windows.Forms.Label();
             this.lastHourScansLabel = new System.Windows.Forms.Label();
+            this.totalFilteredScansLabel = new System.Windows.Forms.Label();
+            this.statsPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.paginationPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.filtersPanel = new System.Windows.Forms.TableLayoutPanel();
             // this.runScannerScriptButton = new System.Windows.Forms.Button();
-            this.manageScannersButton = new System.Windows.Forms.Button();
-            this.mainPanel = new System.Windows.Forms.Panel();
             this.headerPanel = new System.Windows.Forms.Panel();
+            this.headerTableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.titlepanel = new System.Windows.Forms.Panel();
+            this.buttonpanel = new System.Windows.Forms.Panel();
+            this.buttonTableLayoutPanel = new System.Windows.Forms.TableLayoutPanel();
+            this.setupButton = new System.Windows.Forms.Button();
+            this.scannerSetupButton = new System.Windows.Forms.Button();
+            this.printerConnectionButton = new System.Windows.Forms.Button();
+            this.barCodesButton = new System.Windows.Forms.Button();
+            this.boxLabelsButton = new System.Windows.Forms.Button();
+            this.reportsButton = new System.Windows.Forms.Button();
+            this.logoutButton = new System.Windows.Forms.Button();
             this.titleLabel = new System.Windows.Forms.Label();
             this.subtitleLabel = new System.Windows.Forms.Label();
-            this.connectionPanel = new System.Windows.Forms.Panel();
-            this.connectionGroupBox = new System.Windows.Forms.GroupBox();
-            this.connectionStatusLabel = new System.Windows.Forms.Label();
-            this.label_port = new System.Windows.Forms.Label();
-            this.comboBox_port = new System.Windows.Forms.ComboBox();
-            this.button_setting = new System.Windows.Forms.Button();
-            this.textBox_port = new System.Windows.Forms.TextBox();
             this.configPanel = new System.Windows.Forms.Panel();
             this.configGroupBox = new System.Windows.Forms.GroupBox();
             this.barcodeTextPanel = new System.Windows.Forms.Panel();
@@ -105,23 +114,25 @@ namespace ScanLink
             this.numericUpDown_xCoordinate = new System.Windows.Forms.NumericUpDown();
             this.label_x2Coordinate = new System.Windows.Forms.Label();
             this.numericUpDown_x2Coordinate = new System.Windows.Forms.NumericUpDown();
+            this.label_px_width = new System.Windows.Forms.Label();
+            this.label_px_height = new System.Windows.Forms.Label();
+            this.label_px_xCoordinate = new System.Windows.Forms.Label();
+            this.label_px_x2Coordinate = new System.Windows.Forms.Label();
+            this.label_mm_gap = new System.Windows.Forms.Label();
             this.checkBox_twoUp = new System.Windows.Forms.CheckBox();
             this.label_gap = new System.Windows.Forms.Label();
             this.numericUpDown_gap = new System.Windows.Forms.NumericUpDown();
-            this.alignmentPanel = new System.Windows.Forms.Panel();
-            this.label_alignment = new System.Windows.Forms.Label();
-            this.comboBox_alignment = new System.Windows.Forms.ComboBox();
-            this.label_rotation = new System.Windows.Forms.Label();
-            this.comboBox_rotation = new System.Windows.Forms.ComboBox();
             this.qualityPanel = new System.Windows.Forms.Panel();
             this.label_darkness = new System.Windows.Forms.Label();
             this.trackBar_darkness = new System.Windows.Forms.TrackBar();
             this.label_darknessValue = new System.Windows.Forms.Label();
             this.label_speed = new System.Windows.Forms.Label();
             this.comboBox_speed = new System.Windows.Forms.ComboBox();
+            this.label_dpi = new System.Windows.Forms.Label();
+            this.numericUpDown_dpi = new System.Windows.Forms.NumericUpDown();
             this.previewPanel = new System.Windows.Forms.Panel();
             this.button_preview = new System.Windows.Forms.Button();
-            this.checkBox_showAdvanced = new System.Windows.Forms.CheckBox();
+            // checkBox_showAdvanced instantiation removed
             this.actionPanel = new System.Windows.Forms.Panel();
             this.button_send = new System.Windows.Forms.Button();
             this.progressBar = new System.Windows.Forms.ProgressBar();
@@ -132,19 +143,21 @@ namespace ScanLink
             this.comboBox_CropID = new System.Windows.Forms.ComboBox();
             this.cropIdLabel = new System.Windows.Forms.Label();
             this.cropIdComboBox = new System.Windows.Forms.ComboBox();
+            this.label_ProductDetail = new System.Windows.Forms.Label();
+            this.label_count = new System.Windows.Forms.Label();
+            this.numericUpDown_count = new System.Windows.Forms.NumericUpDown();
             this.loginPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.loginMainLogoPictureBox)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.startpanelLogoPictureBox)).BeginInit();
             this.loginGroupBox.SuspendLayout();
-            this.startPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.logoPictureBox)).BeginInit();
-            this.printerContentPanel.SuspendLayout();
+            // this.printerContentPanel.SuspendLayout();
             this.scannerContentPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.scannerDataGridView)).BeginInit();
-            this.mainPanel.SuspendLayout();
             this.headerPanel.SuspendLayout();
-            this.connectionPanel.SuspendLayout();
-            this.connectionGroupBox.SuspendLayout();
+            this.headerTableLayoutPanel.SuspendLayout();
+            this.titlepanel.SuspendLayout();
+            this.buttonpanel.SuspendLayout();
+            this.buttonTableLayoutPanel.SuspendLayout();
             this.configPanel.SuspendLayout();
             this.configGroupBox.SuspendLayout();
             this.barcodeTextPanel.SuspendLayout();
@@ -157,7 +170,7 @@ namespace ScanLink
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_height)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_xCoordinate)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_gap)).BeginInit();
-            this.alignmentPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_dpi)).BeginInit();
             this.qualityPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackBar_darkness)).BeginInit();
             this.previewPanel.SuspendLayout();
@@ -172,6 +185,8 @@ namespace ScanLink
             this.loginPanel.AutoScrollMinSize = new System.Drawing.Size(0, 800);
             this.loginPanel.BackColor = System.Drawing.Color.White;
             this.loginPanel.Controls.Add(this.loginStatusLabel);
+            this.loginPanel.Controls.Add(this.loadingProgressBar);
+            this.loginPanel.Controls.Add(this.loadingStatusLabel);
             this.loginPanel.Controls.Add(this.loginGroupBox);
             this.loginPanel.Controls.Add(this.loginMainLogoPictureBox);
             // this.loginPanel.Controls.Add(this.loginWelcomeLabel);
@@ -207,15 +222,6 @@ namespace ScanLink
             this.loginMainLogoPictureBox.TabIndex = 1;
             this.loginMainLogoPictureBox.TabStop = false;
 
-            // 
-            // startpanelLogoPictureBox
-            // 
-            this.startpanelLogoPictureBox.Location = new System.Drawing.Point(50, 80);
-            this.startpanelLogoPictureBox.Name = "startpanelLogoPictureBox";
-            this.startpanelLogoPictureBox.Size = new System.Drawing.Size(400, 100);
-            this.startpanelLogoPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.startpanelLogoPictureBox.TabIndex = 1;
-            this.startpanelLogoPictureBox.TabStop = false;
             
             
             // 
@@ -262,6 +268,7 @@ namespace ScanLink
             this.usernameTextBox.Enter += new System.EventHandler(this.usernameTextBox_Enter);
             this.usernameTextBox.Leave += new System.EventHandler(this.usernameTextBox_Leave);
             this.usernameTextBox.TextChanged += new System.EventHandler(this.usernameTextBox_TextChanged);
+            this.usernameTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.usernameTextBox_KeyDown);
             
             // 
             // passwordLabel
@@ -289,6 +296,7 @@ namespace ScanLink
             this.passwordTextBox.Enter += new System.EventHandler(this.passwordTextBox_Enter);
             this.passwordTextBox.Leave += new System.EventHandler(this.passwordTextBox_Leave);
             this.passwordTextBox.TextChanged += new System.EventHandler(this.passwordTextBox_TextChanged);
+            this.passwordTextBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.passwordTextBox_KeyDown);
             
             // 
             // passwordToggleButton
@@ -297,7 +305,7 @@ namespace ScanLink
             this.passwordToggleButton.FlatAppearance.BorderSize = 0;
             this.passwordToggleButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(225, 225, 225);
             this.passwordToggleButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.passwordToggleButton.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.passwordToggleButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.passwordToggleButton.ForeColor = System.Drawing.Color.FromArgb(0, 0, 0);
             this.passwordToggleButton.Location = new System.Drawing.Point(344, 161);
             this.passwordToggleButton.Name = "passwordToggleButton";
@@ -313,7 +321,7 @@ namespace ScanLink
             this.loginButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
             this.loginButton.FlatAppearance.BorderSize = 0;
             this.loginButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.loginButton.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.loginButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold);
             this.loginButton.ForeColor = System.Drawing.Color.White;
             this.loginButton.Location = new System.Drawing.Point(30, 210);
             this.loginButton.Name = "loginButton";
@@ -336,57 +344,53 @@ namespace ScanLink
             this.loginStatusLabel.Size = new System.Drawing.Size(119, 19);
             this.loginStatusLabel.TabIndex = 3;
             this.loginStatusLabel.Text = "Please Login to access your account";
-            // 
-            // logoutButtonStart
-            // 
-            this.logoutButtonStart = new System.Windows.Forms.Button();
-            this.logoutButtonStart.BackColor = System.Drawing.Color.FromArgb(231, 76, 60);
-            this.logoutButtonStart.FlatAppearance.BorderSize = 0;
-            this.logoutButtonStart.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.logoutButtonStart.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.logoutButtonStart.ForeColor = System.Drawing.Color.White;
-            this.logoutButtonStart.Location = new System.Drawing.Point(0,0);
-            this.logoutButtonStart.Name = "logoutButtonStart";
-            this.logoutButtonStart.Size = new System.Drawing.Size(70, 27);
-            this.logoutButtonStart.TabIndex = 5;
-            this.logoutButtonStart.Text = "Logout";
-            this.logoutButtonStart.UseVisualStyleBackColor = false;
-            this.logoutButtonStart.Visible = true;
-            this.logoutButtonStart.Click += new System.EventHandler(this.logoutButton_Click);
-            
+            //
+            // loadingProgressBar
+            //
+            this.loadingProgressBar.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215); // Blue color for moving bar
+            this.loadingProgressBar.Location = new System.Drawing.Point(100, 720);
+            this.loadingProgressBar.Name = "loadingProgressBar";
+            this.loadingProgressBar.Size = new System.Drawing.Size(400, 13);
+            this.loadingProgressBar.TabIndex = 4;
+            this.loadingProgressBar.Visible = false;
+            this.loadingProgressBar.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
+            //
+            // loadingStatusLabel
+            //
+            this.loadingStatusLabel.AutoSize = true;
+            this.loadingStatusLabel.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.loadingStatusLabel.ForeColor = System.Drawing.Color.FromArgb(27, 42, 65);
+            this.loadingStatusLabel.Location = new System.Drawing.Point(100, 750);
+            this.loadingStatusLabel.Name = "loadingStatusLabel";
+            this.loadingStatusLabel.Size = new System.Drawing.Size(119, 19);
+            this.loadingStatusLabel.TabIndex = 5;
+            this.loadingStatusLabel.Text = "Loading scanner system...";
+            this.loadingStatusLabel.Visible = false;
+            //
+            // printerLoadingSpinner
+            //
+            this.printerLoadingSpinner.Location = new System.Drawing.Point(1065, 62);
+            this.printerLoadingSpinner.Name = "printerLoadingSpinner";
+            this.printerLoadingSpinner.Size = new System.Drawing.Size(100, 10);
+            this.printerLoadingSpinner.TabIndex = 10;
+            this.printerLoadingSpinner.Visible = false;
+            this.printerLoadingSpinner.Style = System.Windows.Forms.ProgressBarStyle.Marquee;
+            this.printerLoadingSpinner.MarqueeAnimationSpeed = 30;
+            this.printerLoadingSpinner.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215);
+            //
+            // printerLoadingLabel
+            //
+            this.printerLoadingLabel.AutoSize = true;
+            this.printerLoadingLabel.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.printerLoadingLabel.ForeColor = System.Drawing.Color.White;
+            this.printerLoadingLabel.Location = new System.Drawing.Point(1065, 75);
+            this.printerLoadingLabel.Name = "printerLoadingLabel";
+            this.printerLoadingLabel.Size = new System.Drawing.Size(119, 19);
+            this.printerLoadingLabel.TabIndex = 11;
+            this.printerLoadingLabel.Text = "Switching to scanner...";
+            this.printerLoadingLabel.Visible = false;
+            //
 
-            // 
-            // startPanel
-            // 
-            this.startPanel.AutoScroll = true;
-            this.startPanel.AutoScrollMinSize = new System.Drawing.Size(0, 800);
-            this.startPanel.BackColor = System.Drawing.Color.White;
-            this.startPanel.Controls.Add(this.scannerButton);
-            this.startPanel.Controls.Add(this.printerButton);
-            this.startPanel.Controls.Add(this.startpanelLogoPictureBox);
-            this.startPanel.Controls.Add(this.welcomeLabel);
-            this.startPanel.Controls.Add(this.logoutButtonStart);
-            this.startPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.startPanel.Location = new System.Drawing.Point(0, 0);
-            this.startPanel.Name = "startPanel";
-            this.startPanel.Size = new System.Drawing.Size(600, 1120);
-            this.startPanel.TabIndex = 0;
-
-
-            
-            // 
-            // welcomeLabel
-            // 
-            this.welcomeLabel.AutoSize = true;
-            this.welcomeLabel.Font = new System.Drawing.Font("Segoe UI", 28F, System.Drawing.FontStyle.Bold);
-            this.welcomeLabel.ForeColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.welcomeLabel.Location = new System.Drawing.Point(100, 210);
-            this.welcomeLabel.Name = "welcomeLabel";
-            this.welcomeLabel.Size = new System.Drawing.Size(400, 51);
-            this.welcomeLabel.TabIndex = 2;
-            this.welcomeLabel.Text = "Welcome to ScanLink";
-            this.welcomeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            this.welcomeLabel.Visible = true;
             
             
             
@@ -400,102 +404,9 @@ namespace ScanLink
             this.logoPictureBox.TabIndex = 3;
             this.logoPictureBox.TabStop = false;
             
-            // 
-            // printerButton
-            // 
-            this.printerButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.printerButton.FlatAppearance.BorderSize = 0;
-            this.printerButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.printerButton.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            this.printerButton.ForeColor = System.Drawing.Color.White;
-            this.printerButton.Location = new System.Drawing.Point(150, 380);
-            this.printerButton.Name = "printerButton";
-            this.printerButton.Size = new System.Drawing.Size(300, 48);
-            this.printerButton.TabIndex = 0;
-            this.printerButton.Text = "🖨️ Printer";
-            this.printerButton.UseVisualStyleBackColor = false;
-            this.printerButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.printerButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
-            this.printerButton.Click += new System.EventHandler(this.printerButton_Click);
-            
-            // 
-            // scannerButton
-            // 
-            this.scannerButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.scannerButton.FlatAppearance.BorderSize = 0;
-            this.scannerButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.scannerButton.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            this.scannerButton.ForeColor = System.Drawing.Color.White;
-            this.scannerButton.Location = new System.Drawing.Point(150, 460);
-            this.scannerButton.Name = "scannerButton";
-            this.scannerButton.Size = new System.Drawing.Size(300, 48);
-            this.scannerButton.TabIndex = 1;
-            this.scannerButton.Text = "📷 Scanner";
-            this.scannerButton.UseVisualStyleBackColor = false;
-            this.scannerButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.scannerButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
-            this.scannerButton.Click += new System.EventHandler(this.scannerButton_Click);
-            // 
-            // Scanner
-            //  
-            this.Scanner = new System.Windows.Forms.Button();
-            this.Scanner.Location = new System.Drawing.Point(475, 50);
-            this.Scanner.Name = "Scanner";
-            this.Scanner.Size = new System.Drawing.Size(90, 32);
-            this.Scanner.TabIndex = 2;
-            this.Scanner.Text = "Scanner";
-            this.Scanner.UseVisualStyleBackColor = true;
-            this.Scanner.Click += new System.EventHandler(this.Scanner_Click);
-            
-            
-            // 
-            // Printer
-            // 
-            this.Printer = new System.Windows.Forms.Button();
-            this.Printer.Location = new System.Drawing.Point(475, 20);
-            this.Printer.Name = "Printer";
-            this.Printer.Size = new System.Drawing.Size(90, 32);
-            this.Printer.TabIndex = 2;
-            this.Printer.Text = "Printer";
-            this.Printer.UseVisualStyleBackColor = true;
-            this.Printer.Click += new System.EventHandler(this.Printer_Click);
             
             
 
-            // 
-            // logoutButtonPrinter
-            // 
-            this.logoutButtonPrinter = new System.Windows.Forms.Button();
-            this.logoutButtonPrinter.BackColor = System.Drawing.Color.FromArgb(231, 76, 60);
-            this.logoutButtonPrinter.FlatAppearance.BorderSize = 0;
-            this.logoutButtonPrinter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.logoutButtonPrinter.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.logoutButtonPrinter.ForeColor = System.Drawing.Color.White;
-            this.logoutButtonPrinter.Location = new System.Drawing.Point(390, 35);
-            this.logoutButtonPrinter.Name = "logoutButtonPrinter";
-            this.logoutButtonPrinter.Size = new System.Drawing.Size(90, 32);
-            this.logoutButtonPrinter.TabIndex = 5;
-            this.logoutButtonPrinter.Text = "Logout";
-            this.logoutButtonPrinter.UseVisualStyleBackColor = false;
-            this.logoutButtonPrinter.Click += new System.EventHandler(this.logoutButton_Click);
-            
-            // 
-            // logoutButtonScanner
-            // 
-            this.logoutButtonScanner = new System.Windows.Forms.Button();
-            this.logoutButtonScanner.BackColor = System.Drawing.Color.FromArgb(231, 76, 60);
-            this.logoutButtonScanner.FlatAppearance.BorderSize = 0;
-            this.logoutButtonScanner.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.logoutButtonScanner.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.logoutButtonScanner.ForeColor = System.Drawing.Color.White;
-            this.logoutButtonScanner.Location = new System.Drawing.Point(400, 20);
-            this.logoutButtonScanner.Name = "logoutButtonScanner";
-            this.logoutButtonScanner.Size = new System.Drawing.Size(90, 32);
-            this.logoutButtonScanner.TabIndex = 3;
-            this.logoutButtonScanner.Text = "Logout";
-            this.logoutButtonScanner.UseVisualStyleBackColor = false;
-            this.logoutButtonScanner.Click += new System.EventHandler(this.logoutButton_Click);
-            
             // 
             // barcodeInputTextBox
             // 
@@ -521,58 +432,131 @@ namespace ScanLink
             // 
             // printerContentPanel
             // 
-            this.printerContentPanel.AutoScroll = true;
-            this.printerContentPanel.AutoScrollMinSize = new System.Drawing.Size(0, 1200);
-            this.printerContentPanel.Controls.Add(this.Scanner);
-            this.printerContentPanel.Controls.Add(this.mainPanel);
-            this.printerContentPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.printerContentPanel.Location = new System.Drawing.Point(0, 0);
-            this.printerContentPanel.Name = "printerContentPanel";
-            this.printerContentPanel.Size = new System.Drawing.Size(600, 1120);
-            this.printerContentPanel.TabIndex = 1;
-            this.printerContentPanel.Visible = false;
+            // this.printerContentPanel.AutoScroll = true;
+            // this.printerContentPanel.AutoScrollMinSize = new System.Drawing.Size(0, 1200);
+            // this.printerContentPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            // this.printerContentPanel.Location = new System.Drawing.Point(0, 0);
+            // this.printerContentPanel.Name = "printerContentPanel";
+            // this.printerContentPanel.Size = new System.Drawing.Size(600, 1120);
+            // this.printerContentPanel.TabIndex = 1;
+            // this.printerContentPanel.Visible = false;
             
-            // 
+            //
             // scannerContentPanel
-            // 
-            // this.scannerContentPanel.Controls.Add(this.sendBarcodeButton);
-            // this.scannerContentPanel.Controls.Add(this.barcodeInputTextBox);
+            //
             this.scannerContentPanel.AutoScroll = true;
-            // this.scannerContentPanel.AutoScrollMinSize = new System.Drawing.Size(0, 800);
-			this.scannerContentPanel.Controls.Add(this.Printer);
-            this.scannerContentPanel.Controls.Add(this.logoutButtonScanner);
-            // this.scannerContentPanel.Controls.Add(this.runScannerScriptButton);
-			this.scannerContentPanel.Controls.Add(this.button_manualUpload);
-            this.scannerContentPanel.Controls.Add(this.scannerDataGridView);
-            this.scannerContentPanel.Controls.Add(this.scannerOutputTextBox);
-            this.scannerContentPanel.Controls.Add(this.showScannerOutputCheckBox);
-            this.scannerContentPanel.Controls.Add(this.dateFromLabel);
-            this.scannerContentPanel.Controls.Add(this.dateFromPicker);
-            this.scannerContentPanel.Controls.Add(this.dateToLabel);
-            this.scannerContentPanel.Controls.Add(this.dateToPicker);
-            this.scannerContentPanel.Controls.Add(this.blockNumberLabel);
-            this.scannerContentPanel.Controls.Add(this.blockNumberTextBox);
-            this.scannerContentPanel.Controls.Add(this.lineNumberLabel);
-            this.scannerContentPanel.Controls.Add(this.lineNumberTextBox);
-            this.scannerContentPanel.Controls.Add(this.productIdLabel);
-            this.scannerContentPanel.Controls.Add(this.productIdComboBox);
-            this.scannerContentPanel.Controls.Add(this.cropIdLabel);
-            this.scannerContentPanel.Controls.Add(this.cropIdComboBox);
-            this.scannerContentPanel.Controls.Add(this.applyFiltersButton);
-            this.scannerContentPanel.Controls.Add(this.clearFiltersButton);
-            this.scannerContentPanel.Controls.Add(this.activeScannersLabel);
-            this.scannerContentPanel.Controls.Add(this.todayScansLabel);
-            this.scannerContentPanel.Controls.Add(this.lastHourScansLabel);
-            this.scannerContentPanel.Controls.Add(this.previousPageButton);
-            this.scannerContentPanel.Controls.Add(this.nextPageButton);
-            this.scannerContentPanel.Controls.Add(this.pageInfoLabel);
-            this.scannerContentPanel.Controls.Add(this.manageScannersButton);
+            this.scannerContentPanel.ColumnCount = 1;
+            this.scannerContentPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.scannerContentPanel.Controls.Add(this.headerPanel, 0, 0);
+            this.scannerContentPanel.Controls.Add(this.scannerOutputPanel, 0, 1);
+            this.scannerContentPanel.Controls.Add(this.statsPanel, 0, 2);
+            this.scannerContentPanel.Controls.Add(this.filtersPanel, 0, 3);
+            this.scannerContentPanel.Controls.Add(this.scannerDataGridView, 0, 4);
+            this.scannerContentPanel.Controls.Add(this.paginationPanel, 0, 5);
+            this.scannerContentPanel.Controls.Add(this.statusPanel, 0, 6);
             this.scannerContentPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.scannerContentPanel.Location = new System.Drawing.Point(0, 0);
             this.scannerContentPanel.Name = "scannerContentPanel";
+            this.scannerContentPanel.RowCount = 7;
+            this.scannerContentPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.scannerContentPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.scannerContentPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.scannerContentPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.scannerContentPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.scannerContentPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.scannerContentPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.AutoSize));
             this.scannerContentPanel.Size = new System.Drawing.Size(600, 680);
             this.scannerContentPanel.TabIndex = 2;
             this.scannerContentPanel.Visible = false;
+
+            //
+            // scannerOutputPanel
+            //
+            this.scannerOutputPanel.Controls.Add(this.showScannerOutputCheckBox);
+            this.scannerOutputPanel.Controls.Add(this.scannerOutputTextBox);
+            this.scannerOutputPanel.Controls.Add(this.button_manualUpload);
+            this.scannerOutputPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.scannerOutputPanel.Name = "scannerOutputPanel";
+
+            // Absolute positioned controls (on top of the table layout)
+            // button_manualUpload moved to scannerOutputPanel
+
+            //
+            // statsPanel
+            //
+            this.statsPanel.ColumnCount = 3;
+            this.statsPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33333F));
+            this.statsPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33333F));
+            this.statsPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33333F));
+            this.statsPanel.Controls.Add(this.todayScansLabel, 0, 0);
+            this.statsPanel.Controls.Add(this.lastHourScansLabel, 1, 0);
+            this.statsPanel.Controls.Add(this.totalFilteredScansLabel, 2, 0);
+            this.statsPanel.Location = new System.Drawing.Point(20, 350);
+            this.statsPanel.Name = "statsPanel";
+            this.statsPanel.RowCount = 1;
+            this.statsPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.statsPanel.Size = new System.Drawing.Size(560, 30);
+            this.statsPanel.TabIndex = 20;
+            this.statsPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+
+            //
+            // paginationPanel
+            //
+            this.paginationPanel.ColumnCount = 3;
+            this.paginationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.3333F));
+            this.paginationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.3334F));
+            this.paginationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.3333F));
+            this.paginationPanel.Controls.Add(this.previousPageButton, 0, 0);
+            this.paginationPanel.Controls.Add(this.pageInfoLabel, 1, 0);
+            this.paginationPanel.Controls.Add(this.nextPageButton, 2, 0);
+            this.paginationPanel.Location = new System.Drawing.Point(20, 500);
+            this.paginationPanel.Name = "paginationPanel";
+            this.paginationPanel.RowCount = 1;
+            this.paginationPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.paginationPanel.Size = new System.Drawing.Size(560, 30);
+            this.paginationPanel.TabIndex = 21;
+            this.paginationPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+
+            //
+            // filtersPanel
+            //
+            this.filtersPanel.ColumnCount = 14;
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 4F));    // dateFromLabel
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 10F));    // dateFromPicker (increased)
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 3F));    // dateToLabel
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 10F));    // dateToPicker (increased)
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 7.75F));    // blockNumberLabel
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 4F));   // blockNumberTextBox
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 7.25F));    // lineNumberLabel
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 4F));   // lineNumberTextBox
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 4.5F));    // cropIdLabel
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 11F));    // cropIdComboBox (increased)
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 6F));    // productIdLabel
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 16F));    // productIdComboBox (increased)
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 6.25F));   // applyFiltersButton
+            this.filtersPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 6.25F));   // clearFiltersButton
+            this.filtersPanel.Controls.Add(this.dateFromLabel, 0, 0);
+            this.filtersPanel.Controls.Add(this.dateFromPicker, 1, 0);
+            this.filtersPanel.Controls.Add(this.dateToLabel, 2, 0);
+            this.filtersPanel.Controls.Add(this.dateToPicker, 3, 0);
+            this.filtersPanel.Controls.Add(this.blockNumberLabel, 4, 0);
+            this.filtersPanel.Controls.Add(this.blockNumberTextBox, 5, 0);
+            this.filtersPanel.Controls.Add(this.lineNumberLabel, 6, 0);
+            this.filtersPanel.Controls.Add(this.lineNumberTextBox, 7, 0);
+            this.filtersPanel.Controls.Add(this.cropIdLabel, 8, 0);
+            this.filtersPanel.Controls.Add(this.cropIdComboBox, 9, 0);
+            this.filtersPanel.Controls.Add(this.productIdLabel, 10, 0);
+            this.filtersPanel.Controls.Add(this.productIdComboBox, 11, 0);
+            this.filtersPanel.Controls.Add(this.applyFiltersButton, 12, 0);
+            this.filtersPanel.Controls.Add(this.clearFiltersButton, 13, 0);
+            this.filtersPanel.Location = new System.Drawing.Point(20, 200);
+            this.filtersPanel.Name = "filtersPanel";
+            this.filtersPanel.RowCount = 1;
+            this.filtersPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.filtersPanel.Size = new System.Drawing.Size(560, 30);
+            this.filtersPanel.TabIndex = 22;
+            this.filtersPanel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
+
 			// 
 			// button_manualUpload
 			// 
@@ -583,7 +567,7 @@ namespace ScanLink
 			this.button_manualUpload.Text = "Sync logs to API";
 			this.button_manualUpload.UseVisualStyleBackColor = true;
 			this.button_manualUpload.Click += new System.EventHandler(this.button_manualUpload_Click);
-			this.button_manualUpload.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)));
+			this.button_manualUpload.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
 			// 
             
             // 
@@ -595,12 +579,13 @@ namespace ScanLink
             this.scannerDataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.scannerDataGridView.BackgroundColor = System.Drawing.Color.White;
             this.scannerDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.scannerDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.scannerDataGridView.Location = new System.Drawing.Point(20, 220);
             this.scannerDataGridView.Name = "scannerDataGridView";
             this.scannerDataGridView.ReadOnly = true;
             this.scannerDataGridView.RowHeadersVisible = false;
             this.scannerDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.scannerDataGridView.Size = new System.Drawing.Size(560, 460);
+            this.scannerDataGridView.Size = new System.Drawing.Size(560, 300);
             this.scannerDataGridView.TabIndex = 0;
             
             // 
@@ -621,7 +606,7 @@ namespace ScanLink
             this.showScannerOutputCheckBox.AutoSize = true;
             this.showScannerOutputCheckBox.Checked = false;
             this.showScannerOutputCheckBox.CheckState = System.Windows.Forms.CheckState.Unchecked;
-            this.showScannerOutputCheckBox.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.showScannerOutputCheckBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.showScannerOutputCheckBox.Location = new System.Drawing.Point(20, 20);
             this.showScannerOutputCheckBox.Name = "showScannerOutputCheckBox";
             this.showScannerOutputCheckBox.Size = new System.Drawing.Size(150, 23);
@@ -636,7 +621,7 @@ namespace ScanLink
             this.previousPageButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
             this.previousPageButton.FlatAppearance.BorderSize = 0;
             this.previousPageButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.previousPageButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.previousPageButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.previousPageButton.ForeColor = System.Drawing.Color.White;
             this.previousPageButton.Location = new System.Drawing.Point(20, 500);
             this.previousPageButton.Name = "previousPageButton";
@@ -644,6 +629,7 @@ namespace ScanLink
             this.previousPageButton.TabIndex = 5;
             this.previousPageButton.Text = "Previous";
             this.previousPageButton.UseVisualStyleBackColor = false;
+            this.previousPageButton.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.previousPageButton.Click += new System.EventHandler(this.previousPageButton_Click);
             
             // 
@@ -652,7 +638,7 @@ namespace ScanLink
             this.nextPageButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
             this.nextPageButton.FlatAppearance.BorderSize = 0;
             this.nextPageButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.nextPageButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.nextPageButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.nextPageButton.ForeColor = System.Drawing.Color.White;
             this.nextPageButton.Location = new System.Drawing.Point(500, 500);
             this.nextPageButton.Name = "nextPageButton";
@@ -660,13 +646,14 @@ namespace ScanLink
             this.nextPageButton.TabIndex = 6;
             this.nextPageButton.Text = "Next";
             this.nextPageButton.UseVisualStyleBackColor = false;
+            this.nextPageButton.Anchor = System.Windows.Forms.AnchorStyles.Right;
             this.nextPageButton.Click += new System.EventHandler(this.nextPageButton_Click);
             
             // 
             // pageInfoLabel
             // 
             this.pageInfoLabel.AutoSize = true;
-            this.pageInfoLabel.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.pageInfoLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.pageInfoLabel.ForeColor = System.Drawing.Color.Black;
             this.pageInfoLabel.Location = new System.Drawing.Point(250, 505);
             this.pageInfoLabel.Name = "pageInfoLabel";
@@ -674,123 +661,205 @@ namespace ScanLink
             this.pageInfoLabel.TabIndex = 7;
             this.pageInfoLabel.Text = "Page 1 of 1";
             this.pageInfoLabel.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.pageInfoLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             
             // 
             // dateFromLabel
             // 
             this.dateFromLabel.AutoSize = true;
-            this.dateFromLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.dateFromLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.dateFromLabel.ForeColor = System.Drawing.Color.Black;
             this.dateFromLabel.Location = new System.Drawing.Point(20, 230);
             this.dateFromLabel.Name = "dateFromLabel";
             this.dateFromLabel.Size = new System.Drawing.Size(35, 15);
             this.dateFromLabel.TabIndex = 8;
             this.dateFromLabel.Text = "From:";
+            this.dateFromLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.dateFromLabel.Anchor = System.Windows.Forms.AnchorStyles.Right;
             
             // 
             // dateFromPicker
             // 
-            this.dateFromPicker.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.dateFromPicker.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.dateFromPicker.Format = System.Windows.Forms.DateTimePickerFormat.Short;
             this.dateFromPicker.Location = new System.Drawing.Point(20, 250);
             this.dateFromPicker.Name = "dateFromPicker";
             this.dateFromPicker.Size = new System.Drawing.Size(120, 23);
             this.dateFromPicker.TabIndex = 9;
+            this.dateFromPicker.Anchor = System.Windows.Forms.AnchorStyles.Right;
             
             // 
             // dateToLabel
             // 
             this.dateToLabel.AutoSize = true;
-            this.dateToLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.dateToLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.dateToLabel.ForeColor = System.Drawing.Color.Black;
             this.dateToLabel.Location = new System.Drawing.Point(160, 230);
             this.dateToLabel.Name = "dateToLabel";
             this.dateToLabel.Size = new System.Drawing.Size(22, 15);
             this.dateToLabel.TabIndex = 10;
             this.dateToLabel.Text = "To:";
+            this.dateToLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.dateToLabel.Anchor = System.Windows.Forms.AnchorStyles.Right;
             
             // 
             // dateToPicker
             // 
-            this.dateToPicker.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.dateToPicker.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.dateToPicker.Format = System.Windows.Forms.DateTimePickerFormat.Short;
             this.dateToPicker.Location = new System.Drawing.Point(160, 250);
             this.dateToPicker.Name = "dateToPicker";
             this.dateToPicker.Size = new System.Drawing.Size(120, 23);
             this.dateToPicker.TabIndex = 11;
+            this.dateToPicker.Anchor = System.Windows.Forms.AnchorStyles.Right;
             
             // 
             // blockNumberLabel
             // 
             this.blockNumberLabel.AutoSize = true;
-            this.blockNumberLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.blockNumberLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.blockNumberLabel.ForeColor = System.Drawing.Color.Black;
             this.blockNumberLabel.Location = new System.Drawing.Point(300, 230);
             this.blockNumberLabel.Name = "blockNumberLabel";
             this.blockNumberLabel.Size = new System.Drawing.Size(80, 15);
             this.blockNumberLabel.TabIndex = 12;
-            this.blockNumberLabel.Text = "Block Number:";
+            this.blockNumberLabel.Text = "BlockNumber:";
+            this.blockNumberLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.blockNumberLabel.Anchor = System.Windows.Forms.AnchorStyles.Right;
             
             // 
             // blockNumberTextBox
             // 
-            this.blockNumberTextBox.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.blockNumberTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.blockNumberTextBox.Location = new System.Drawing.Point(300, 250);
             this.blockNumberTextBox.Name = "blockNumberTextBox";
-            this.blockNumberTextBox.Size = new System.Drawing.Size(100, 23);
+            this.blockNumberTextBox.Size = new System.Drawing.Size(50, 23);
             this.blockNumberTextBox.TabIndex = 13;
+            this.blockNumberTextBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.blockNumberTextBox.Anchor = System.Windows.Forms.AnchorStyles.Right;
             
             // 
             // lineNumberLabel
             // 
             this.lineNumberLabel.AutoSize = true;
-            this.lineNumberLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lineNumberLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.lineNumberLabel.ForeColor = System.Drawing.Color.Black;
             this.lineNumberLabel.Location = new System.Drawing.Point(420, 230);
             this.lineNumberLabel.Name = "lineNumberLabel";
-            this.lineNumberLabel.Size = new System.Drawing.Size(75, 15);
+            this.lineNumberLabel.Size = new System.Drawing.Size(150, 15);
             this.lineNumberLabel.TabIndex = 14;
-            this.lineNumberLabel.Text = "Line Number:";
+            this.lineNumberLabel.Text = "LineNumber:";
+            this.lineNumberLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.lineNumberLabel.Anchor = System.Windows.Forms.AnchorStyles.Right;
             
             // 
             // lineNumberTextBox
             // 
-            this.lineNumberTextBox.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lineNumberTextBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.lineNumberTextBox.Location = new System.Drawing.Point(420, 250);
             this.lineNumberTextBox.Name = "lineNumberTextBox";
-            this.lineNumberTextBox.Size = new System.Drawing.Size(100, 23);
+            this.lineNumberTextBox.Size = new System.Drawing.Size(50, 23);
             this.lineNumberTextBox.TabIndex = 15;
+            this.lineNumberTextBox.TextAlign = System.Windows.Forms.HorizontalAlignment.Left;
+            this.lineNumberTextBox.Anchor = System.Windows.Forms.AnchorStyles.Right;
             
             // 
             // productIdLabel
-            // 
+            //
             this.productIdLabel.AutoSize = true;
-            this.productIdLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.productIdLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.productIdLabel.ForeColor = System.Drawing.Color.Black;
-            this.productIdLabel.Location = new System.Drawing.Point(20, 290);
+            this.productIdLabel.Location = new System.Drawing.Point(150, 290);
             this.productIdLabel.Name = "productIdLabel";
             this.productIdLabel.Size = new System.Drawing.Size(60, 15);
             this.productIdLabel.TabIndex = 16;
-            this.productIdLabel.Text = "Product ID:";
+            this.productIdLabel.Text = "Products:";
+            this.productIdLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.productIdLabel.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            
             
             // 
-            // activeScannersLabel
+            // productIdComboBox
+            //
+            this.productIdComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.productIdComboBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.productIdComboBox.FormattingEnabled = true;
+            this.productIdComboBox.Location = new System.Drawing.Point(150, 310);
+            this.productIdComboBox.Name = "productIdComboBox";
+            this.productIdComboBox.Size = new System.Drawing.Size(200, 23);
+            this.productIdComboBox.TabIndex = 17;
+            this.productIdComboBox.Anchor = System.Windows.Forms.AnchorStyles.Right;
+
             // 
-            this.activeScannersLabel.AutoSize = true;
-            this.activeScannersLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.activeScannersLabel.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215);
-            this.activeScannersLabel.Location = new System.Drawing.Point(20, 350);
-            this.activeScannersLabel.Name = "activeScannersLabel";
-            this.activeScannersLabel.Size = new System.Drawing.Size(120, 19);
-            this.activeScannersLabel.TabIndex = 20;
-            this.activeScannersLabel.Text = "Active Scanners: 0";
-            this.activeScannersLabel.Visible = true;
+            // cropIdLabel
+            //
+            this.cropIdLabel.AutoSize = true;
+            this.cropIdLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.cropIdLabel.ForeColor = System.Drawing.Color.Black;
+            this.cropIdLabel.Location = new System.Drawing.Point(20, 290);
+            this.cropIdLabel.Name = "cropIdLabel";
+            this.cropIdLabel.Size = new System.Drawing.Size(55, 15);
+            this.cropIdLabel.TabIndex = 18;
+            this.cropIdLabel.Text = "Crops:";
+            this.cropIdLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.cropIdLabel.Anchor = System.Windows.Forms.AnchorStyles.Right;
+
+            // 
+            // cropIdComboBox
+            //
+            this.cropIdComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cropIdComboBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.cropIdComboBox.FormattingEnabled = true;
+            this.cropIdComboBox.Location = new System.Drawing.Point(20, 310);
+            this.cropIdComboBox.Name = "cropIdComboBox";
+            this.cropIdComboBox.Size = new System.Drawing.Size(120, 23);
+            this.cropIdComboBox.TabIndex = 19;
+            this.cropIdComboBox.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            
+            // 
+            // applyFiltersButton
+            // 
+            this.applyFiltersButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
+            this.applyFiltersButton.FlatAppearance.BorderSize = 0;
+            this.applyFiltersButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.applyFiltersButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
+            this.applyFiltersButton.ForeColor = System.Drawing.Color.White;
+            this.applyFiltersButton.Location = new System.Drawing.Point(280, 310);
+            this.applyFiltersButton.Name = "applyFiltersButton";
+            this.applyFiltersButton.Size = new System.Drawing.Size(80, 25);
+            this.applyFiltersButton.TabIndex = 18;
+            this.applyFiltersButton.Text = "Apply";
+            this.applyFiltersButton.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.applyFiltersButton.UseVisualStyleBackColor = false;
+            this.applyFiltersButton.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            this.applyFiltersButton.Click += new System.EventHandler(this.applyFiltersButton_Click);
+            this.cropIdComboBox.SelectedIndexChanged += new System.EventHandler(this.cropIdComboBox_SelectedIndexChanged);
+            this.productIdComboBox.SelectedIndexChanged += new System.EventHandler(this.productIdComboBox_SelectedIndexChanged);
+
+            //
+            // clearFiltersButton
+            // 
+            this.clearFiltersButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
+            this.clearFiltersButton.FlatAppearance.BorderSize = 0;
+            this.clearFiltersButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.clearFiltersButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
+            this.clearFiltersButton.ForeColor = System.Drawing.Color.White;
+            this.clearFiltersButton.Location = new System.Drawing.Point(370, 310);
+            this.clearFiltersButton.Name = "clearFiltersButton";
+            this.clearFiltersButton.Size = new System.Drawing.Size(80, 25);
+            this.clearFiltersButton.TabIndex = 19;
+            this.clearFiltersButton.Text = "Clear";
+            this.clearFiltersButton.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.clearFiltersButton.UseVisualStyleBackColor = false;
+            this.clearFiltersButton.Click += new System.EventHandler(this.clearFiltersButton_Click);
+            
+            
             
             // 
             // todayScansLabel
             // 
             this.todayScansLabel.AutoSize = true;
-            this.todayScansLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.todayScansLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.todayScansLabel.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215);
             this.todayScansLabel.Location = new System.Drawing.Point(200, 350);
             this.todayScansLabel.Name = "todayScansLabel";
@@ -803,7 +872,7 @@ namespace ScanLink
             // lastHourScansLabel
             // 
             this.lastHourScansLabel.AutoSize = true;
-            this.lastHourScansLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lastHourScansLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.lastHourScansLabel.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215);
             this.lastHourScansLabel.Location = new System.Drawing.Point(380, 350);
             this.lastHourScansLabel.Name = "lastHourScansLabel";
@@ -811,74 +880,21 @@ namespace ScanLink
             this.lastHourScansLabel.TabIndex = 22;
             this.lastHourScansLabel.Text = "Last Hour Scans: 0";
             this.lastHourScansLabel.Visible = true;
-            
-            // 
-            // productIdComboBox
-            // 
-            this.productIdComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.productIdComboBox.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.productIdComboBox.FormattingEnabled = true;
-            this.productIdComboBox.Location = new System.Drawing.Point(20, 310);
-            this.productIdComboBox.Name = "productIdComboBox";
-            this.productIdComboBox.Size = new System.Drawing.Size(150, 23);
-            this.productIdComboBox.TabIndex = 17;
 
-            // 
-            // cropIdLabel
-            // 
-            this.cropIdLabel.AutoSize = true;
-            this.cropIdLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.cropIdLabel.ForeColor = System.Drawing.Color.Black;
-            this.cropIdLabel.Location = new System.Drawing.Point(190, 290);
-            this.cropIdLabel.Name = "cropIdLabel";
-            this.cropIdLabel.Size = new System.Drawing.Size(51, 15);
-            this.cropIdLabel.TabIndex = 18;
-            this.cropIdLabel.Text = "Crop ID:";
+            //
+            // totalFilteredScansLabel
+            //
+            this.totalFilteredScansLabel.AutoSize = true;
+            this.totalFilteredScansLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
+            this.totalFilteredScansLabel.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215);
+            this.totalFilteredScansLabel.Location = new System.Drawing.Point(560, 350);
+            this.totalFilteredScansLabel.Name = "totalFilteredScansLabel";
+            this.totalFilteredScansLabel.Size = new System.Drawing.Size(140, 19);
+            this.totalFilteredScansLabel.TabIndex = 23;
+            this.totalFilteredScansLabel.Text = "Total filtered Scans: 0";
+            this.totalFilteredScansLabel.Visible = true;
 
-            // 
-            // cropIdComboBox
-            // 
-            this.cropIdComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cropIdComboBox.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.cropIdComboBox.FormattingEnabled = true;
-            this.cropIdComboBox.Location = new System.Drawing.Point(190, 310);
-            this.cropIdComboBox.Name = "cropIdComboBox";
-            this.cropIdComboBox.Size = new System.Drawing.Size(150, 23);
-            this.cropIdComboBox.TabIndex = 19;
-            
-            // 
-            // applyFiltersButton
-            // 
-            this.applyFiltersButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.applyFiltersButton.FlatAppearance.BorderSize = 0;
-            this.applyFiltersButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.applyFiltersButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.applyFiltersButton.ForeColor = System.Drawing.Color.White;
-            this.applyFiltersButton.Location = new System.Drawing.Point(200, 310);
-            this.applyFiltersButton.Name = "applyFiltersButton";
-            this.applyFiltersButton.Size = new System.Drawing.Size(80, 25);
-            this.applyFiltersButton.TabIndex = 18;
-            this.applyFiltersButton.Text = "Apply";
-            this.applyFiltersButton.UseVisualStyleBackColor = false;
-            this.applyFiltersButton.Click += new System.EventHandler(this.applyFiltersButton_Click);
-            
-            // 
-            // clearFiltersButton
-            // 
-            this.clearFiltersButton.BackColor = System.Drawing.Color.FromArgb(108, 117, 125);
-            this.clearFiltersButton.FlatAppearance.BorderSize = 0;
-            this.clearFiltersButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.clearFiltersButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.clearFiltersButton.ForeColor = System.Drawing.Color.White;
-            this.clearFiltersButton.Location = new System.Drawing.Point(300, 310);
-            this.clearFiltersButton.Name = "clearFiltersButton";
-            this.clearFiltersButton.Size = new System.Drawing.Size(80, 25);
-            this.clearFiltersButton.TabIndex = 19;
-            this.clearFiltersButton.Text = "Clear";
-            this.clearFiltersButton.UseVisualStyleBackColor = false;
-            this.clearFiltersButton.Click += new System.EventHandler(this.clearFiltersButton_Click);
-            
-            // 
+            //
             // runScannerScriptButton
             // 
             // this.runScannerScriptButton.Location = new System.Drawing.Point(50, 470);
@@ -890,55 +906,236 @@ namespace ScanLink
             // this.runScannerScriptButton.Click += new System.EventHandler(this.runScannerScriptButton_Click);
             
             // 
-            // manageScannersButton
-            // 
-            this.manageScannersButton.Location = new System.Drawing.Point(50, 20);
-            this.manageScannersButton.Name = "manageScannersButton";
-            this.manageScannersButton.Size = new System.Drawing.Size(130, 32);
-            this.manageScannersButton.TabIndex = 2;
-            this.manageScannersButton.Text = "Manage Scanners";
-            this.manageScannersButton.UseVisualStyleBackColor = true;
-            this.manageScannersButton.Click += new System.EventHandler(this.manageScannersButton_Click);
-            
-            // 
-            // mainPanel
-            // 
-            this.mainPanel.AutoScroll = true;
-            this.mainPanel.BackColor = System.Drawing.Color.White;
-            this.mainPanel.Controls.Add(this.statusPanel);
-            this.mainPanel.Controls.Add(this.actionPanel);
-            this.mainPanel.Controls.Add(this.advancedPanel);
-            this.mainPanel.Controls.Add(this.configPanel);
-            this.mainPanel.Controls.Add(this.connectionPanel);
-            this.mainPanel.Controls.Add(this.headerPanel);
-            this.mainPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.mainPanel.Location = new System.Drawing.Point(0, 0);
-            this.mainPanel.Name = "mainPanel";
-            this.mainPanel.Padding = new System.Windows.Forms.Padding(20);
-            this.mainPanel.Size = new System.Drawing.Size(560, 1500);
-            this.mainPanel.TabIndex = 0;
-            
-            // 
             // headerPanel
             // 
             this.headerPanel.BackColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.headerPanel.Controls.Add(this.titleLabel);
-            this.headerPanel.Controls.Add(this.subtitleLabel);
-            this.headerPanel.Controls.Add(this.logoutButtonPrinter);
-            this.headerPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.headerPanel.Controls.Add(this.headerTableLayoutPanel);
+            this.headerPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.headerPanel.Location = new System.Drawing.Point(20, 20);
             this.headerPanel.Name = "headerPanel";
-            this.headerPanel.Padding = new System.Windows.Forms.Padding(30, 20, 30, 20);
+            this.headerPanel.Padding = new System.Windows.Forms.Padding(10, 10, 10, 10);
             this.headerPanel.Size = new System.Drawing.Size(560, 100);
             this.headerPanel.TabIndex = 0;
-            
-            // 
+
+            //
+            // headerTableLayoutPanel
+            //
+            this.headerTableLayoutPanel.ColumnCount = 2;
+            this.headerTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 20F));
+            this.headerTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 80F));
+            this.headerTableLayoutPanel.Controls.Add(this.titlepanel, 0, 0);
+            this.headerTableLayoutPanel.Controls.Add(this.buttonpanel, 1, 0);
+            this.headerTableLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.headerTableLayoutPanel.Location = new System.Drawing.Point(30, 20);
+            this.headerTableLayoutPanel.Name = "headerTableLayoutPanel";
+            this.headerTableLayoutPanel.RowCount = 1;
+            this.headerTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.headerTableLayoutPanel.Size = new System.Drawing.Size(500, 60);
+            this.headerTableLayoutPanel.TabIndex = 0;
+
+            //
+            // titlepanel
+            //
+            this.titlepanel.BackColor = System.Drawing.Color.FromArgb(27, 42, 65);
+            this.titlepanel.Controls.Add(this.titleLabel);
+            this.titlepanel.Controls.Add(this.subtitleLabel);
+            this.titlepanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.titlepanel.Location = new System.Drawing.Point(3, 3);
+            this.titlepanel.Name = "titlepanel";
+            this.titlepanel.Size = new System.Drawing.Size(94, 54);
+            this.titlepanel.TabIndex = 0;
+
+            //
+            // buttonpanel
+            //
+            this.buttonpanel.BackColor = System.Drawing.Color.FromArgb(27, 42, 65);
+            this.buttonpanel.Controls.Add(this.buttonTableLayoutPanel);
+            this.buttonpanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.buttonpanel.Location = new System.Drawing.Point(103, 3);
+            this.buttonpanel.Name = "buttonpanel";
+            this.buttonpanel.Size = new System.Drawing.Size(394, 54);
+            this.buttonpanel.TabIndex = 1;
+
+            //
+            // buttonTableLayoutPanel
+            //
+            this.buttonTableLayoutPanel.ColumnCount = 7;
+            this.buttonTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 14.2857F));
+            this.buttonTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 14.2857F));
+            this.buttonTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 14.2857F));
+            this.buttonTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 14.2857F));
+            this.buttonTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 14.2857F));
+            this.buttonTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 14.2857F));
+            this.buttonTableLayoutPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 14.2857F));
+            this.buttonTableLayoutPanel.Controls.Add(this.setupButton, 0, 0);
+            this.buttonTableLayoutPanel.Controls.Add(this.scannerSetupButton, 1, 0);
+            this.buttonTableLayoutPanel.Controls.Add(this.printerConnectionButton, 2, 0);
+            this.buttonTableLayoutPanel.Controls.Add(this.barCodesButton, 3, 0);
+            this.buttonTableLayoutPanel.Controls.Add(this.boxLabelsButton, 4, 0);
+            this.buttonTableLayoutPanel.Controls.Add(this.reportsButton, 5, 0);
+            this.buttonTableLayoutPanel.Controls.Add(this.logoutButton, 6, 0);
+            this.buttonTableLayoutPanel.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.buttonTableLayoutPanel.Location = new System.Drawing.Point(0, 0);
+            this.buttonTableLayoutPanel.Name = "buttonTableLayoutPanel";
+            this.buttonTableLayoutPanel.RowCount = 1;
+            this.buttonTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.buttonTableLayoutPanel.Size = new System.Drawing.Size(394, 54);
+            this.buttonTableLayoutPanel.TabIndex = 0;
+
+            //
+            // setupButton
+            //
+            this.setupButton.BackColor = System.Drawing.Color.FromArgb(46, 125, 50);
+            this.setupButton.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.setupButton.FlatAppearance.BorderSize = 0;
+            this.setupButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(27, 94, 32);
+            this.setupButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(76, 175, 80);
+            this.setupButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.setupButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.setupButton.ForeColor = System.Drawing.Color.White;
+            this.setupButton.Margin = new System.Windows.Forms.Padding(3);
+            this.setupButton.Name = "setupButton";
+            this.setupButton.TabIndex = 0;
+            this.setupButton.Text = "Setup";
+            this.setupButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.setupButton.UseVisualStyleBackColor = false;
+            this.setupButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
+            this.setupButton.Paint += new System.Windows.Forms.PaintEventHandler(this.Button_Paint);
+            this.setupButton.Click += new System.EventHandler(this.setupButton_Click);
+
+            //
+            // scannerSetupButton
+            //
+            this.scannerSetupButton.BackColor = System.Drawing.Color.FromArgb(25, 118, 210);
+            this.scannerSetupButton.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.scannerSetupButton.FlatAppearance.BorderSize = 0;
+            this.scannerSetupButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(13, 71, 161);
+            this.scannerSetupButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(66, 165, 245);
+            this.scannerSetupButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.scannerSetupButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.scannerSetupButton.ForeColor = System.Drawing.Color.White;
+            this.scannerSetupButton.Margin = new System.Windows.Forms.Padding(3);
+            this.scannerSetupButton.Name = "scannerSetupButton";
+            this.scannerSetupButton.TabIndex = 1;
+            this.scannerSetupButton.Text = "Scanner\r\nSetup";
+            this.scannerSetupButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.scannerSetupButton.UseVisualStyleBackColor = false;
+            this.scannerSetupButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
+            this.scannerSetupButton.Paint += new System.Windows.Forms.PaintEventHandler(this.Button_Paint);
+            this.scannerSetupButton.Click += new System.EventHandler(this.scannerSetupButton_Click);
+
+            //
+            // printerConnectionButton
+            //
+            this.printerConnectionButton.BackColor = System.Drawing.Color.FromArgb(255, 152, 0);
+            this.printerConnectionButton.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.printerConnectionButton.FlatAppearance.BorderSize = 0;
+            this.printerConnectionButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(245, 127, 23);
+            this.printerConnectionButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(255, 193, 7);
+            this.printerConnectionButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.printerConnectionButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.printerConnectionButton.ForeColor = System.Drawing.Color.White;
+            this.printerConnectionButton.Margin = new System.Windows.Forms.Padding(3);
+            this.printerConnectionButton.Name = "printerConnectionButton";
+            this.printerConnectionButton.TabIndex = 2;
+            this.printerConnectionButton.Text = "Printer\r\nConnection";
+            this.printerConnectionButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.printerConnectionButton.UseVisualStyleBackColor = false;
+            this.printerConnectionButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
+            this.printerConnectionButton.Paint += new System.Windows.Forms.PaintEventHandler(this.Button_Paint);
+            this.printerConnectionButton.Click += new System.EventHandler(this.printerConnectionButton_Click);
+
+            //
+            // barCodesButton
+            //
+            this.barCodesButton.BackColor = System.Drawing.Color.FromArgb(156, 39, 176);
+            this.barCodesButton.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.barCodesButton.FlatAppearance.BorderSize = 0;
+            this.barCodesButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(123, 31, 162);
+            this.barCodesButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(186, 104, 200);
+            this.barCodesButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.barCodesButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.barCodesButton.ForeColor = System.Drawing.Color.White;
+            this.barCodesButton.Margin = new System.Windows.Forms.Padding(3);
+            this.barCodesButton.Name = "barCodesButton";
+            this.barCodesButton.TabIndex = 3;
+            this.barCodesButton.Text = "Bar Codes";
+            this.barCodesButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.barCodesButton.UseVisualStyleBackColor = false;
+            this.barCodesButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
+            this.barCodesButton.Paint += new System.Windows.Forms.PaintEventHandler(this.Button_Paint);
+            this.barCodesButton.Click += new System.EventHandler(this.barCodesButton_Click);
+
+            //
+            // boxLabelsButton
+            //
+            this.boxLabelsButton.BackColor = System.Drawing.Color.FromArgb(0, 150, 136);
+            this.boxLabelsButton.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.boxLabelsButton.FlatAppearance.BorderSize = 0;
+            this.boxLabelsButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 121, 107);
+            this.boxLabelsButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(77, 182, 172);
+            this.boxLabelsButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.boxLabelsButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.boxLabelsButton.ForeColor = System.Drawing.Color.White;
+            this.boxLabelsButton.Margin = new System.Windows.Forms.Padding(3);
+            this.boxLabelsButton.Name = "boxLabelsButton";
+            this.boxLabelsButton.TabIndex = 4;
+            this.boxLabelsButton.Text = "Box Labels";
+            this.boxLabelsButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.boxLabelsButton.UseVisualStyleBackColor = false;
+            this.boxLabelsButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
+            this.boxLabelsButton.Paint += new System.Windows.Forms.PaintEventHandler(this.Button_Paint);
+            this.boxLabelsButton.Click += new System.EventHandler(this.boxLabelsButton_Click);
+
+            //
+            // reportsButton
+            //
+            this.reportsButton.BackColor = System.Drawing.Color.FromArgb(121, 85, 72);
+            this.reportsButton.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.reportsButton.FlatAppearance.BorderSize = 0;
+            this.reportsButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(96, 64, 54);
+            this.reportsButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(161, 136, 127);
+            this.reportsButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.reportsButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.reportsButton.ForeColor = System.Drawing.Color.White;
+            this.reportsButton.Margin = new System.Windows.Forms.Padding(3);
+            this.reportsButton.Name = "reportsButton";
+            this.reportsButton.TabIndex = 5;
+            this.reportsButton.Text = "Reports";
+            this.reportsButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.reportsButton.UseVisualStyleBackColor = false;
+            this.reportsButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
+            this.reportsButton.Paint += new System.Windows.Forms.PaintEventHandler(this.Button_Paint);
+            this.reportsButton.Click += new System.EventHandler(this.reportsButton_Click);
+
+            //
+            // logoutButton
+            //
+            this.logoutButton.BackColor = System.Drawing.Color.FromArgb(244, 67, 54);
+            this.logoutButton.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.logoutButton.FlatAppearance.BorderSize = 0;
+            this.logoutButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(211, 47, 47);
+            this.logoutButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(244, 143, 177);
+            this.logoutButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.logoutButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.logoutButton.ForeColor = System.Drawing.Color.White;
+            this.logoutButton.Margin = new System.Windows.Forms.Padding(3);
+            this.logoutButton.Name = "logoutButton";
+            this.logoutButton.TabIndex = 6;
+            this.logoutButton.Text = "logout";
+            this.logoutButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.logoutButton.UseVisualStyleBackColor = false;
+            this.logoutButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
+            this.logoutButton.Paint += new System.Windows.Forms.PaintEventHandler(this.Button_Paint);
+            this.logoutButton.Click += new System.EventHandler(this.logoutButton_Click);
+
+            //
             // titleLabel
             // 
             this.titleLabel.AutoSize = true;
-            this.titleLabel.Font = new System.Drawing.Font("Segoe UI", 26F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.titleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 26F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.titleLabel.ForeColor = System.Drawing.Color.White;
-            this.titleLabel.Location = new System.Drawing.Point(30, 8);
+            this.titleLabel.Location = new System.Drawing.Point(0, 0);
             this.titleLabel.Name = "titleLabel";
             this.titleLabel.Size = new System.Drawing.Size(168, 45);
             this.titleLabel.TabIndex = 0;
@@ -948,106 +1145,13 @@ namespace ScanLink
             // subtitleLabel
             // 
             this.subtitleLabel.AutoSize = true;
-            this.subtitleLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.subtitleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.subtitleLabel.ForeColor = System.Drawing.Color.FromArgb(204, 201, 220);
-            this.subtitleLabel.Location = new System.Drawing.Point(34, 60);
+            this.subtitleLabel.Location = new System.Drawing.Point(4, 45);
             this.subtitleLabel.Name = "subtitleLabel";
             this.subtitleLabel.Size = new System.Drawing.Size(281, 20);
             this.subtitleLabel.TabIndex = 1;
             this.subtitleLabel.Text = "Professional Barcode Printing Solution";
-            
-            // 
-            // connectionPanel
-            // 
-            this.connectionPanel.Controls.Add(this.connectionGroupBox);
-            this.connectionPanel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.connectionPanel.Location = new System.Drawing.Point(20, 120);
-            this.connectionPanel.Name = "connectionPanel";
-            this.connectionPanel.Padding = new System.Windows.Forms.Padding(0, 20, 0, 0);
-            this.connectionPanel.Size = new System.Drawing.Size(560, 160);
-            this.connectionPanel.TabIndex = 1;
-            
-            // 
-            // connectionGroupBox
-            // 
-            this.connectionGroupBox.Controls.Add(this.connectionStatusLabel);
-            this.connectionGroupBox.Controls.Add(this.label_port);
-            this.connectionGroupBox.Controls.Add(this.comboBox_port);
-            this.connectionGroupBox.Controls.Add(this.button_setting);
-            this.connectionGroupBox.Controls.Add(this.textBox_port);
-            this.connectionGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.connectionGroupBox.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.connectionGroupBox.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.connectionGroupBox.Location = new System.Drawing.Point(0, 20);
-            this.connectionGroupBox.Name = "connectionGroupBox";
-            this.connectionGroupBox.Padding = new System.Windows.Forms.Padding(20);
-            this.connectionGroupBox.Size = new System.Drawing.Size(560, 140);
-            this.connectionGroupBox.TabIndex = 0;
-            this.connectionGroupBox.TabStop = false;
-            this.connectionGroupBox.Text = "🔌 Printer Connection";
-            
-            // 
-            // connectionStatusLabel
-            // 
-            this.connectionStatusLabel.AutoSize = true;
-            this.connectionStatusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
-            this.connectionStatusLabel.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.connectionStatusLabel.Location = new System.Drawing.Point(25, 100);
-            this.connectionStatusLabel.Name = "connectionStatusLabel";
-            this.connectionStatusLabel.Size = new System.Drawing.Size(200, 15);
-            this.connectionStatusLabel.TabIndex = 4;
-            this.connectionStatusLabel.Text = "Status: Disconnected";
-            // 
-            // label_port
-            // 
-            this.label_port.AutoSize = true;
-            this.label_port.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
-            this.label_port.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.label_port.Location = new System.Drawing.Point(25, 35);
-            this.label_port.Name = "label_port";
-            this.label_port.Size = new System.Drawing.Size(89, 15);
-            this.label_port.TabIndex = 0;
-            this.label_port.Text = "Connection Type";
-            
-            // 
-            // comboBox_port
-            // 
-            this.comboBox_port.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_port.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.comboBox_port.FormattingEnabled = true;
-            this.comboBox_port.Location = new System.Drawing.Point(140, 32);
-            this.comboBox_port.Name = "comboBox_port";
-            this.comboBox_port.Size = new System.Drawing.Size(250, 23);
-            this.comboBox_port.TabIndex = 1;
-            this.comboBox_port.SelectedIndexChanged += new System.EventHandler(this.comboBox_port_SelectedIndexChanged);
-            
-            // 
-            // button_setting
-            // 
-            this.button_setting.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.button_setting.FlatAppearance.BorderSize = 0;
-            this.button_setting.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_setting.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.button_setting.ForeColor = System.Drawing.Color.White;
-            this.button_setting.Location = new System.Drawing.Point(410, 32);
-            this.button_setting.Name = "button_setting";
-            this.button_setting.Size = new System.Drawing.Size(120, 32);
-            this.button_setting.TabIndex = 2;
-            this.button_setting.Text = "⚙️ Configure";
-            this.button_setting.UseVisualStyleBackColor = false;
-            this.button_setting.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.button_setting.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
-            this.button_setting.Click += new System.EventHandler(this.button_setting_Click);
-            
-            // 
-            // textBox_port
-            // 
-            this.textBox_port.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.textBox_port.Location = new System.Drawing.Point(140, 70);
-            this.textBox_port.Name = "textBox_port";
-            this.textBox_port.ReadOnly = true;
-            this.textBox_port.Size = new System.Drawing.Size(390, 23);
-            this.textBox_port.TabIndex = 3;
             
             // 
             // configPanel
@@ -1056,8 +1160,8 @@ namespace ScanLink
             this.configPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.configPanel.Location = new System.Drawing.Point(20, 280);
             this.configPanel.Name = "configPanel";
-            this.configPanel.Padding = new System.Windows.Forms.Padding(0, 20, 0, 0);
-            this.configPanel.Size = new System.Drawing.Size(560, 185);
+            this.configPanel.Padding = new System.Windows.Forms.Padding(50, 20, 50, 0);
+            this.configPanel.Size = new System.Drawing.Size(560, 290);
             this.configPanel.TabIndex = 2;
             
             // 
@@ -1066,14 +1170,16 @@ namespace ScanLink
             this.configGroupBox.Controls.Add(this.barcodeTextPanel);
             this.configGroupBox.Controls.Add(this.label_count);
             this.configGroupBox.Controls.Add(this.numericUpDown_count);
-            this.configGroupBox.Controls.Add(this.checkBox_showAdvanced);
-            this.configGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.configGroupBox.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.configGroupBox.Controls.Add(this.button_generateBarcode);
+            this.configGroupBox.Controls.Add(this.button_preview);
+            // this.configGroupBox.Controls.Add(this.checkBox_showAdvanced);
+            this.configGroupBox.Dock = System.Windows.Forms.DockStyle.Top;
+            this.configGroupBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.configGroupBox.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.configGroupBox.Location = new System.Drawing.Point(0, 20);
             this.configGroupBox.Name = "configGroupBox";
-            this.configGroupBox.Padding = new System.Windows.Forms.Padding(20);
-            this.configGroupBox.Size = new System.Drawing.Size(560, 175);
+            this.configGroupBox.Padding = new System.Windows.Forms.Padding(20,20,20,20);
+            this.configGroupBox.Size = new System.Drawing.Size(460, 215);
             this.configGroupBox.TabIndex = 0;
             this.configGroupBox.TabStop = false;
             this.configGroupBox.Text = "⚙️ Print Configuration";
@@ -1081,6 +1187,7 @@ namespace ScanLink
             // 
             // barcodeTextPanel
             // 
+            this.barcodeTextPanel.Controls.Add(this.label_ProductDetail);
             this.barcodeTextPanel.Controls.Add(this.label_EmployeeID);
             this.barcodeTextPanel.Controls.Add(this.textBox_EmployeeID);
             this.barcodeTextPanel.Controls.Add(this.button_FetchEmployees);
@@ -1091,14 +1198,14 @@ namespace ScanLink
             this.barcodeTextPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.barcodeTextPanel.Location = new System.Drawing.Point(20, 20);
             this.barcodeTextPanel.Name = "barcodeTextPanel";
-            this.barcodeTextPanel.Size = new System.Drawing.Size(600, 85);
+            this.barcodeTextPanel.Size = new System.Drawing.Size(420, 125);
             this.barcodeTextPanel.TabIndex = 0;
             
             // 
             // label_EmployeeID
             // 
             this.label_EmployeeID.AutoSize = true;
-            this.label_EmployeeID.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_EmployeeID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_EmployeeID.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_EmployeeID.Location = new System.Drawing.Point(5, 5);
             this.label_EmployeeID.Name = "label_EmployeeID";
@@ -1109,144 +1216,181 @@ namespace ScanLink
             // 
             // textBox_EmployeeID
             // 
-            this.textBox_EmployeeID.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.textBox_EmployeeID.Location = new System.Drawing.Point(120, 2);
+            this.textBox_EmployeeID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.textBox_EmployeeID.Location = new System.Drawing.Point(170, 2);
             this.textBox_EmployeeID.Name = "textBox_EmployeeID";
             this.textBox_EmployeeID.Size = new System.Drawing.Size(300, 20);
             this.textBox_EmployeeID.TabIndex = 1;
-            this.textBox_EmployeeID.Text = "1234567890-Tanish";
+            this.textBox_EmployeeID.Text = "123456";
             
             // 
             // button_FetchEmployees
             // 
             this.button_FetchEmployees.BackColor = System.Drawing.Color.FromArgb(52, 152, 219);
             this.button_FetchEmployees.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_FetchEmployees.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this.button_FetchEmployees.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.button_FetchEmployees.ForeColor = System.Drawing.Color.White;
-            this.button_FetchEmployees.Location = new System.Drawing.Point(426, 2);
+            this.button_FetchEmployees.Location = new System.Drawing.Point(476, 2);
             this.button_FetchEmployees.Name = "button_FetchEmployees";
             this.button_FetchEmployees.Size = new System.Drawing.Size(77, 23);
             this.button_FetchEmployees.TabIndex = 2;
-            this.button_FetchEmployees.Text = "📋 Fetch";
+            this.button_FetchEmployees.Text = "Fetch";
             this.button_FetchEmployees.UseVisualStyleBackColor = false;
             this.button_FetchEmployees.Click += new System.EventHandler(this.button_FetchEmployees_Click);
 
-            //
-            // label_ProductID
-            // 
-            this.label_ProductID.AutoSize = true;
-            this.label_ProductID.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
-            this.label_ProductID.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(73)))), ((int)(((byte)(94)))));
-            this.label_ProductID.Location = new System.Drawing.Point(5, 40);
-            this.label_ProductID.Name = "label_ProductID";
-            this.label_ProductID.Size = new System.Drawing.Size(77, 15);
-            this.label_ProductID.TabIndex = 0;
-            this.label_ProductID.Text = "Product ID"; 
             
-            // 
-            // comboBox_ProductID
-            // 
-            this.comboBox_ProductID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_ProductID.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.comboBox_ProductID.FormattingEnabled = true;
-            this.comboBox_ProductID.Location = new System.Drawing.Point(120, 35);
-            this.comboBox_ProductID.Name = "comboBox_ProductID";
-            this.comboBox_ProductID.Size = new System.Drawing.Size(180, 20);
-            this.comboBox_ProductID.TabIndex = 1;
-
             // 
             // label_CropID
             // 
             this.label_CropID.AutoSize = true;
-            this.label_CropID.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
-            this.label_CropID.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(73)))), ((int)(((byte)(94)))));
-            this.label_CropID.Location = new System.Drawing.Point(320, 40);
+            this.label_CropID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.label_CropID.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            // this.label_CropID.Location = new System.Drawing.Point(320, 40);
+            this.label_CropID.Location = new System.Drawing.Point(5, 40);
             this.label_CropID.Name = "label_CropID";
             this.label_CropID.Size = new System.Drawing.Size(52, 15);
             this.label_CropID.TabIndex = 0;
-            this.label_CropID.Text = "Crop ID"; 
+            this.label_CropID.Text = "Crop"; 
             
             // 
             // comboBox_CropID
             // 
             this.comboBox_CropID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_CropID.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.comboBox_CropID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.comboBox_CropID.FormattingEnabled = true;
-            this.comboBox_CropID.Location = new System.Drawing.Point(380, 35);
+            // this.comboBox_CropID.Location = new System.Drawing.Point(380, 35);
+            this.comboBox_CropID.Location = new System.Drawing.Point(170, 35);
             this.comboBox_CropID.Name = "comboBox_CropID";
-            this.comboBox_CropID.Size = new System.Drawing.Size(123, 20);
+            this.comboBox_CropID.Size = new System.Drawing.Size(150, 20);
             this.comboBox_CropID.TabIndex = 2;
+
+            //
+            // label_ProductID
+            // 
+            this.label_ProductID.AutoSize = true;
+            this.label_ProductID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.label_ProductID.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_ProductID.Location = new System.Drawing.Point(5, 75);
+            this.label_ProductID.Name = "label_ProductID";
+            this.label_ProductID.Size = new System.Drawing.Size(90, 15);
+            this.label_ProductID.TabIndex = 0;
+            this.label_ProductID.Text = "Product Combination"; 
+            
+            // 
+            // comboBox_ProductID
+            // 
+            this.comboBox_ProductID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboBox_ProductID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.comboBox_ProductID.FormattingEnabled = true;
+            this.comboBox_ProductID.Location = new System.Drawing.Point(170, 70);
+            this.comboBox_ProductID.Name = "comboBox_ProductID";
+            this.comboBox_ProductID.Size = new System.Drawing.Size(550, 20);
+            this.comboBox_ProductID.TabIndex = 1;
+
+            
+            //
+            // label_ProductDetail
+            //
+            this.label_ProductDetail.AutoSize = true;
+            this.label_ProductDetail.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.label_ProductDetail.ForeColor = System.Drawing.Color.FromArgb(230, 126, 34);
+            this.label_ProductDetail.Location = new System.Drawing.Point(5, 100);
+            this.label_ProductDetail.Name = "label_ProductDetail";
+            this.label_ProductDetail.Size = new System.Drawing.Size(100, 15);
+            this.label_ProductDetail.TabIndex = 8;
+            this.label_ProductDetail.Text = "Variety: N/A      Grade: N/A      Count: N/A      Avg Weight (kg): N/A";
+            // 
             
             // 
             // label_count
             // 
             this.label_count.AutoSize = true;
-            this.label_count.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_count.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_count.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.label_count.Location = new System.Drawing.Point(25, 110);
+            this.label_count.Location = new System.Drawing.Point(25, 170);
             this.label_count.Name = "label_count";
-            this.label_count.Size = new System.Drawing.Size(65, 15);
+            this.label_count.Size = new System.Drawing.Size(65, 20);
             this.label_count.TabIndex = 6;
             this.label_count.Text = "Print Count";
             
             // 
             // numericUpDown_count
             // 
-            this.numericUpDown_count.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.numericUpDown_count.Location = new System.Drawing.Point(140, 107);
+            this.numericUpDown_count.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_count.Location = new System.Drawing.Point(190, 167);
             this.numericUpDown_count.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
             this.numericUpDown_count.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             this.numericUpDown_count.Name = "numericUpDown_count";
-            this.numericUpDown_count.Size = new System.Drawing.Size(150, 23);
+            this.numericUpDown_count.Size = new System.Drawing.Size(150, 28);
             this.numericUpDown_count.TabIndex = 7;
             this.numericUpDown_count.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            this.numericUpDown_count.ValueChanged += new System.EventHandler(this.numericUpDown_count_ValueChanged);
             
-            // 
-            // checkBox_showAdvanced
-            // 
-            this.checkBox_showAdvanced.AutoSize = true;
-            this.checkBox_showAdvanced.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
-            this.checkBox_showAdvanced.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.checkBox_showAdvanced.Location = new System.Drawing.Point(27, 140);
-            this.checkBox_showAdvanced.Name = "checkBox_showAdvanced";
-            this.checkBox_showAdvanced.Size = new System.Drawing.Size(189, 20);
-            this.checkBox_showAdvanced.TabIndex = 8;
-            this.checkBox_showAdvanced.Text = "Show Advance Settings";
-            this.checkBox_showAdvanced.UseVisualStyleBackColor = true;
-            this.checkBox_showAdvanced.CheckedChanged += new System.EventHandler(this.checkBox_showAdvanced_CheckedChanged);
+            // checkBox_showAdvanced definition removed - advanced settings always enabled
             
             // 
             // advancedPanel
             // 
             this.advancedPanel.Controls.Add(this.advancedGroupBox);
-            this.advancedPanel.Dock = System.Windows.Forms.DockStyle.None;
+            this.advancedPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.advancedPanel.Location = new System.Drawing.Point(20, 500);
             this.advancedPanel.Name = "advancedPanel";
-            this.advancedPanel.Padding = new System.Windows.Forms.Padding(0, 20, 0, 0);
+            this.advancedPanel.Padding = new System.Windows.Forms.Padding(50, 20, 50, 0);
             this.advancedPanel.Size = new System.Drawing.Size(560, 470);
             this.advancedPanel.TabIndex = 3;
             this.advancedPanel.Visible = false;
+            this.advancedPanel.AutoSize = true;
+            this.advancedPanel.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             
             // 
             // advancedGroupBox
             // 
-            this.advancedGroupBox.Controls.Add(this.previewPanel);
             this.advancedGroupBox.Controls.Add(this.qualityPanel);
-            this.advancedGroupBox.Controls.Add(this.alignmentPanel);
             this.advancedGroupBox.Controls.Add(this.dimensionsPanel);
             this.advancedGroupBox.Controls.Add(this.printerConfigPanel);
-            this.advancedGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.advancedGroupBox.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.advancedGroupBox.Controls.Add(this.dimensionVisualizationPictureBox);
+            this.advancedGroupBox.Controls.Add(this.dimensionVisualizationPictureBox_TwoUp);
+            this.advancedGroupBox.Dock = System.Windows.Forms.DockStyle.Top;
+            this.advancedGroupBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.advancedGroupBox.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.advancedGroupBox.Location = new System.Drawing.Point(0, 20);
             this.advancedGroupBox.Name = "advancedGroupBox";
-            this.advancedGroupBox.Padding = new System.Windows.Forms.Padding(20);
+            this.advancedGroupBox.Padding = new System.Windows.Forms.Padding(20,20,20,0);
             this.advancedGroupBox.Size = new System.Drawing.Size(560, 470);
             this.advancedGroupBox.TabIndex = 0;
             this.advancedGroupBox.TabStop = false;
             this.advancedGroupBox.Text = "🔧 Advanced Print Settings";
-            
-            // 
+            this.advancedGroupBox.AutoSize = true;
+            this.advancedGroupBox.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+
+            //
+            // dimensionVisualizationPictureBox
+            //
+            this.dimensionVisualizationPictureBox.BackColor = System.Drawing.Color.White;
+            this.dimensionVisualizationPictureBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.dimensionVisualizationPictureBox.Location = new System.Drawing.Point(650, 40);
+            this.dimensionVisualizationPictureBox.Name = "dimensionVisualizationPictureBox";
+            this.dimensionVisualizationPictureBox.Size = new System.Drawing.Size(550, 350);
+            this.dimensionVisualizationPictureBox.TabIndex = 1;
+            this.dimensionVisualizationPictureBox.TabStop = false;
+            this.dimensionVisualizationPictureBox.Visible = false;
+            this.dimensionVisualizationPictureBox.Paint += new System.Windows.Forms.PaintEventHandler(this.dimensionVisualizationPictureBox_Paint);
+            //
+            // dimensionVisualizationPictureBox_TwoUp
+            //
+            this.dimensionVisualizationPictureBox_TwoUp.BackColor = System.Drawing.Color.White;
+            this.dimensionVisualizationPictureBox_TwoUp.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.dimensionVisualizationPictureBox_TwoUp.Location = new System.Drawing.Point(650, 40);
+            this.dimensionVisualizationPictureBox_TwoUp.Name = "dimensionVisualizationPictureBox_TwoUp";
+            this.dimensionVisualizationPictureBox_TwoUp.Size = new System.Drawing.Size(550, 350);
+            this.dimensionVisualizationPictureBox_TwoUp.TabIndex = 2;
+            this.dimensionVisualizationPictureBox_TwoUp.TabStop = false;
+            this.dimensionVisualizationPictureBox_TwoUp.Visible = false;
+            this.dimensionVisualizationPictureBox_TwoUp.Paint += new System.Windows.Forms.PaintEventHandler(this.dimensionVisualizationPictureBox_TwoUp_Paint);
+            //
+            //
+
+            //
             // printerConfigPanel
             // 
             this.printerConfigPanel.Controls.Add(this.label_emulation);
@@ -1265,7 +1409,7 @@ namespace ScanLink
             // label_emulation
             // 
             this.label_emulation.AutoSize = true;
-            this.label_emulation.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_emulation.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_emulation.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_emulation.Location = new System.Drawing.Point(5, 5);
             this.label_emulation.Name = "label_emulation";
@@ -1277,9 +1421,9 @@ namespace ScanLink
             // comboBox_emulation
             // 
             this.comboBox_emulation.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_emulation.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.comboBox_emulation.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.comboBox_emulation.FormattingEnabled = true;
-            this.comboBox_emulation.Location = new System.Drawing.Point(120, 2);
+            this.comboBox_emulation.Location = new System.Drawing.Point(170, 2);
             this.comboBox_emulation.Name = "comboBox_emulation";
             this.comboBox_emulation.Size = new System.Drawing.Size(380, 23);
             this.comboBox_emulation.TabIndex = 1;
@@ -1289,7 +1433,7 @@ namespace ScanLink
             // label_test
             // 
             this.label_test.AutoSize = true;
-            this.label_test.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_test.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_test.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_test.Location = new System.Drawing.Point(5, 45);
             this.label_test.Name = "label_test";
@@ -1301,9 +1445,9 @@ namespace ScanLink
             // comboBox_test
             // 
             this.comboBox_test.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_test.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.comboBox_test.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.comboBox_test.FormattingEnabled = true;
-            this.comboBox_test.Location = new System.Drawing.Point(120, 42);
+            this.comboBox_test.Location = new System.Drawing.Point(170, 42);
             this.comboBox_test.Name = "comboBox_test";
             this.comboBox_test.Size = new System.Drawing.Size(380, 23);
             this.comboBox_test.TabIndex = 3;
@@ -1313,7 +1457,7 @@ namespace ScanLink
             // label_barcode
             // 
             this.label_barcode.AutoSize = true;
-            this.label_barcode.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_barcode.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_barcode.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_barcode.Location = new System.Drawing.Point(5, 85);
             this.label_barcode.Name = "label_barcode";
@@ -1325,9 +1469,9 @@ namespace ScanLink
             // comboBox_barcode
             // 
             this.comboBox_barcode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_barcode.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.comboBox_barcode.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.comboBox_barcode.FormattingEnabled = true;
-            this.comboBox_barcode.Location = new System.Drawing.Point(120, 82);
+            this.comboBox_barcode.Location = new System.Drawing.Point(170, 82);
             this.comboBox_barcode.Name = "comboBox_barcode";
             this.comboBox_barcode.Size = new System.Drawing.Size(380, 23);
             this.comboBox_barcode.TabIndex = 5;
@@ -1338,12 +1482,17 @@ namespace ScanLink
             // 
             this.dimensionsPanel.Controls.Add(this.label_width);
             this.dimensionsPanel.Controls.Add(this.numericUpDown_width);
+            this.dimensionsPanel.Controls.Add(this.label_px_width);
             this.dimensionsPanel.Controls.Add(this.label_height);
             this.dimensionsPanel.Controls.Add(this.numericUpDown_height);
+            this.dimensionsPanel.Controls.Add(this.label_px_height);
             this.dimensionsPanel.Controls.Add(this.label_xCoordinate);
             this.dimensionsPanel.Controls.Add(this.numericUpDown_xCoordinate);
+            this.dimensionsPanel.Controls.Add(this.label_px_xCoordinate);
             this.dimensionsPanel.Controls.Add(this.label_x2Coordinate);
             this.dimensionsPanel.Controls.Add(this.numericUpDown_x2Coordinate);
+            this.dimensionsPanel.Controls.Add(this.label_px_x2Coordinate);
+            this.dimensionsPanel.Controls.Add(this.label_mm_gap);
             this.dimensionsPanel.Controls.Add(this.label_gap);
             this.dimensionsPanel.Controls.Add(this.numericUpDown_gap);
             this.dimensionsPanel.Controls.Add(this.checkBox_twoUp);
@@ -1357,7 +1506,7 @@ namespace ScanLink
             // label_width
             // 
             this.label_width.AutoSize = true;
-            this.label_width.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_width.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_width.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_width.Location = new System.Drawing.Point(5, 15);
             this.label_width.Name = "label_width";
@@ -1368,8 +1517,8 @@ namespace ScanLink
             // 
             // numericUpDown_width
             // 
-            this.numericUpDown_width.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.numericUpDown_width.Location = new System.Drawing.Point(120, 12);
+            this.numericUpDown_width.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_width.Location = new System.Drawing.Point(170, 12);
             this.numericUpDown_width.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_width.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             this.numericUpDown_width.Name = "numericUpDown_width";
@@ -1382,9 +1531,9 @@ namespace ScanLink
             // label_height
             // 
             this.label_height.AutoSize = true;
-            this.label_height.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_height.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_height.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.label_height.Location = new System.Drawing.Point(300, 15);
+            this.label_height.Location = new System.Drawing.Point(350, 15);
             this.label_height.Name = "label_height";
             this.label_height.Size = new System.Drawing.Size(43, 15);
             this.label_height.TabIndex = 2;
@@ -1393,8 +1542,8 @@ namespace ScanLink
             // 
             // numericUpDown_height
             // 
-            this.numericUpDown_height.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.numericUpDown_height.Location = new System.Drawing.Point(400, 12);
+            this.numericUpDown_height.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_height.Location = new System.Drawing.Point(500, 12);
             this.numericUpDown_height.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_height.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             this.numericUpDown_height.Name = "numericUpDown_height";
@@ -1407,7 +1556,7 @@ namespace ScanLink
             // label_xCoordinate
             // 
             this.label_xCoordinate.AutoSize = true;
-            this.label_xCoordinate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_xCoordinate.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_xCoordinate.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_xCoordinate.Location = new System.Drawing.Point(5, 50);
             this.label_xCoordinate.Name = "label_xCoordinate";
@@ -1418,8 +1567,8 @@ namespace ScanLink
             // 
             // numericUpDown_xCoordinate
             // 
-            this.numericUpDown_xCoordinate.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.numericUpDown_xCoordinate.Location = new System.Drawing.Point(120, 47);
+            this.numericUpDown_xCoordinate.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_xCoordinate.Location = new System.Drawing.Point(170, 47);
             this.numericUpDown_xCoordinate.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_xCoordinate.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             this.numericUpDown_xCoordinate.Name = "numericUpDown_xCoordinate";
@@ -1431,9 +1580,9 @@ namespace ScanLink
             // label_x2Coordinate
             // 
             this.label_x2Coordinate.AutoSize = true;
-            this.label_x2Coordinate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_x2Coordinate.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_x2Coordinate.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.label_x2Coordinate.Location = new System.Drawing.Point(300, 50);
+            this.label_x2Coordinate.Location = new System.Drawing.Point(350, 50);
             this.label_x2Coordinate.Name = "label_x2Coordinate";
             this.label_x2Coordinate.Size = new System.Drawing.Size(80, 15);
             this.label_x2Coordinate.TabIndex = 8;
@@ -1442,8 +1591,8 @@ namespace ScanLink
             // 
             // numericUpDown_x2Coordinate
             // 
-            this.numericUpDown_x2Coordinate.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.numericUpDown_x2Coordinate.Location = new System.Drawing.Point(400, 47);
+            this.numericUpDown_x2Coordinate.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_x2Coordinate.Location = new System.Drawing.Point(500, 47);
             this.numericUpDown_x2Coordinate.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_x2Coordinate.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             this.numericUpDown_x2Coordinate.Name = "numericUpDown_x2Coordinate";
@@ -1451,12 +1600,60 @@ namespace ScanLink
             this.numericUpDown_x2Coordinate.TabIndex = 9;
             this.numericUpDown_x2Coordinate.Enabled = false;
             this.numericUpDown_x2Coordinate.ValueChanged += new System.EventHandler(this.numericUpDown_x2Coordinate_ValueChanged);
-            
-            // 
+
+            //
+            // label_px_width
+            //
+            this.label_px_width.AutoSize = true;
+            this.label_px_width.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular);
+            this.label_px_width.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_px_width.Location = new System.Drawing.Point(275, 15);
+            this.label_px_width.Name = "label_px_width";
+            this.label_px_width.Size = new System.Drawing.Size(18, 13);
+            this.label_px_width.TabIndex = 10;
+            this.label_px_width.Text = "px";
+
+            //
+            // label_px_height
+            //
+            this.label_px_height.AutoSize = true;
+            this.label_px_height.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular);
+            this.label_px_height.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_px_height.Location = new System.Drawing.Point(605, 15);
+            this.label_px_height.Name = "label_px_height";
+            this.label_px_height.Size = new System.Drawing.Size(18, 13);
+            this.label_px_height.TabIndex = 11;
+            this.label_px_height.Text = "px";
+
+            //
+            // label_px_xCoordinate
+            //
+            this.label_px_xCoordinate.AutoSize = true;
+            this.label_px_xCoordinate.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular);
+            this.label_px_xCoordinate.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_px_xCoordinate.Location = new System.Drawing.Point(275, 50);
+            this.label_px_xCoordinate.Name = "label_px_xCoordinate";
+            this.label_px_xCoordinate.Size = new System.Drawing.Size(18, 13);
+            this.label_px_xCoordinate.TabIndex = 12;
+            this.label_px_xCoordinate.Text = "px";
+
+            //
+            // label_px_x2Coordinate
+            //
+            this.label_px_x2Coordinate.AutoSize = true;
+            this.label_px_x2Coordinate.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular);
+            this.label_px_x2Coordinate.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_px_x2Coordinate.Location = new System.Drawing.Point(605, 50);
+            this.label_px_x2Coordinate.Name = "label_px_x2Coordinate";
+            this.label_px_x2Coordinate.Size = new System.Drawing.Size(18, 13);
+            this.label_px_x2Coordinate.TabIndex = 13;
+            this.label_px_x2Coordinate.Text = "px";
+
+            //
             // label_gap
             // 
             this.label_gap.AutoSize = true;
-            this.label_gap.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_gap.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_gap.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_gap.Location = new System.Drawing.Point(5, 85);
             this.label_gap.Name = "label_gap";
@@ -1467,22 +1664,36 @@ namespace ScanLink
             // 
             // numericUpDown_gap
             // 
-            this.numericUpDown_gap.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.numericUpDown_gap.Location = new System.Drawing.Point(120, 82);
+            this.numericUpDown_gap.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_gap.Location = new System.Drawing.Point(170, 82);
             this.numericUpDown_gap.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
             this.numericUpDown_gap.Name = "numericUpDown_gap";
             this.numericUpDown_gap.Size = new System.Drawing.Size(100, 23);
             this.numericUpDown_gap.TabIndex = 7;
-            this.numericUpDown_gap.Value = new decimal(new int[] { 2, 0, 0, 0 });
+            this.numericUpDown_gap.Value = new decimal(new int[] { 3, 0, 0, 0 });
             this.numericUpDown_gap.ValueChanged += new System.EventHandler(this.numericUpDown_gap_ValueChanged);
             
+            //
+            // label_mm_gap
+            //
+            this.label_mm_gap.AutoSize = true;
+            this.label_mm_gap.Font = new System.Drawing.Font("Microsoft Sans Serif", 8F, System.Drawing.FontStyle.Regular);
+            this.label_mm_gap.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_mm_gap.Location = new System.Drawing.Point(275, 85);
+            this.label_mm_gap.Name = "label_mm_gap";
+            this.label_mm_gap.Size = new System.Drawing.Size(18, 13);
+            this.label_mm_gap.TabIndex = 10;
+            this.label_mm_gap.Text = "mm";
+
+            
+
             // 
             // checkBox_twoUp
             // 
             this.checkBox_twoUp.AutoSize = true;
-            this.checkBox_twoUp.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.checkBox_twoUp.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.checkBox_twoUp.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.checkBox_twoUp.Location = new System.Drawing.Point(300, 84);
+            this.checkBox_twoUp.Location = new System.Drawing.Point(350, 84);
             this.checkBox_twoUp.Name = "checkBox_twoUp";
             this.checkBox_twoUp.Size = new System.Drawing.Size(185, 19);
             this.checkBox_twoUp.TabIndex = 10;
@@ -1490,72 +1701,6 @@ namespace ScanLink
             this.checkBox_twoUp.UseVisualStyleBackColor = true;
             this.checkBox_twoUp.CheckedChanged += new System.EventHandler(this.checkBox_twoUp_CheckedChanged);
             
-            // 
-            // alignmentPanel
-            // 
-            this.alignmentPanel.Controls.Add(this.label_alignment);
-            this.alignmentPanel.Controls.Add(this.comboBox_alignment);
-            this.alignmentPanel.Controls.Add(this.label_rotation);
-            this.alignmentPanel.Controls.Add(this.comboBox_rotation);
-            this.alignmentPanel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.alignmentPanel.Location = new System.Drawing.Point(20, 268);
-            this.alignmentPanel.Name = "alignmentPanel";
-            this.alignmentPanel.Size = new System.Drawing.Size(520, 50);
-            this.alignmentPanel.TabIndex = 2;
-            
-            // 
-            // label_alignment
-            // 
-            this.label_alignment.AutoSize = true;
-            this.label_alignment.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
-            this.label_alignment.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.label_alignment.Location = new System.Drawing.Point(5, 15);
-            this.label_alignment.Name = "label_alignment";
-            this.label_alignment.Size = new System.Drawing.Size(62, 15);
-            this.label_alignment.TabIndex = 0;
-            this.label_alignment.Text = "Alignment";
-            
-            // 
-            // comboBox_alignment
-            // 
-            this.comboBox_alignment.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_alignment.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.comboBox_alignment.FormattingEnabled = true;
-            this.comboBox_alignment.Items.AddRange(new object[] { "Left", "Center", "Right" });
-            this.comboBox_alignment.Location = new System.Drawing.Point(120, 12);
-            this.comboBox_alignment.Name = "comboBox_alignment";
-            this.comboBox_alignment.Size = new System.Drawing.Size(100, 23);
-            this.comboBox_alignment.TabIndex = 1;
-            this.comboBox_alignment.SelectedIndex = 0;
-            this.comboBox_alignment.SelectedIndexChanged += new System.EventHandler(this.comboBox_alignment_SelectedIndexChanged);
-            
-            // 
-            // label_rotation
-            // 
-            this.label_rotation.AutoSize = true;
-            this.label_rotation.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
-            this.label_rotation.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(73)))), ((int)(((byte)(94)))));
-            this.label_rotation.Location = new System.Drawing.Point(300, 15);
-            this.label_rotation.Name = "label_rotation";
-            this.label_rotation.Size = new System.Drawing.Size(52, 15);
-            this.label_rotation.TabIndex = 2;
-            this.label_rotation.Text = "Rotation";
-            // this.label_rotation.Visible = false;
-            
-            // 
-            // comboBox_rotation
-            // 
-            this.comboBox_rotation.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_rotation.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.comboBox_rotation.FormattingEnabled = true;
-            this.comboBox_rotation.Items.AddRange(new object[] { "0°", "90°", "180°", "270°" });
-            this.comboBox_rotation.Location = new System.Drawing.Point(400, 12);
-            this.comboBox_rotation.Name = "comboBox_rotation";
-            this.comboBox_rotation.Size = new System.Drawing.Size(100, 23);
-            this.comboBox_rotation.TabIndex = 3;
-            this.comboBox_rotation.SelectedIndex = 0;
-            this.comboBox_rotation.SelectedIndexChanged += new System.EventHandler(this.comboBox_rotation_SelectedIndexChanged);
-            // this.comboBox_rotation.Visible = false;
             
             // 
             // qualityPanel
@@ -1565,17 +1710,19 @@ namespace ScanLink
             this.qualityPanel.Controls.Add(this.label_darknessValue);
             this.qualityPanel.Controls.Add(this.label_speed);
             this.qualityPanel.Controls.Add(this.comboBox_speed);
+            this.qualityPanel.Controls.Add(this.label_dpi);
+            this.qualityPanel.Controls.Add(this.numericUpDown_dpi);
             this.qualityPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.qualityPanel.Location = new System.Drawing.Point(20, 318);
             this.qualityPanel.Name = "qualityPanel";
-            this.qualityPanel.Size = new System.Drawing.Size(520, 90);
+            this.qualityPanel.Size = new System.Drawing.Size(520, 80);
             this.qualityPanel.TabIndex = 3;
             
             // 
             // label_darkness
             // 
             this.label_darkness.AutoSize = true;
-            this.label_darkness.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_darkness.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_darkness.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_darkness.Location = new System.Drawing.Point(5, 15);
             this.label_darkness.Name = "label_darkness";
@@ -1586,7 +1733,7 @@ namespace ScanLink
             // 
             // trackBar_darkness
             // 
-            this.trackBar_darkness.Location = new System.Drawing.Point(120, 10);
+            this.trackBar_darkness.Location = new System.Drawing.Point(170, 10);
             this.trackBar_darkness.Maximum = 30;
             this.trackBar_darkness.Minimum = 1;
             
@@ -1600,9 +1747,9 @@ namespace ScanLink
             // label_darknessValue
             // 
             this.label_darknessValue.AutoSize = true;
-            this.label_darknessValue.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_darknessValue.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_darknessValue.ForeColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.label_darknessValue.Location = new System.Drawing.Point(430, 15);
+            this.label_darknessValue.Location = new System.Drawing.Point(480, 15);
             this.label_darknessValue.Name = "label_darknessValue";
             this.label_darknessValue.Size = new System.Drawing.Size(19, 15);
             this.label_darknessValue.TabIndex = 2;
@@ -1612,7 +1759,7 @@ namespace ScanLink
             // label_speed
             // 
             this.label_speed.AutoSize = true;
-            this.label_speed.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.label_speed.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.label_speed.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_speed.Location = new System.Drawing.Point(5, 59);
             this.label_speed.Name = "label_speed";
@@ -1624,38 +1771,81 @@ namespace ScanLink
             // comboBox_speed
             // 
             this.comboBox_speed.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_speed.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.comboBox_speed.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.comboBox_speed.FormattingEnabled = true;
             this.comboBox_speed.Items.AddRange(new object[] { "1 - Slowest", "2", "3", "4", "5 - Medium", "6", "7", "8", "9 - Fastest" });
-            this.comboBox_speed.Location = new System.Drawing.Point(120, 56);
+            this.comboBox_speed.Location = new System.Drawing.Point(170, 56);
             this.comboBox_speed.Name = "comboBox_speed";
-            this.comboBox_speed.Size = new System.Drawing.Size(200, 23);
+            this.comboBox_speed.Size = new System.Drawing.Size(100, 23);
             this.comboBox_speed.TabIndex = 4;
             this.comboBox_speed.SelectedIndex = 4;
             this.comboBox_speed.SelectedIndexChanged += new System.EventHandler(this.comboBox_speed_SelectedIndexChanged);
-            
-            // 
+
+            //
+            // label_dpi
+            //
+            this.label_dpi.AutoSize = true;
+            this.label_dpi.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.label_dpi.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_dpi.Location = new System.Drawing.Point(350, 59);
+            this.label_dpi.Name = "label_dpi";
+            this.label_dpi.Size = new System.Drawing.Size(130, 15);
+            this.label_dpi.TabIndex = 5;
+            this.label_dpi.Text = "Dots per inches (DPI)";
+
+            //
+            // numericUpDown_dpi
+            //
+            this.numericUpDown_dpi.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_dpi.Location = new System.Drawing.Point(500, 56);
+            this.numericUpDown_dpi.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
+            this.numericUpDown_dpi.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
+            this.numericUpDown_dpi.Name = "numericUpDown_dpi";
+            this.numericUpDown_dpi.Size = new System.Drawing.Size(100, 23);
+            this.numericUpDown_dpi.TabIndex = 6;
+            this.numericUpDown_dpi.Value = new decimal(new int[] { 203, 0, 0, 0 });
+            this.numericUpDown_dpi.ValueChanged += new System.EventHandler(this.numericUpDown_dpi_ValueChanged);
+
+            //
             // previewPanel
-            // 
-            this.previewPanel.Controls.Add(this.button_preview);
-            this.previewPanel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.previewPanel.Location = new System.Drawing.Point(20, 408);
+            //
+            this.previewPanel.BackColor = System.Drawing.Color.FromArgb(245, 245, 245);
+            this.previewPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.previewPanel.Location = new System.Drawing.Point(0, 200);
             this.previewPanel.Name = "previewPanel";
-            this.previewPanel.Size = new System.Drawing.Size(520, 40);
+            this.previewPanel.Size = new System.Drawing.Size(420, 50);
             this.previewPanel.TabIndex = 4;
             
-            // 
+            //
+            // button_generateBarcode
+            //
+            this.button_generateBarcode.BackColor = System.Drawing.Color.FromArgb(46, 125, 50);
+            this.button_generateBarcode.FlatAppearance.BorderSize = 0;
+            this.button_generateBarcode.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button_generateBarcode.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
+            this.button_generateBarcode.ForeColor = System.Drawing.Color.White;
+            this.button_generateBarcode.Location = new System.Drawing.Point(360, 167);
+            this.button_generateBarcode.Name = "button_generateBarcode";
+            this.button_generateBarcode.Size = new System.Drawing.Size(150, 35);
+            this.button_generateBarcode.TabIndex = 0;
+            this.button_generateBarcode.Text = "🎯 Generate Barcode";
+            this.button_generateBarcode.UseVisualStyleBackColor = false;
+            this.button_generateBarcode.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 94, 32);
+            this.button_generateBarcode.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
+            this.button_generateBarcode.Click += new System.EventHandler(this.button_generateBarcode_Click);
+
+            //
             // button_preview
-            // 
+            //
             this.button_preview.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
             this.button_preview.FlatAppearance.BorderSize = 0;
             this.button_preview.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_preview.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.button_preview.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
             this.button_preview.ForeColor = System.Drawing.Color.White;
-            this.button_preview.Location = new System.Drawing.Point(5, 0);
+            this.button_preview.Location = new System.Drawing.Point(520, 167);
             this.button_preview.Name = "button_preview";
             this.button_preview.Size = new System.Drawing.Size(150, 35);
-            this.button_preview.TabIndex = 0;
+            this.button_preview.TabIndex = 1;
             this.button_preview.Text = "👁️ Preview Label";
             this.button_preview.UseVisualStyleBackColor = false;
             this.button_preview.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 42, 65);
@@ -1680,13 +1870,13 @@ namespace ScanLink
             this.button_send.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
             this.button_send.FlatAppearance.BorderSize = 0;
             this.button_send.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_send.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.button_send.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
             this.button_send.ForeColor = System.Drawing.Color.White;
-            this.button_send.Location = new System.Drawing.Point(0, 18);
+            this.button_send.Location = new System.Drawing.Point(50, 18);
             this.button_send.Name = "button_send";
             this.button_send.Size = new System.Drawing.Size(560, 50);
             this.button_send.TabIndex = 0;
-            this.button_send.Text = "🖨️ Start Printing";
+            this.button_send.Text = "🖨️ Generate Barcode";
             this.button_send.UseVisualStyleBackColor = false;
             this.button_send.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 42, 65);
             this.button_send.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
@@ -1695,7 +1885,7 @@ namespace ScanLink
             // 
             // progressBar
             // 
-            this.progressBar.Location = new System.Drawing.Point(0, 70);
+            this.progressBar.Location = new System.Drawing.Point(50, 70);
             this.progressBar.Name = "progressBar";
             this.progressBar.Size = new System.Drawing.Size(560, 8);
             this.progressBar.Style = System.Windows.Forms.ProgressBarStyle.Continuous;
@@ -1707,11 +1897,11 @@ namespace ScanLink
             // statusPanel
             // 
             this.statusPanel.Controls.Add(this.statusLabel);
-            this.statusPanel.Dock = System.Windows.Forms.DockStyle.Top;
+            this.statusPanel.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.statusPanel.Location = new System.Drawing.Point(20, 980);
             this.statusPanel.Name = "statusPanel";
-            this.statusPanel.Padding = new System.Windows.Forms.Padding(0, 15, 0, 15);
-            this.statusPanel.Size = new System.Drawing.Size(560, 80);
+            this.statusPanel.Padding = new System.Windows.Forms.Padding(0);
+            this.statusPanel.Size = new System.Drawing.Size(560, 40);
             this.statusPanel.TabIndex = 4;
             
             // 
@@ -1719,11 +1909,11 @@ namespace ScanLink
             // 
             this.statusLabel.BackColor = System.Drawing.Color.FromArgb(204, 201, 220);
             this.statusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.statusLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular); 
             this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.statusLabel.Location = new System.Drawing.Point(0, 20);
+            this.statusLabel.Location = new System.Drawing.Point(0, 0);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Padding = new System.Windows.Forms.Padding(20, 10, 20, 10);
+            this.statusLabel.Padding = new System.Windows.Forms.Padding(0);
             this.statusLabel.Size = new System.Drawing.Size(560, 40);
             this.statusLabel.TabIndex = 0;
             this.statusLabel.Text = "Ready. Choose connection and configure settings above.";
@@ -1737,29 +1927,31 @@ namespace ScanLink
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(600, 1120);
             this.Controls.Add(this.loginPanel);
-            this.Controls.Add(this.startPanel);
-            this.Controls.Add(this.printerContentPanel);
+            // startPanel removed
+            // this.Controls.Add(this.printerContentPanel);
             this.Controls.Add(this.scannerContentPanel);
-            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.MinimumSize = new System.Drawing.Size(600, 650);
             this.Name = "Form1";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Scan Link - Professional Barcode Printing";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Form1_Load);
-            this.startPanel.ResumeLayout(false);
-            this.startPanel.PerformLayout();
+            // startPanel removed
             ((System.ComponentModel.ISupportInitialize)(this.logoPictureBox)).EndInit();
-            this.printerContentPanel.ResumeLayout(false);
+            // this.printerContentPanel.ResumeLayout(false);
             this.scannerContentPanel.ResumeLayout(false);
             this.scannerContentPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.scannerDataGridView)).EndInit();
-            this.mainPanel.ResumeLayout(false);
             this.headerPanel.ResumeLayout(false);
             this.headerPanel.PerformLayout();
-            this.connectionPanel.ResumeLayout(false);
-            this.connectionGroupBox.ResumeLayout(false);
-            this.connectionGroupBox.PerformLayout();
+            this.statusPanel.ResumeLayout(false);
+            this.statusPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.scannerDataGridView)).EndInit();
+            this.headerTableLayoutPanel.ResumeLayout(false);
+            this.titlepanel.ResumeLayout(false);
+            this.buttonpanel.ResumeLayout(false);
+            this.buttonTableLayoutPanel.ResumeLayout(false);
+            this.headerPanel.PerformLayout();
             this.configPanel.ResumeLayout(false);
             this.configGroupBox.ResumeLayout(false);
             this.configGroupBox.PerformLayout();
@@ -1777,8 +1969,7 @@ namespace ScanLink
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_xCoordinate)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_x2Coordinate)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_gap)).EndInit();
-            this.alignmentPanel.ResumeLayout(false);
-            this.alignmentPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_dpi)).EndInit();
             this.qualityPanel.ResumeLayout(false);
             this.qualityPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.trackBar_darkness)).EndInit();
@@ -1786,32 +1977,14 @@ namespace ScanLink
             this.actionPanel.ResumeLayout(false);
             this.actionPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_count)).EndInit();
-            this.statusPanel.ResumeLayout(false);
-            this.statusPanel.PerformLayout();
             this.loginPanel.ResumeLayout(false);
             this.loginPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.loginMainLogoPictureBox)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.startpanelLogoPictureBox)).EndInit();
             this.loginGroupBox.ResumeLayout(false);
             this.loginGroupBox.PerformLayout();
             this.ResumeLayout(false);
         }
 
-        // Printer UI Initialization
-        private void InitializePrinterUI()
-        {
-            InitFunctionData();
-            foreach (string str in strPort) comboBox_port.Items.Add(str);
-            comboBox_port.Text = "USB";
-            foreach (string str in strEmulation) comboBox_emulation.Items.Add(str);
-            comboBox_emulation.Text = "PPLB";
-            
-            InitializeAdvancedSettings();
-
-            ApplyRoundedCorners(button_send, 10);
-            ApplyRoundedCorners(button_preview, 10);
-            ApplyRoundedCorners(button_setting, 10);
-        }
 
         // Custom label class for colored text
         public class ColoredLabel : Label
@@ -1876,8 +2049,6 @@ namespace ScanLink
         private System.Windows.Forms.Panel loginPanel;
         private System.Windows.Forms.Label loginWelcomeLabel;
         private System.Windows.Forms.PictureBox loginMainLogoPictureBox;
-        
-        private System.Windows.Forms.PictureBox startpanelLogoPictureBox;
         private System.Windows.Forms.GroupBox loginGroupBox;
         private System.Windows.Forms.Button loginButton;
         private System.Windows.Forms.Button passwordToggleButton;
@@ -1886,17 +2057,24 @@ namespace ScanLink
         private System.Windows.Forms.TextBox usernameTextBox;
         private System.Windows.Forms.Label usernameLabel;
         private System.Windows.Forms.Label loginStatusLabel;
-        private System.Windows.Forms.Panel mainPanel;
+        private System.Windows.Forms.ProgressBar loadingProgressBar;
+        private System.Windows.Forms.Label loadingStatusLabel;
+        private System.Windows.Forms.ProgressBar printerLoadingSpinner;
+        private System.Windows.Forms.Label printerLoadingLabel;
         private System.Windows.Forms.Panel headerPanel;
+        private System.Windows.Forms.TableLayoutPanel headerTableLayoutPanel;
+        private System.Windows.Forms.Panel titlepanel;
+        private System.Windows.Forms.Panel buttonpanel;
+        private System.Windows.Forms.TableLayoutPanel buttonTableLayoutPanel;
+        private System.Windows.Forms.Button setupButton;
+        private System.Windows.Forms.Button scannerSetupButton;
+        private System.Windows.Forms.Button printerConnectionButton;
+        private System.Windows.Forms.Button barCodesButton;
+        private System.Windows.Forms.Button boxLabelsButton;
+        private System.Windows.Forms.Button reportsButton;
+        private System.Windows.Forms.Button logoutButton;
         private System.Windows.Forms.Label titleLabel;
         private System.Windows.Forms.Label subtitleLabel;
-        private System.Windows.Forms.Panel connectionPanel;
-        private System.Windows.Forms.GroupBox connectionGroupBox;
-        private System.Windows.Forms.Label connectionStatusLabel;
-        private System.Windows.Forms.Label label_port;
-        private System.Windows.Forms.ComboBox comboBox_port;
-        private System.Windows.Forms.Button button_setting;
-        private System.Windows.Forms.TextBox textBox_port;
         private System.Windows.Forms.Panel configPanel;
         private System.Windows.Forms.GroupBox configGroupBox;
         private System.Windows.Forms.Panel barcodeTextPanel;
@@ -1907,6 +2085,7 @@ namespace ScanLink
         private System.Windows.Forms.ComboBox comboBox_ProductID;
         private System.Windows.Forms.Label label_CropID;
         private System.Windows.Forms.ComboBox comboBox_CropID;
+        private System.Windows.Forms.Label label_ProductDetail;
         private System.Windows.Forms.Label label_count;
         private System.Windows.Forms.NumericUpDown numericUpDown_count;
         private System.Windows.Forms.Panel actionPanel;
@@ -1915,7 +2094,7 @@ namespace ScanLink
         private System.Windows.Forms.Panel statusPanel;
         private System.Windows.Forms.Label statusLabel;
         private System.Windows.Forms.ToolTip toolTip;
-        private System.Windows.Forms.CheckBox checkBox_showAdvanced;
+        // checkBox_showAdvanced removed - advanced settings always enabled
         private System.Windows.Forms.Panel advancedPanel;
         private System.Windows.Forms.GroupBox advancedGroupBox;
         private System.Windows.Forms.Panel printerConfigPanel;
@@ -1934,31 +2113,31 @@ namespace ScanLink
         private System.Windows.Forms.Label label_xCoordinate;
         private System.Windows.Forms.NumericUpDown numericUpDown_xCoordinate;
         private System.Windows.Forms.Label label_x2Coordinate;
+        private System.Windows.Forms.Label label_px_width;
+        private System.Windows.Forms.Label label_px_height;
+        private System.Windows.Forms.Label label_px_xCoordinate;
+        private System.Windows.Forms.Label label_px_x2Coordinate;
+        private System.Windows.Forms.Label label_mm_gap;
         private System.Windows.Forms.NumericUpDown numericUpDown_x2Coordinate;
         private System.Windows.Forms.CheckBox checkBox_twoUp;
         private System.Windows.Forms.Label label_gap;
         private System.Windows.Forms.NumericUpDown numericUpDown_gap;
-        private System.Windows.Forms.Panel alignmentPanel;
-        private System.Windows.Forms.Label label_alignment;
-        private System.Windows.Forms.ComboBox comboBox_alignment;
-        private System.Windows.Forms.Label label_rotation;
-        private System.Windows.Forms.ComboBox comboBox_rotation;
         private System.Windows.Forms.Panel qualityPanel;
         private System.Windows.Forms.Label label_darkness;
         private System.Windows.Forms.TrackBar trackBar_darkness;
         private System.Windows.Forms.Label label_darknessValue;
         private System.Windows.Forms.Label label_speed;
         private System.Windows.Forms.ComboBox comboBox_speed;
+        private System.Windows.Forms.Label label_dpi;
+        private System.Windows.Forms.NumericUpDown numericUpDown_dpi;
         private System.Windows.Forms.Panel previewPanel;
         private System.Windows.Forms.Button button_preview;
-        private System.Windows.Forms.Panel startPanel;
-        private System.Windows.Forms.Label welcomeLabel;
-        private System.Windows.Forms.Button logoutButtonStart;
         private System.Windows.Forms.PictureBox logoPictureBox;
-        private System.Windows.Forms.Button printerButton;
-        private System.Windows.Forms.Button scannerButton;
-        private System.Windows.Forms.Panel printerContentPanel;
-        private System.Windows.Forms.Panel scannerContentPanel;
+        private System.Windows.Forms.PictureBox dimensionVisualizationPictureBox;
+        private System.Windows.Forms.PictureBox dimensionVisualizationPictureBox_TwoUp;
+        // private System.Windows.Forms.Panel printerContentPanel;
+        private System.Windows.Forms.TableLayoutPanel scannerContentPanel;
+        private System.Windows.Forms.Panel scannerOutputPanel;
         private System.Windows.Forms.DataGridView scannerDataGridView;
         private System.Windows.Forms.TextBox scannerOutputTextBox;
         private System.Windows.Forms.CheckBox showScannerOutputCheckBox;
@@ -1977,19 +2156,18 @@ namespace ScanLink
         private System.Windows.Forms.Label blockNumberLabel;
         private System.Windows.Forms.Label lineNumberLabel;
         private System.Windows.Forms.Label productIdLabel;
-        private System.Windows.Forms.Label activeScannersLabel;
         private System.Windows.Forms.Label todayScansLabel;
         private System.Windows.Forms.Label lastHourScansLabel;
+        private System.Windows.Forms.Label totalFilteredScansLabel;
+        private System.Windows.Forms.TableLayoutPanel statsPanel;
+        private System.Windows.Forms.TableLayoutPanel paginationPanel;
+        private System.Windows.Forms.TableLayoutPanel filtersPanel;
         // private System.Windows.Forms.Button runScannerScriptButton;
-        private System.Windows.Forms.Button Scanner;
-        private System.Windows.Forms.Button Printer;
-        private System.Windows.Forms.Button logoutButtonPrinter;
-        private System.Windows.Forms.Button logoutButtonScanner;
         // private System.Windows.Forms.TextBox barcodeInputTextBox;
         private System.Windows.Forms.Label cropIdLabel;
         private System.Windows.Forms.ComboBox cropIdComboBox;
         // private System.Windows.Forms.Button sendBarcodeButton;
-        private System.Windows.Forms.Button manageScannersButton;
+        // private System.Windows.Forms.Button manageScannersButton;
         private System.Windows.Forms.Button button_manualUpload;
 
         // UI Styling Methods
@@ -2041,11 +2219,7 @@ namespace ScanLink
 
             // Primary buttons
             StylePrimaryButton(loginButton, primary, primaryHover, textOnPrimary);
-            StylePrimaryButton(printerButton, primary, primaryHover, textOnPrimary);
-            StylePrimaryButton(scannerButton, primary, primaryHover, textOnPrimary);
-            StylePrimaryButton(Scanner, primary, primaryHover, textOnPrimary);
             StylePrimaryButton(button_FetchEmployees, primary, primaryHover, textOnPrimary);
-            StylePrimaryButton(button_setting, primary, primaryHover, textOnPrimary);
             if (button_FetchEmployees != null)
             {
                 // Reduce Fetch button size subtly
@@ -2056,20 +2230,8 @@ namespace ScanLink
                 button_FetchEmployees.Padding = Padding.Empty;
                 ApplyRoundedCorners(button_FetchEmployees, 1);
             }
-            if (button_setting != null)
-            {
-                // Reduce Setting button size subtly
-                button_setting.MinimumSize = new Size(80, 28);
-                button_setting.Height = 28;
-                button_setting.Width = 120;
-                button_setting.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-                button_setting.Padding = Padding.Empty;
-                ApplyRoundedCorners(button_setting, 2);
-            }
             StylePrimaryButton(button_send, primary, primaryHover, textOnPrimary);
-            StylePrimaryButton(button_preview, primary, primaryHover, textOnPrimary);
-            StylePrimaryButton(Printer, primary, primaryHover, textOnPrimary);
-            StylePrimaryButton(manageScannersButton, primary, primaryHover, textOnPrimary);
+            // StylePrimaryButton(button_preview, primary, primaryHover, textOnPrimary);
             // Manual upload button - success styling
             if (button_manualUpload != null)
             {
@@ -2081,9 +2243,6 @@ namespace ScanLink
             }
 
             // Danger/Logout buttons
-            StyleDangerButton(logoutButtonStart, danger, dangerHover);
-            StyleDangerButton(logoutButtonPrinter, danger, dangerHover);
-            StyleDangerButton(logoutButtonScanner, danger, dangerHover);
 
             // Contrast tweaks per-context
             // Login (on white) - brighter blue for stronger contrast
@@ -2097,71 +2256,17 @@ namespace ScanLink
                 if (loginButton.Height < 40) loginButton.Height = 40;
             }
 
-            // Start panel buttons - distinct hues for clarity on white
-            if (printerButton != null)
-            {
-                printerButton.BackColor = Color.FromArgb(46, 164, 79);
-                printerButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(41, 148, 71);
-                printerButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(36, 131, 63);
-                printerButton.ForeColor = Color.White;
-                if (printerButton.Height < 44) printerButton.Height = 44;
-            }
-            if (scannerButton != null)
-            {
-                scannerButton.BackColor = Color.FromArgb(108, 92, 231);
-                scannerButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(96, 82, 205);
-                scannerButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(83, 71, 178);
-                scannerButton.ForeColor = Color.White;
-                if (scannerButton.Height < 44) scannerButton.Height = 44;
-            }
 
-            // Back buttons - ensure visibility
-            if (Scanner != null)
-            {
-                Scanner.ForeColor = Color.White;
-                if (Scanner.Width < 110) Scanner.Width = 110;
-                if (Scanner.Height < 36) Scanner.Height = 36;
-            }
-            if (Printer != null)
-            {
-                Printer.ForeColor = Color.White;
-                if (Printer.Width < 110) Printer.Width = 110;
-                Printer.Height = 32;
-                Printer.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            }
 
-            // Manage scanners - make prominent
-            if (manageScannersButton != null)
-            {
-                manageScannersButton.Padding = Padding.Empty;
-                manageScannersButton.BackColor = Color.FromArgb(32, 101, 209);
-                manageScannersButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(28, 92, 190);
-                manageScannersButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(24, 82, 170);
-                manageScannersButton.ForeColor = Color.White;
-                if (manageScannersButton.Width < 130) manageScannersButton.Width = 130;
-                manageScannersButton.Height = 32;
-                manageScannersButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            }
+
+            // // Preview button - same styling as manage scanners
+            // if (button_preview != null)
+            // {
+            //     button_preview.Padding = Padding.Empty;
+            //     if (button_preview.Width < 130) button_preview.Width = 130;
+            //     button_preview.Height = 30;
+            // }
             
-            // Ensure logout buttons are fully visible sizes
-            if (logoutButtonStart != null)
-            {
-                if (logoutButtonStart.Width < 100) logoutButtonStart.Width = 100;
-                logoutButtonStart.Height = 36;
-                // move away from edges for visibility
-                logoutButtonStart.Location = new Point(Math.Max(20, logoutButtonStart.Left), Math.Max(20, logoutButtonStart.Top));
-            }
-            if (logoutButtonPrinter != null)
-            {
-                if (logoutButtonPrinter.Width < 100) logoutButtonPrinter.Width = 100;
-                if (logoutButtonPrinter.Height < 36) logoutButtonPrinter.Height = 36;
-            }
-            if (logoutButtonScanner != null)
-            {
-                if (logoutButtonScanner.Width < 100) logoutButtonScanner.Width = 100;
-                logoutButtonScanner.Height = 32;
-                logoutButtonScanner.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            }
         }
 
         private void StylePrimaryButton(Button button, Color bg, Color hoverBg, Color fg)
@@ -2173,11 +2278,11 @@ namespace ScanLink
             button.FlatAppearance.MouseDownBackColor = hoverBg;
             button.BackColor = bg;
             button.ForeColor = fg;
-            float desired = Math.Max(button.Font?.Size ?? 9f, 10.5f);
-            button.Font = new Font("Segoe UI", desired, FontStyle.Bold);
-            button.Padding = new Padding(12, 6, 12, 6);
+            float desired = Math.Max(button.Font?.Size ?? 10f, 10.5f);
+            button.Font = new Font("Microsoft Sans Serif", desired, FontStyle.Bold);
+            button.Padding = new Padding(6, 3, 6, 3);
             // Keep generous defaults, but allow small overrides for specific buttons
-            if (button != button_FetchEmployees && button != button_setting)
+            if (button != button_FetchEmployees)
             {
                 button.MinimumSize = new Size(Math.Max(button.MinimumSize.Width, 100), 40);
                 button.Height = Math.Max(button.Height, 40);
@@ -2195,8 +2300,8 @@ namespace ScanLink
             button.FlatAppearance.MouseDownBackColor = hoverBg;
             button.BackColor = bg;
             button.ForeColor = Color.White;
-            button.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            button.Padding = new Padding(12, 6, 12, 6);
+            button.Font = new Font("Microsoft Sans Serif", 10F, FontStyle.Bold);
+            button.Padding = new Padding(6, 3, 6, 3);
             button.MinimumSize = new Size(button.MinimumSize.Width, 36);
             button.Height = Math.Max(button.Height, 36);
             button.UseVisualStyleBackColor = false;
@@ -2239,420 +2344,94 @@ namespace ScanLink
                         int desiredTop = (loginGroupBox?.Bottom ?? topMargin) + spacing;
                         loginStatusLabel.Top = Math.Min(ch - loginStatusLabel.Height - spacing, desiredTop);
                     }
+
+                    if (loadingProgressBar != null)
+                    {
+                        loadingProgressBar.Left = (loginGroupBox != null) ? loginGroupBox.Left : Math.Max(marginX, (cw - loadingProgressBar.Width) / 2);
+                        int desiredTop = (loginStatusLabel?.Bottom ?? topMargin) + spacing;
+                        loadingProgressBar.Top = Math.Min(ch - loadingProgressBar.Height - spacing, desiredTop);
+                    }
+
+                    if (loadingStatusLabel != null)
+                    {
+                        loadingStatusLabel.Left = (loginGroupBox != null) ? loginGroupBox.Left : Math.Max(marginX, (cw - loadingStatusLabel.Width) / 2);
+                        int desiredTop = (loadingProgressBar?.Bottom ?? topMargin) + spacing;
+                        loadingStatusLabel.Top = Math.Min(ch - loadingStatusLabel.Height - spacing, desiredTop);
+                    }
                 }
 
-                // Center contents of startPanel
-                if (startPanel != null && startPanel.Visible)
-                {
-                    int spw = startPanel.ClientSize.Width;
-                    if (logoutButtonStart != null)
-                    {
-                        logoutButtonStart.Left = Math.Max(marginX, spw - logoutButtonStart.Width - marginX);
-                        logoutButtonStart.Top = topMargin;
-                        logoutButtonStart.BringToFront();
-                    }
-                    
-                    // Place startpanelLogoPictureBox at the top, below logout button
-                    if (startpanelLogoPictureBox != null)
-                    {
-                        startpanelLogoPictureBox.Left = Math.Max(marginX, (spw - startpanelLogoPictureBox.Width) / 2);
-                        int logoTop = topMargin;
-                        if (logoutButtonStart != null)
-                        {
-                            logoTop = logoutButtonStart.Bottom + spacing;
-                        }
-                        startpanelLogoPictureBox.Top = logoTop;
-                    }
-                    
-                    if (welcomeLabel != null)
-                    {
-                        welcomeLabel.Left = Math.Max(marginX, (spw - welcomeLabel.Width) / 2);
-                        // Place welcome label below the logo
-                        int desiredTop = topMargin;
-                        if (startpanelLogoPictureBox != null)
-                        {
-                            desiredTop = startpanelLogoPictureBox.Bottom + spacing;
-                        }
-                        else if (logoutButtonStart != null)
-                        {
-                            desiredTop = logoutButtonStart.Bottom + spacing;
-                        }
-                        welcomeLabel.Top = desiredTop;
-                    }
-                    
-                    if (logoPictureBox != null)
-                    {
-                        logoPictureBox.Left = Math.Max(marginX, (spw - logoPictureBox.Width) / 2);
-                        logoPictureBox.Top = (welcomeLabel?.Bottom ?? topMargin) + spacing;
-                    }
-                    if (printerButton != null)
-                    {
-                        printerButton.Left = Math.Max(marginX, (spw - printerButton.Width) / 2);
-                        printerButton.Top = (welcomeLabel?.Bottom ?? topMargin) + spacing * 2;
-                    }
-                    if (scannerButton != null)
-                    {
-                        scannerButton.Left = Math.Max(marginX, (spw - scannerButton.Width) / 2);
-                        scannerButton.Top = (printerButton?.Bottom ?? topMargin) + spacing;
-                    }
-                }
 
                 // Printer content header buttons
-                if (printerContentPanel != null && printerContentPanel.Visible)
-                {
-                    if (Scanner != null)
-                    {
-                        Scanner.Left = Math.Max(marginX, cw - Scanner.Width - marginX);
-                        Scanner.Top = topMargin + 20;
-                    }
-                }
+                // if (printerContentPanel != null && printerContentPanel.Visible)
+                // {
+                //     if (Scanner != null)
+                //     {
+                //         Scanner.Left = Math.Max(marginX, cw - Scanner.Width - marginX);
+                //         Scanner.Top = topMargin + 20;
+                //     }
+                // }
 
                 // Scanner content layout
                 if (scannerContentPanel != null && scannerContentPanel.Visible)
                 {
                     int availableW = Math.Max(320, cw - 2 * marginX);
 
-                    // Header buttons at top
-                    if (Printer != null)
-                    {
-                        Printer.Left = Math.Max(marginX, cw - Printer.Width - marginX);
-                        Printer.Top = topMargin;
-                    }
-                    if (logoutButtonScanner != null)
-                    {
-                        int rightOfLogout = (Printer?.Width ?? 0) + spacing;
-                        logoutButtonScanner.Left = Math.Max(marginX, cw - logoutButtonScanner.Width - marginX - rightOfLogout);
-                        logoutButtonScanner.Top = topMargin;
-                    }
-                    if (manageScannersButton != null)
-                    {
-                        manageScannersButton.Left = marginX;
-                        manageScannersButton.Top = topMargin;
-                    }
-                    if (button_manualUpload != null)
-                    {
-                        // Place manual upload next to manageScannersButton and keep aligned on resize
-                        button_manualUpload.Left = (manageScannersButton != null) ? manageScannersButton.Right + spacing : marginX;
-                        button_manualUpload.Top = topMargin;
-                    }
 
                     int headerBottom = topMargin;
-                    if (manageScannersButton != null) headerBottom = Math.Max(headerBottom, manageScannersButton.Bottom);
-                    if (button_manualUpload != null) headerBottom = Math.Max(headerBottom, button_manualUpload.Bottom);
-                    if (Printer != null) headerBottom = Math.Max(headerBottom, Printer.Bottom);
-                    if (logoutButtonScanner != null) headerBottom = Math.Max(headerBottom, logoutButtonScanner.Bottom);
 
-                    // Position checkbox and expand widths to available width
-                    if (showScannerOutputCheckBox != null)
+                    // Position checkbox and textbox within the scannerOutputPanel
+                    if (scannerOutputPanel != null)
                     {
-                        showScannerOutputCheckBox.Left = marginX;
-                        showScannerOutputCheckBox.Top = headerBottom + spacing;
+                        int panelMarginX = 10;
+                        int panelSpacing = 50;
+                        int panelTopMargin = 5;
+
+                        if (showScannerOutputCheckBox != null)
+                        {
+                            showScannerOutputCheckBox.Left = panelMarginX;
+                            showScannerOutputCheckBox.Top = panelTopMargin;
+                        }
+                        if (button_manualUpload != null)
+                        {
+                            button_manualUpload.Top = panelTopMargin;
+                            button_manualUpload.Left = scannerOutputPanel.Width - button_manualUpload.Width - panelMarginX-20;
+                        }
+                        if (scannerOutputTextBox != null)
+                        {
+                            int leftMargin = (showScannerOutputCheckBox?.Right ?? panelMarginX) + panelSpacing;
+                            int rightMargin = (button_manualUpload?.Left ?? scannerOutputPanel.Width - panelMarginX) - panelSpacing;
+                            scannerOutputTextBox.Left = leftMargin;
+                            scannerOutputTextBox.Width = Math.Max(100, rightMargin - leftMargin-50);
+                            scannerOutputTextBox.Top = panelTopMargin;
+                        }
                     }
-                    if (scannerOutputTextBox != null)
-                    {
-                        scannerOutputTextBox.Left = marginX;
-                        scannerOutputTextBox.Width = availableW;
-                        scannerOutputTextBox.Top = (showScannerOutputCheckBox?.Bottom ?? headerBottom) + spacing;
-                    }
-                    // Position filter controls in one horizontal line
-                    int filterControlsTop = (showScannerOutputCheckBox?.Bottom ?? headerBottom) + spacing;
-                    if (showScannerOutputCheckBox != null && showScannerOutputCheckBox.Checked && scannerOutputTextBox != null)
-                    {
-                        // When textbox is visible, position filters below it
-                        filterControlsTop = scannerOutputTextBox.Bottom + spacing;
-                    }
-                    else if (showScannerOutputCheckBox != null && !showScannerOutputCheckBox.Checked)
-                    {
-                        // When textbox is hidden, move filters up to utilize the space
-                        // Position filters right below the checkbox to maximize space usage
-                        filterControlsTop = (showScannerOutputCheckBox?.Bottom ?? headerBottom) + spacing;
-                    }
-                    
-                    // Calculate positions for one-line layout with labels inline
-                    int currentX = marginX;
-                    int labelControlSpacing = 8; // Spacing between label and control
-                    
-                    // Calculate total width needed for all controls
-                    int totalControlWidth = 0;
-                    if (dateFromLabel != null) totalControlWidth += dateFromLabel.Width + labelControlSpacing;
-                    if (dateFromPicker != null) totalControlWidth += dateFromPicker.Width;
-                    if (dateToLabel != null) totalControlWidth += dateToLabel.Width + labelControlSpacing;
-                    if (dateToPicker != null) totalControlWidth += dateToPicker.Width;
-                    if (blockNumberLabel != null) totalControlWidth += blockNumberLabel.Width + labelControlSpacing;
-                    if (blockNumberTextBox != null) totalControlWidth += blockNumberTextBox.Width;
-                    if (lineNumberLabel != null) totalControlWidth += lineNumberLabel.Width + labelControlSpacing;
-                    if (lineNumberTextBox != null) totalControlWidth += lineNumberTextBox.Width;
-                    if (productIdLabel != null) totalControlWidth += productIdLabel.Width + labelControlSpacing;
-                    if (productIdComboBox != null) totalControlWidth += productIdComboBox.Width;
-                    if (applyFiltersButton != null) totalControlWidth += applyFiltersButton.Width;
-                    if (clearFiltersButton != null) totalControlWidth += clearFiltersButton.Width;
-                    
-                    // Calculate optimal spacing to utilize full width
-                    int availableWidth = availableW - (marginX * 2);
-                    int remainingWidth = availableWidth - totalControlWidth;
-                    int numberOfGaps = 6; // Number of gaps between filter groups
-                    int controlSpacing = Math.Max(15, remainingWidth / numberOfGaps); // Minimum 15px spacing
-                    
-                    // Date From
-                    if (dateFromLabel != null)
-                    {
-                        dateFromLabel.Left = currentX;
-                        dateFromLabel.Top = filterControlsTop;
-                        currentX += dateFromLabel.Width + labelControlSpacing;
-                    }
-                    if (dateFromPicker != null)
-                    {
-                        dateFromPicker.Left = currentX;
-                        dateFromPicker.Top = filterControlsTop;
-                        currentX += dateFromPicker.Width + controlSpacing;
-                    }
-                    
-                    // Date To
-                    if (dateToLabel != null)
-                    {
-                        dateToLabel.Left = currentX;
-                        dateToLabel.Top = filterControlsTop;
-                        currentX += dateToLabel.Width + labelControlSpacing;
-                    }
-                    if (dateToPicker != null)
-                    {
-                        dateToPicker.Left = currentX;
-                        dateToPicker.Top = filterControlsTop;
-                        currentX += dateToPicker.Width + controlSpacing;
-                    }
-                    
-                    // Block Number
-                    if (blockNumberLabel != null)
-                    {
-                        blockNumberLabel.Left = currentX;
-                        blockNumberLabel.Top = filterControlsTop;
-                        currentX += blockNumberLabel.Width + labelControlSpacing;
-                    }
-                    if (blockNumberTextBox != null)
-                    {
-                        blockNumberTextBox.Left = currentX;
-                        blockNumberTextBox.Top = filterControlsTop;
-                        currentX += blockNumberTextBox.Width + controlSpacing;
-                    }
-                    
-                    // Line Number
-                    if (lineNumberLabel != null)
-                    {
-                        lineNumberLabel.Left = currentX;
-                        lineNumberLabel.Top = filterControlsTop;
-                        currentX += lineNumberLabel.Width + labelControlSpacing;
-                    }
-                    if (lineNumberTextBox != null)
-                    {
-                        lineNumberTextBox.Left = currentX;
-                        lineNumberTextBox.Top = filterControlsTop;
-                        currentX += lineNumberTextBox.Width + controlSpacing;
-                    }
-                    
-                    // Product ID
-                    if (productIdLabel != null)
-                    {
-                        productIdLabel.Left = currentX;
-                        productIdLabel.Top = filterControlsTop;
-                        currentX += productIdLabel.Width + labelControlSpacing;
-                    }
-                    if (productIdComboBox != null)
-                    {
-                        productIdComboBox.Left = currentX;
-                        productIdComboBox.Top = filterControlsTop;
-                        currentX += productIdComboBox.Width + controlSpacing;
-                    }
-                    
-                    // Apply and Clear buttons
-                    if (applyFiltersButton != null)
-                    {
-                        applyFiltersButton.Left = currentX;
-                        applyFiltersButton.Top = filterControlsTop;
-                        currentX += applyFiltersButton.Width + controlSpacing;
-                    }
-                    if (clearFiltersButton != null)
-                    {
-                        clearFiltersButton.Left = currentX;
-                        clearFiltersButton.Top = filterControlsTop;
-                    }
-                    
-                    if (scannerDataGridView != null)
-                    {
-                        scannerDataGridView.Left = marginX;
-                        // Ensure DataGridView uses full available width for maximum space utilization
-                        scannerDataGridView.Width = Math.Max(560, cw - 2 * marginX);
-                        // Position DataGridView below count labels
-                        scannerDataGridView.Top = filterControlsTop + 80;
-                        
-                        // Adjust DataGridView height to leave space for pagination controls
-                        int paginationControlsHeight = 50; // Space for pagination controls
-                        scannerDataGridView.Height = Math.Max(200, ch - scannerDataGridView.Top - paginationControlsHeight - spacing * 2);
-                    }
-                    
-                    // Position pagination controls below DataGridView
-                    if (previousPageButton != null)
-                    {
-                        previousPageButton.Left = marginX;
-                        previousPageButton.Top = (scannerDataGridView?.Bottom ?? headerBottom) + spacing;
-                    }
-                    if (nextPageButton != null)
-                    {
-                        nextPageButton.Left = marginX + availableW - nextPageButton.Width;
-                        nextPageButton.Top = (scannerDataGridView?.Bottom ?? headerBottom) + spacing;
-                    }
-                    if (pageInfoLabel != null)
-                    {
-                        pageInfoLabel.Left = marginX + (availableW - pageInfoLabel.Width) / 2;
-                        pageInfoLabel.Top = (scannerDataGridView?.Bottom ?? headerBottom) + spacing + 5;
-                    }
-                    
+                    // TableLayoutPanel handles positioning of filtersPanel, scannerDataGridView, and paginationPanel automatically
+                    // Only need to ensure proper sizing within table cells
+
+                    // Row 1 now uses AutoSize, so scannerOutputPanel will automatically adjust its height
+
                     // Update DataGridView column widths to utilize full available space
                     UpdateDataGridViewColumnWidths();
                     
                     // Update count labels
-                    UpdateActiveScannersCount();
                     UpdateCountLabels();
-                    
-                    // Position count labels below the filter controls
-                    int countLabelsTop = filterControlsTop + 50;
-                    if (activeScannersLabel != null)
-                    {
-                        activeScannersLabel.Left = marginX;
-                        activeScannersLabel.Top = countLabelsTop;
-                        activeScannersLabel.Visible = true;
-                    }
-                    if (todayScansLabel != null)
-                    {
-                        todayScansLabel.Left = marginX + 200;
-                        todayScansLabel.Top = countLabelsTop;
-                        todayScansLabel.Visible = true;
-                    }
-                    if (lastHourScansLabel != null)
-                    {
-                        lastHourScansLabel.Left = marginX + 400;
-                        lastHourScansLabel.Top = countLabelsTop;
-                        lastHourScansLabel.Visible = true;
-                    }
+
+                    // TableLayoutPanel handles positioning of statsPanel automatically
                 }
 
                 // Printer content widths and centering
-                if (printerContentPanel != null && printerContentPanel.Visible)
-                {
-                    LayoutPrinterContent(cw);
-                }
+                // if (printerContentPanel != null && printerContentPanel.Visible)
+                // {
+                //     LayoutPrinterContent(cw);
+                // }
             }
             catch { }
         }
 
-        private void LayoutPrinterContent(int clientWidth)
-        {
-            try
-            {
-                int mainInnerW = Math.Max(320, (mainPanel?.ClientSize.Width ?? clientWidth) - (mainPanel?.Padding.Left ?? 0) - (mainPanel?.Padding.Right ?? 0));
-                int fixedWidth = 560; // enforce fixed 560px width for core sections
-                int desired = Math.Min(fixedWidth, Math.Max(420, mainInnerW));
-                int centerX = Math.Max(20, ((mainPanel?.ClientSize.Width ?? clientWidth) - desired) / 2);
-
-                // Fix and center container sections to 560px
-                int y = mainPanel?.Padding.Top ?? 20;
-                if (headerPanel != null)
-                {
-                    headerPanel.Dock = DockStyle.None;
-                    headerPanel.Anchor = AnchorStyles.Top;
-                    headerPanel.Width = fixedWidth;
-                    headerPanel.Left = centerX;
-                    headerPanel.Top = y;
-                    // Ensure printer header buttons are inside headerPanel
-                    if (Scanner != null && Scanner.Parent != headerPanel)
-                    {
-                        headerPanel.Controls.Add(Scanner);
-                    }
-                    if (logoutButtonPrinter != null && logoutButtonPrinter.Parent != headerPanel)
-                    {
-                        headerPanel.Controls.Add(logoutButtonPrinter);
-                    }
-
-                    // Position header buttons (right-aligned cluster)
-                    int headerSpacing = 10;
-                    int headerPaddingRight = 30;
-                    int headerTop = 20;
-                    if (logoutButtonPrinter != null)
-                    {
-                        if (logoutButtonPrinter.Height != 32) logoutButtonPrinter.Height = 32;
-                        if (logoutButtonPrinter.Width < 90) logoutButtonPrinter.Width = 90;
-                        logoutButtonPrinter.Top = headerTop;
-                        logoutButtonPrinter.Left = headerPanel.Width - logoutButtonPrinter.Width - headerPaddingRight;
-                    }
-                    if (Scanner != null)
-                    {
-                        if (Scanner.Height != 32) Scanner.Height = 32;
-                        if (Scanner.Width < 90) Scanner.Width = 90;
-                        Scanner.Top = headerTop;
-                        int rightNeighborLeft = (logoutButtonPrinter != null) ? logoutButtonPrinter.Left : (headerPanel.Width - headerPaddingRight);
-                        Scanner.Left = Math.Max(10, rightNeighborLeft - headerSpacing - Scanner.Width);
-                    }
-
-                    y = headerPanel.Bottom + 0;
-                }
-                if (connectionPanel != null)
-                {
-                    connectionPanel.Dock = DockStyle.None;
-                    connectionPanel.Anchor = AnchorStyles.Top;
-                    connectionPanel.Width = fixedWidth;
-                    connectionPanel.Left = centerX;
-                    connectionPanel.Top = y;
-                    y = connectionPanel.Bottom + 0;
-                }
-                if (configPanel != null)
-                {
-                    configPanel.Dock = DockStyle.None;
-                    configPanel.Anchor = AnchorStyles.Top;
-                    configPanel.Width = fixedWidth;
-                    configPanel.Left = centerX;
-                    configPanel.Top = y;
-                    y = configPanel.Bottom + 0;
-                }
-                if (advancedPanel != null && advancedPanel.Visible)
-                {
-                    // Keep advanced panel stacked below config if visible
-                    advancedPanel.Dock = DockStyle.None;
-                    advancedPanel.Anchor = AnchorStyles.Top;
-                    advancedPanel.Width = fixedWidth;
-                    advancedPanel.Left = centerX;
-                    advancedPanel.Top = y;
-                    y = advancedPanel.Bottom + 0;
-                }
-                if (actionPanel != null)
-                {
-                    actionPanel.Dock = DockStyle.None;
-                    actionPanel.Anchor = AnchorStyles.Top;
-                    actionPanel.Width = fixedWidth;
-                    actionPanel.Left = centerX;
-                    // Reduce top padding when advanced panel is hidden to eliminate visible gap
-                    if (advancedPanel != null && !advancedPanel.Visible)
-                    {
-                        actionPanel.Padding = new Padding(0, 10, 0, 0);
-                    }
-                    actionPanel.Top = y;
-                    y = actionPanel.Bottom + 0;
-                }
-                if (statusPanel != null)
-                {
-                    statusPanel.Dock = DockStyle.None;
-                    statusPanel.Anchor = AnchorStyles.Top;
-                    statusPanel.Width = fixedWidth;
-                    statusPanel.Left = centerX;
-                    statusPanel.Top = y;
-                    if (statusLabel != null)
-                    {
-                        // statusLabel is dock fill; ensure panel width is fixed
-                        statusLabel.MaximumSize = new Size(fixedWidth, 0);
-                    }
-                }
-            }
-            catch { }
-        }
+        // private void LayoutPrinterContent(int clientWidth)
+        // {
+        //     // Dock-based layout now handles stacking; no manual positioning needed.
+        //     return;
+        // }
     }
 }
-
-
