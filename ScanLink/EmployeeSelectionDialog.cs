@@ -237,6 +237,7 @@ namespace ScanLink
             employeeDataGridView.Columns.Add("last_name", "Last Name");
             employeeDataGridView.Columns.Add("department", "Department");
             employeeDataGridView.Columns.Add("user_id", "user ID");
+            employeeDataGridView.Columns.Add("scanlink_id", "ScanLink ID");
 
             // Set column widths
             employeeDataGridView.Columns["employee_site_id"].Width = 50;
@@ -244,6 +245,7 @@ namespace ScanLink
             employeeDataGridView.Columns["last_name"].Width = 70;
             employeeDataGridView.Columns["department"].Width = 70;
             employeeDataGridView.Columns["user_id"].Width = 250;
+            employeeDataGridView.Columns["scanlink_id"].Visible = false;
 
             // Style the grid
             employeeDataGridView.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
@@ -366,7 +368,8 @@ namespace ScanLink
                                 employee.first_name ?? "",
                                 employee.last_name ?? "",
                                 employee.department ?? "",
-                                employee.user_id ?? ""
+                                employee.user_id ?? "",
+                                employee.scanlink_id ?? ""
                             );
                         }
                     }
@@ -538,7 +541,8 @@ namespace ScanLink
                     {
                         user_id = employeeId,
                         first_name = selectedRow.Cells["first_name"].Value?.ToString(),
-                        last_name = selectedRow.Cells["last_name"].Value?.ToString()
+                        last_name = selectedRow.Cells["last_name"].Value?.ToString(),
+                        scanlink_id = selectedRow.Cells["scanlink_id"].Value?.ToString()
                     };
 
                     this.DialogResult = DialogResult.OK;

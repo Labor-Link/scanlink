@@ -1,0 +1,16 @@
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\bin\Release\net9.0\ScanLinkPrinter.Argox.deps.json
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\bin\Release\net9.0\ScanLinkPrinter.Argox.dll
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\bin\Release\net9.0\ScanLinkPrinter.Argox.pdb
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\bin\Release\net9.0\ScanLinkPrinter.Protocol.dll
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\bin\Release\net9.0\ScanLinkPrinter.Protocol.pdb
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.csproj.AssemblyReference.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.AssemblyInfoInputs.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.AssemblyInfo.cs
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.csproj.CoreCompileInputs.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.sourcelink.json
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLink.83E2FD1D.Up2Date
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.dll
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\refint\ScanLinkPrinter.Argox.dll
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ScanLinkPrinter.Argox.pdb
+c:\Users\Admin\scanlink\ScanLinkPrinter.Argox\obj\Release\net9.0\ref\ScanLinkPrinter.Argox.dll

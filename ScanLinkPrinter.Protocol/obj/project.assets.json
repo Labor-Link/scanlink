@@ -180,19 +180,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\cw\\.nuget\\packages\\": {}
+    "C:\\Users\\Admin\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\documents\\new_code - almost UI\\scanlink\\ScanLinkPrinter.Protocol\\ScanLinkPrinter.Protocol.csproj",
+      "projectUniqueName": "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.Protocol\\ScanLinkPrinter.Protocol.csproj",
       "projectName": "ScanLinkPrinter.Protocol",
-      "projectPath": "E:\\documents\\new_code - almost UI\\scanlink\\ScanLinkPrinter.Protocol\\ScanLinkPrinter.Protocol.csproj",
-      "packagesPath": "C:\\Users\\cw\\.nuget\\packages\\",
-      "outputPath": "E:\\documents\\new_code - almost UI\\scanlink\\ScanLinkPrinter.Protocol\\obj\\",
+      "projectPath": "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.Protocol\\ScanLinkPrinter.Protocol.csproj",
+      "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
+      "outputPath": "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.Protocol\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\cw\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
@@ -218,7 +218,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "netstandard2.0": {
@@ -242,7 +242,7 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.100\\RuntimeIdentifierGraph.json"
       }
     }
   }

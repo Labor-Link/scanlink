@@ -1,9 +1,38 @@
 param(
     [string]$Barcode = ""
 )
-
-# Include the unified scanner detection functions
 . "$PSScriptRoot\scanner_detection.ps1"
+
+function Get-UpcCheckDigit {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$upc11
+    )
+
+    if (-not $upc11 -or $upc11.Length -ne 11 -or ($upc11 -notmatch '^\d{11}$')) {
+        throw "UPC-11 payload must contain exactly 11 digits."
+    }
+
+    $sumOdd = 0
+    $sumEven = 0
+    for ($i = 0; $i -lt 11; $i++) {
+        $digit = [int]::Parse($upc11.Substring($i, 1))
+        if ($i % 2 -eq 0) {
+            $sumOdd += $digit
+        }
+        else {
+            $sumEven += $digit
+        }
+    }
+
+    $total = ($sumOdd * 3) + $sumEven
+    $remainder = $total % 10
+    if ($remainder -eq 0) {
+        return 0
+    }
+    return 10 - $remainder
+}
+# Include the unified scanner detection functions
 
 # Use ProgramData for writable storage
 $ProgramDataDir = Join-Path $env:ProgramData "ScanLink"
@@ -276,12 +305,26 @@ function Add-ScanRecord {
                 if ($parts.Length -ge 3) { $cropId = $parts[2].Trim() }
             }
         }
-        elseif ($cleanCode -and $cleanCode.Length -ge 16) {
-            try {
-                $employeeId = $cleanCode.Substring(0,10)
-                $cropId = $cleanCode.Substring(10,3)
-                $productId = $cleanCode.Substring(13,3)
-            } catch {}
+        elseif ($cleanCode) {
+            $digitsOnly = ($cleanCode.ToCharArray() | Where-Object { $_ -match '\d' }) -join ''
+            if ($digitsOnly.Length -ge 12) {
+                try {
+                    $upc = $digitsOnly.Substring($digitsOnly.Length - 12)
+                    $employeeId = $upc.Substring(0,5)
+                    $productId = $upc.Substring(5,3)
+                    $cropId = $upc.Substring(8,3)
+                    $payload = $upc.Substring(0,11)
+                    $providedCheckDigit = [int]$upc.Substring(11,1)
+                    $expectedCheckDigit = Get-UpcCheckDigit -upc11 $payload
+                    if ($providedCheckDigit -ne $expectedCheckDigit) {
+                        Write-Host "Scan rejected: Invalid UPC check digit (expected $expectedCheckDigit, got $providedCheckDigit)" -ForegroundColor Yellow
+                        return
+                    }
+                } catch {
+                    Write-Host "Scan rejected: Unable to parse UPC payload - $($_.Exception.Message)" -ForegroundColor Yellow
+                    return
+                }
+            }
         }
 
         # Validate required fields - reject scan if any are null/empty

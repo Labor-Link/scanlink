@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "E:\\documents\\new_code - almost UI\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj": {}
+    "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj": {}
   },
   "projects": {
-    "E:\\documents\\new_code - almost UI\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj": {
+    "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\documents\\new_code - almost UI\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj",
+        "projectUniqueName": "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj",
         "projectName": "ScanLinkPrinter.ArgoxWorker",
-        "projectPath": "E:\\documents\\new_code - almost UI\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj",
-        "packagesPath": "C:\\Users\\cw\\.nuget\\packages\\",
-        "outputPath": "E:\\documents\\new_code - almost UI\\scanlink\\ScanLinkPrinter.ArgoxWorker\\obj\\",
+        "projectPath": "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj",
+        "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
+        "outputPath": "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.ArgoxWorker\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\cw\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -40,12 +40,12 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "10.0.100"
       },
       "frameworks": {
         "net48": {
           "targetAlias": "net48",
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.100\\RuntimeIdentifierGraph.json"
         }
       },
       "runtimes": {
