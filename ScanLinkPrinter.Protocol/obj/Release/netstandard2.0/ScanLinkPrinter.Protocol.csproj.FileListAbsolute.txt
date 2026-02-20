@@ -1,0 +1,11 @@
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\bin\Release\netstandard2.0\ScanLinkPrinter.Protocol.deps.json
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\bin\Release\netstandard2.0\ScanLinkPrinter.Protocol.dll
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\bin\Release\netstandard2.0\ScanLinkPrinter.Protocol.pdb
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\obj\Release\netstandard2.0\ScanLinkPrinter.Protocol.csproj.AssemblyReference.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\obj\Release\netstandard2.0\ScanLinkPrinter.Protocol.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\obj\Release\netstandard2.0\ScanLinkPrinter.Protocol.AssemblyInfoInputs.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\obj\Release\netstandard2.0\ScanLinkPrinter.Protocol.AssemblyInfo.cs
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\obj\Release\netstandard2.0\ScanLinkPrinter.Protocol.csproj.CoreCompileInputs.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\obj\Release\netstandard2.0\ScanLinkPrinter.Protocol.sourcelink.json
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\obj\Release\netstandard2.0\ScanLinkPrinter.Protocol.dll
+c:\Users\Admin\scanlink\ScanLinkPrinter.Protocol\obj\Release\netstandard2.0\ScanLinkPrinter.Protocol.pdb

@@ -634,7 +634,7 @@ namespace ScanLink
             public string company_name { get; set; }
             public string company_address { get; set; }
             public int? contract_renewal_days { get; set; }
-            
+            public string scanlink_id { get; set; }
             // site_id is an object with site ID as key and site name as value
             public Dictionary<string, string> site_id { get; set; }
         }

@@ -49,7 +49,6 @@ namespace ScanLink
         private BoxLabelsPopupForm _boxLabelsPopupForm;
 
         // Barcode generation state
-        private string _generatedRandomChars = "";
         private string _generatedBarcode = "";
         private bool _barcodeGenerated = false;
 
@@ -849,12 +848,12 @@ namespace ScanLink
                         var selectedEmployee = employeeDialog.SelectedEmployee;
                         if (selectedEmployee != null)
                         {
-                            // Update the Employee ID textbox with the last 6 characters of the selected employee's user_id
-                            string employeeId = selectedEmployee.user_id;
-                            textBox_EmployeeID.Text = employeeId.Length > 6 ? employeeId.Substring(employeeId.Length - 6) : employeeId;
+                            // Update the Employee ID textbox with the last 6 characters of the selected employee's scanlink_id
+                            string employeeId = selectedEmployee.scanlink_id;
+                            textBox_EmployeeID.Text = employeeId;
                             
                             // Update status
-                            statusLabel.Text = $"Selected employee: {selectedEmployee.first_name} {selectedEmployee.last_name} (User ID: {selectedEmployee.user_id})";
+                            statusLabel.Text = $"Selected employee: {selectedEmployee.first_name} {selectedEmployee.last_name} (User ID: {selectedEmployee.scanlink_id})";
                             statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
                         }
                     }
@@ -2195,6 +2194,64 @@ namespace ScanLink
             return raw;
         }
 
+        private string ExtractDigits(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "";
+            return new string(value.Where(char.IsDigit).ToArray());
+        }
+
+        private string NormalizeNumericComponent(string raw, int requiredLength)
+        {
+            string digitsOnly = ExtractDigits(raw);
+            if (digitsOnly.Length >= requiredLength)
+            {
+                return digitsOnly.Substring(digitsOnly.Length - requiredLength, requiredLength);
+            }
+            return digitsOnly.PadLeft(requiredLength, '0');
+        }
+
+        private string BuildUpc11Payload(out string employeeSegment, out string productSegment, out string cropSegment)
+        {
+            employeeSegment = NormalizeNumericComponent(textBox_EmployeeID?.Text ?? "", 5);
+            productSegment = NormalizeNumericComponent(GetSelectedProductCode(), 3);
+            cropSegment = NormalizeNumericComponent(GetSelectedCropCode(), 3);
+            return $"{employeeSegment}{productSegment}{cropSegment}";
+        }
+
+        private string BuildUpcBarcodeFromInputs()
+        {
+            string employeeSegment, productSegment, cropSegment;
+            string upc11 = BuildUpc11Payload(out employeeSegment, out productSegment, out cropSegment);
+            int checkDigit = GetUpcCheckDigit(upc11);
+            return $"{upc11}{checkDigit}";
+        }
+
+        private static int GetUpcCheckDigit(string upc11)
+        {
+            if (string.IsNullOrWhiteSpace(upc11) || upc11.Length != 11 || !upc11.All(char.IsDigit))
+            {
+                throw new ArgumentException("UPC-11 payload must contain exactly 11 digits.", nameof(upc11));
+            }
+
+            int sumOdd = 0;
+            int sumEven = 0;
+            for (int i = 0; i < 11; i++)
+            {
+                int digit = upc11[i] - '0';
+                if (i % 2 == 0)
+                {
+                    sumOdd += digit;
+                }
+                else
+                {
+                    sumEven += digit;
+                }
+            }
+
+            int remainder = (sumOdd * 3 + sumEven) % 10;
+            return remainder == 0 ? 0 : 10 - remainder;
+        }
+
         private CropItem GetSelectedCropItem()
         {
             string cropCode = comboBox_CropID?.SelectedValue?.ToString() ?? "";
@@ -2516,28 +2573,10 @@ namespace ScanLink
         {
             try
             {
-                // Generate 4 random characters from: !@#$%^&*() 0-9 A-Z a-z
-                string chars = "!@#$%^&*()0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-                Random random = new Random();
-                char[] randomChars = new char[4];
-
-                for (int i = 0; i < 4; i++)
-                {
-                    randomChars[i] = chars[random.Next(chars.Length)];
-                }
-
-                _generatedRandomChars = new string(randomChars);
-
-                // Get EmployeeID (exactly 6 characters, left-padded with zeros)
-                string fullEmployeeID = !string.IsNullOrWhiteSpace(textBox_EmployeeID.Text) ? textBox_EmployeeID.Text : "";
-                string employeeID = fullEmployeeID.Length > 6 ? fullEmployeeID.Substring(fullEmployeeID.Length - 6) : fullEmployeeID.PadLeft(6, '0');
-
-                // Get CropID and ProductID (swapped positions)
-                string cropID = GetSelectedCropCode();
-                string productID = GetSelectedProductCode();
-
-                // Generate barcode: random4 + employee8 + crop3 + product3
-                _generatedBarcode = $"{_generatedRandomChars}{employeeID}{cropID}{productID}";
+                string employeeSegment, productSegment, cropSegment;
+                string upc11 = BuildUpc11Payload(out employeeSegment, out productSegment, out cropSegment);
+                int checkDigit = GetUpcCheckDigit(upc11);
+                _generatedBarcode = $"{upc11}{checkDigit}";
 
                 // Mark as generated and enable start printing button
                 _barcodeGenerated = true;
@@ -2546,7 +2585,7 @@ namespace ScanLink
                 button_send.BackColor = System.Drawing.Color.FromArgb(46, 125, 50); // Green color
 
                 // Update status
-                statusLabel.Text = $"Barcode generated successfully: {_generatedBarcode}";
+                statusLabel.Text = $"Barcode generated successfully: {_generatedBarcode} (Emp:{employeeSegment} Prod:{productSegment} Crop:{cropSegment} ✓{checkDigit})";
                 statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
             }
             catch (Exception ex)
@@ -2581,15 +2620,7 @@ namespace ScanLink
             }
             else
             {
-                // Use current settings for preview when no barcode is generated
-                string fullEmployeeID = !string.IsNullOrWhiteSpace(textBox_EmployeeID.Text) ? textBox_EmployeeID.Text : "";
-                string EmployeeID = fullEmployeeID.Length > 6 ? fullEmployeeID.Substring(fullEmployeeID.Length - 6) : fullEmployeeID.PadLeft(6, '0');
-                string CropID = GetSelectedCropCode();
-                string ProductID = GetSelectedProductCode();
-
-                // New format: random4 + employee6 + crop3 + product3
-                string randomChars = string.IsNullOrEmpty(_generatedRandomChars) ? "XXXX" : _generatedRandomChars;
-                BarcodeID = $"{randomChars}{EmployeeID}{CropID}{ProductID}";
+                BarcodeID = BuildUpcBarcodeFromInputs();
             }
 
             int labelWidth = (int)numericUpDown_width.Value;
@@ -2685,7 +2716,7 @@ namespace ScanLink
             
             // 1. Show main header (always printed)
             Label headerLabel = new Label();
-            headerLabel.Text = "!! Scan-Link !!";
+            headerLabel.Text = "Scan-Link";
             headerLabel.Font = new Font("Segoe UI", 12, FontStyle.Bold);
             headerLabel.ForeColor = Color.FromArgb(52, 73, 94);
             headerLabel.Location = new Point(0, 0); // 30-5 for margin
@@ -2800,27 +2831,27 @@ namespace ScanLink
             //     }
             // };
 
-            // 9. EmployeeIDLabel
-            Label EmployeeIDLabel = new Label();
-            string fullEmployeeID = !string.IsNullOrWhiteSpace(textBox_EmployeeID.Text) ? textBox_EmployeeID.Text : "";
-            string EmployeeID = fullEmployeeID.Length > 6 ? fullEmployeeID.Substring(fullEmployeeID.Length - 6) : fullEmployeeID.PadLeft(6, '0');
-            EmployeeIDLabel.Text = $"EmployeeID: {EmployeeID}";
-            EmployeeIDLabel.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-            EmployeeIDLabel.ForeColor = Color.FromArgb(52, 73, 94);
-            EmployeeIDLabel.Location = new Point(0, barcodeVisual.Bottom + 5); // Position after barcode
-            EmployeeIDLabel.AutoSize = true;
-            marginIndicator.Controls.Add(EmployeeIDLabel);
+            // 9. EmployeeIDLabel - Removed per user request
+            // Label EmployeeIDLabel = new Label();
+            // string fullEmployeeID = !string.IsNullOrWhiteSpace(textBox_EmployeeID.Text) ? textBox_EmployeeID.Text : "";
+            // string EmployeeID = fullEmployeeID.Length > 6 ? fullEmployeeID.Substring(fullEmployeeID.Length - 6) : fullEmployeeID.PadLeft(6, '0');
+            // EmployeeIDLabel.Text = $"EmployeeID: {EmployeeID}";
+            // EmployeeIDLabel.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            // EmployeeIDLabel.ForeColor = Color.FromArgb(52, 73, 94);
+            // EmployeeIDLabel.Location = new Point(0, barcodeVisual.Bottom + 5); // Position after barcode
+            // EmployeeIDLabel.AutoSize = true;
+            // marginIndicator.Controls.Add(EmployeeIDLabel);
 
-            // 10. ProductIDLabel
-            Label ProductIDLabel = new Label();
-            string cropId = GetSelectedCropCode();
-            string productId = GetSelectedProductCode();
-            ProductIDLabel.Text = $"CropId: {cropId}   ProductId: {productId}";
-            ProductIDLabel.Font = new Font("Segoe UI", 9, FontStyle.Bold);
-            ProductIDLabel.ForeColor = Color.FromArgb(52, 73, 94);
-            ProductIDLabel.Location = new Point(0, EmployeeIDLabel.Bottom + 5); // Position after Employee ID
-            ProductIDLabel.AutoSize = true;
-            marginIndicator.Controls.Add(ProductIDLabel);
+            // 10. ProductIDLabel - Removed per user request
+            // Label ProductIDLabel = new Label();
+            // string cropId = GetSelectedCropCode();
+            // string productId = GetSelectedProductCode();
+            // ProductIDLabel.Text = $"CropId: {cropId}   ProductId: {productId}";
+            // ProductIDLabel.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            // ProductIDLabel.ForeColor = Color.FromArgb(52, 73, 94);
+            // ProductIDLabel.Location = new Point(0, EmployeeIDLabel.Bottom + 5); // Position after Employee ID
+            // ProductIDLabel.AutoSize = true;
+            // marginIndicator.Controls.Add(ProductIDLabel);
             
             // // 9. Add label dimension info
             // Label dimensionsLabel = new Label();
@@ -3264,7 +3295,6 @@ namespace ScanLink
 
                 // Reset barcode generation state after successful print
                 _barcodeGenerated = false;
-                _generatedRandomChars = "";
                 _generatedBarcode = "";
                 button_send.Text = "🖨️ Generate Barcode";
                 button_send.BackColor = System.Drawing.Color.FromArgb(100, 100, 100); // Gray out permanently
@@ -3469,16 +3499,7 @@ namespace ScanLink
                     }
                     else
                     {
-                        // Fallback to new logic
-                        // Use custom Employee ID from textBox_EmployeeID (exactly 6 characters, left-padded with zeros)
-                        string fullEmployeeID = !string.IsNullOrWhiteSpace(textBox_EmployeeID.Text) ? textBox_EmployeeID.Text : "";
-                        string EmployeeID = fullEmployeeID.Length > 6 ? fullEmployeeID.Substring(fullEmployeeID.Length - 6) : fullEmployeeID.PadLeft(6, '0');
-
-                        string CropID = GetSelectedCropCode();
-                        string ProductID = GetSelectedProductCode();
-
-                        // New format: random4 + employee6 + crop3 + product3
-                        BarcodeID = $"{_generatedRandomChars}{EmployeeID}{CropID}{ProductID}";
+                        BarcodeID = BuildUpcBarcodeFromInputs();
                     }
 
                     buf = encoder.GetBytes(BarcodeID);
@@ -3501,7 +3522,7 @@ namespace ScanLink
                         }
                     }
                     // Get advanced settings for barcode positioning and dimensions
-                    int xPos = 50, yPos = 110, barcodeHeight = 50;
+                    int xPos = 50, yPos = 110, barcodeHeight = 110;
                     PPLBOrient orientation = PPLBOrient.Clockwise_0_Degrees;
                     
                     // Advanced settings always enabled
@@ -3671,7 +3692,7 @@ namespace ScanLink
                 
                 // Custom header with settings info
                 //If roll applied in center
-                buf = encoder.GetBytes("!! Scan-Link !!");
+                buf = encoder.GetBytes("Scan-Link");
                 PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
 
                 //If roll applied on x=0
@@ -3688,7 +3709,7 @@ namespace ScanLink
                 
                 // Use custom Employee ID (exactly 6 characters, left-padded with zeros)
                 string fullEmployeeID = !string.IsNullOrWhiteSpace(textBox_EmployeeID.Text) ? textBox_EmployeeID.Text : "";
-                string EmployeeID = fullEmployeeID.Length > 6 ? fullEmployeeID.Substring(fullEmployeeID.Length - 6) : fullEmployeeID.PadLeft(6, '0');
+                string EmployeeID = fullEmployeeID;
 
                 string CropID = GetSelectedCropCode();
                 string ProductID = GetSelectedProductCode();
@@ -3701,9 +3722,7 @@ namespace ScanLink
                 }
                 else
                 {
-                    // New format: random4 + employee6 + crop3 + product3
-                    string randomChars = string.IsNullOrEmpty(_generatedRandomChars) ? "XXXX" : _generatedRandomChars;
-                    BarcodeID = $"{randomChars}{EmployeeID}{CropID}{ProductID}";
+                    BarcodeID = BuildUpcBarcodeFromInputs();
                 }
 
                 buf = encoder.GetBytes(BarcodeID);
@@ -3731,7 +3750,7 @@ namespace ScanLink
                 PPLBOrient orientation = PPLBOrient.Clockwise_0_Degrees;
                 
                 // int barcodeHeight = (int)numericUpDown_height.Value;
-                int barcodeHeight = 50;
+                int barcodeHeight = 110;
                 
                 // Calculate narrow bar width for custom preset
                 int desiredWidth = (int)numericUpDown_width.Value;
@@ -3780,10 +3799,7 @@ namespace ScanLink
                 if (!twoUp)
                 {
                     PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, stickerHeight-120, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
-                buf = encoder.GetBytes($"EmployeeID: {EmployeeID}");
-                    PPLBEmulation.TextUtil.PrintText(xCoordinate, stickerHeight-110+barcodeHeight, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, buf);
-                buf = encoder.GetBytes($"CropID:{CropID}   ProductID:{ProductID}");
-                    PPLBEmulation.TextUtil.PrintText(xCoordinate, stickerHeight-75+barcodeHeight, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, buf);
+                    // EmployeeID and CropID/ProductID text removed per user request
                     PPLBEmulation.SetUtil.SetPrintOut(remaining, 1);
                     PPLBEmulation.IOUtil.PrintOut();
                 }
@@ -3797,24 +3813,18 @@ namespace ScanLink
                         PPLBEmulation.SetUtil.SetClearImageBuffer();
 
                         // left
-                        buf = encoder.GetBytes("!! Scan-Link !!");
+                        buf = encoder.GetBytes("Scan-Link");
                         PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
                         PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, stickerHeight-120, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
-                        buf = encoder.GetBytes($"EmployeeID: {EmployeeID}");
-                        PPLBEmulation.TextUtil.PrintText(xCoordinate, stickerHeight-110+barcodeHeight, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, buf);
-                        buf = encoder.GetBytes($"CropID:{CropID}    ProductID:{ProductID}");
-                        PPLBEmulation.TextUtil.PrintText(xCoordinate, stickerHeight-75+barcodeHeight, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, buf);
+                        // EmployeeID and CropID/ProductID text removed per user request
 
                         // right (if any remaining)
                         if (remaining > 1)
                         {
-                            buf = encoder.GetBytes("!! Scan-Link !!");
+                            buf = encoder.GetBytes("Scan-Link");
                             PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
                             PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, stickerHeight-120, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
-                            buf = encoder.GetBytes($"EmployeeID: {EmployeeID}");
-                            PPLBEmulation.TextUtil.PrintText(x2Coordinate, stickerHeight-110+barcodeHeight, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, buf);
-                            buf = encoder.GetBytes($"CropID:{CropID}    ProductID:{ProductID}");
-                            PPLBEmulation.TextUtil.PrintText(x2Coordinate, stickerHeight-75+barcodeHeight, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, buf);
+                            // EmployeeID and CropID/ProductID text removed per user request
                         }
 
                         PPLBEmulation.SetUtil.SetPrintOut(1, 1);
@@ -4000,20 +4010,24 @@ namespace ScanLink
                                 code = code.Substring(3);
                             }
                         }
-                        if (!string.IsNullOrEmpty(code) && code.Length >= 16)
+                        const int encodedDataLength = 12; // employee5 + product3 + crop3 + check digit
+                        string digitsOnly = new string(code.Where(char.IsDigit).ToArray());
+                        if (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= encodedDataLength)
                         {
-                            if (string.IsNullOrEmpty(employeeId) && code.Length >= 10)
+                            string upc = digitsOnly.Substring(digitsOnly.Length - encodedDataLength, encodedDataLength);
+                            if (string.IsNullOrEmpty(employeeId))
                             {
-                                employeeId = code.Substring(0, 10);
+                                employeeId = upc.Substring(0, 5);
                             }
-                            if (string.IsNullOrEmpty(productId) && code.Length >= 16)
+                            if (string.IsNullOrEmpty(productId))
                             {
-                                productId = code.Substring(13, 3);
+                                productId = upc.Substring(5, 3);
                             }
-                            if (string.IsNullOrEmpty(cropId) && code.Length >= 13)
+                            if (string.IsNullOrEmpty(cropId))
                             {
-                                cropId = code.Substring(10, 3);
+                                cropId = upc.Substring(8, 3);
                             }
+
                         }
                     }
                     if (scan.ContainsKey("date"))

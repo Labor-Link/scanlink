@@ -1,0 +1,13 @@
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Release\net48\ScanLinkPrinter.ArgoxWorker.exe.config
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Release\net48\ScanLinkPrinter.ArgoxWorker.exe
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Release\net48\ScanLinkPrinter.ArgoxWorker.pdb
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Release\net48\BarcodePrinter_API.dll
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.csproj.CoreCompileInputs.cache
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.sourcelink.json
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLink.1B66D95B.Up2Date
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.exe
+c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Release\net48\ScanLinkPrinter.ArgoxWorker.pdb
