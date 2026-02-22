@@ -1,12 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "lgnQM0AEjvw=",
+  "dgSpecHash": "5khVeJw3TRQ=",
   "success": true,
-  "projectFilePath": "c:\\Users\\Admin\\scanlink\\ScanLinkPrinter.Argox\\ScanLinkPrinter.Argox.csproj",
-  "expectedPackageFiles": [
-    "C:\\Users\\Admin\\.nuget\\packages\\microsoft.netcore.app.ref\\9.0.11\\microsoft.netcore.app.ref.9.0.11.nupkg.sha512",
-    "C:\\Users\\Admin\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\9.0.11\\microsoft.windowsdesktop.app.ref.9.0.11.nupkg.sha512",
-    "C:\\Users\\Admin\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\9.0.11\\microsoft.aspnetcore.app.ref.9.0.11.nupkg.sha512"
-  ],
+  "projectFilePath": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.Argox\\ScanLinkPrinter.Argox.csproj",
+  "expectedPackageFiles": [],
   "logs": []
 }

@@ -9,3 +9,14 @@ E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.Protocol\obj\Debug\ne
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.sourcelink.json
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.dll
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.pdb
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\bin\Debug\netstandard2.0\ScanLinkPrinter.Protocol.deps.json
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\bin\Debug\netstandard2.0\ScanLinkPrinter.Protocol.dll
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\bin\Debug\netstandard2.0\ScanLinkPrinter.Protocol.pdb
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.csproj.AssemblyReference.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.AssemblyInfoInputs.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.AssemblyInfo.cs
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.csproj.CoreCompileInputs.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.sourcelink.json
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.dll
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\obj\Debug\netstandard2.0\ScanLinkPrinter.Protocol.pdb

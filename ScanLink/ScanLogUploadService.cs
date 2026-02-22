@@ -134,6 +134,7 @@ namespace ScanLink
             catch (Exception ex)
             {
                 OnLogMessage($"Error uploading logs: {ex.Message}");
+                IssueLoggingService.LogIssue("Upload Service Error", ex.ToString());
             }
             finally
             {
@@ -151,8 +152,8 @@ namespace ScanLink
                             ?? GetTokenValue(tokenPayload, "id")
                             ?? GetTokenValue(tokenPayload, "sub")
                             ?? "";
-            // Use the selected site from the dashboard
-            string siteId = _authService.GetSelectedSiteId() ?? "";
+            // Use robust fallback sequence for site extraction
+            string siteId = _authService.GetEffectiveSiteId() ?? "";
 
             OnLogMessage($"Enriching logs with userId='{(string.IsNullOrEmpty(userId) ? "" : userId)}' siteId='{(string.IsNullOrEmpty(siteId) ? "" : siteId)}'");
 
@@ -297,6 +298,7 @@ namespace ScanLink
             {
                 var inner = ex.InnerException != null ? $" | Inner: {ex.InnerException.Message}" : string.Empty;
                 OnLogMessage($"Error during API upload: {ex.Message}{inner}");
+                IssueLoggingService.LogIssue("Upload API Error", $"{ex.Message}{inner}\n\nStack:\n{ex.StackTrace}");
                 return false;
             }
         }

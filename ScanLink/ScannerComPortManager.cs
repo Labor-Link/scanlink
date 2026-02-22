@@ -56,6 +56,7 @@ namespace ScanLink
                 }
                 catch (Exception ex)
                 {
+                    IssueLoggingService.LogIssue("Scanner Port Error", $"Failed to open scanner {config.DeviceName} on {config.ComPort}: {ex.Message}\nStack Trace:\n{ex.StackTrace}");
                     ScannerError?.Invoke(this, new ScannerErrorEventArgs(config, $"Failed to open scanner: {ex.Message}"));
                 }
             }
@@ -266,9 +267,18 @@ namespace ScanLink
 
                 return true;
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                string msg = $"COM port {Config.ComPort} is already in use by another application. Please close any other scanner applications (like 'winscan') and try again.";
+                IssueLoggingService.LogIssue("Scanner Port Locked", $"COM path {Config.DeviceName} on {Config.ComPort} is unauthorized/locked.\n{ex.Message}");
+                EmitLog(msg);
+                ErrorOccurred?.Invoke(this, new ScannerErrorEventArgs(Config, msg));
+                return false;
+            }
             catch (Exception ex)
             {
                 EmitLog($"Failed to open COM port: {ex.Message}");
+                IssueLoggingService.LogIssue("Scanner Port Exception", $"Failed to open {Config.DeviceName} on {Config.ComPort}: {ex.Message}\nStack Trace:\n{ex.StackTrace}");
                 ErrorOccurred?.Invoke(this, new ScannerErrorEventArgs(Config, $"Failed to open COM port: {ex.Message}"));
                 return false;
             }
@@ -370,6 +380,7 @@ namespace ScanLink
         private void SerialPort_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
         {
             EmitLog($"Serial port error: {e.EventType}");
+            IssueLoggingService.LogIssue("Scanner Hardware Error", $"Serial device error triggered for {Config.DeviceName} on {Config.ComPort}. EventType: {e.EventType}");
             ErrorOccurred?.Invoke(this, new ScannerErrorEventArgs(Config, $"Serial port error: {e.EventType}"));
         }
 
@@ -409,10 +420,13 @@ namespace ScanLink
                             {
                                 if (_dataBuffer.Length > 0)
                                 {
-                                    string flushed = _dataBuffer.ToString();
+                                    string flushed = _dataBuffer.ToString().Trim();
                                     _dataBuffer.Clear();
-                                    EmitLog($"Inactivity flush {flushed.Length} chars");
-                                    DataReceived?.Invoke(this, new ScannerDataReceivedEventArgs(Config, flushed.Trim()));
+                                    if (!string.IsNullOrWhiteSpace(flushed))
+                                    {
+                                        EmitLog($"Inactivity flush {flushed.Length} chars");
+                                        DataReceived?.Invoke(this, new ScannerDataReceivedEventArgs(Config, flushed));
+                                    }
                                 }
                             }
                         }
@@ -446,37 +460,34 @@ namespace ScanLink
             {
                 _dataBuffer.Append(data);
 
-                // Process complete lines (terminated by \r, \n, or \r\n)
                 string bufferContent = _dataBuffer.ToString();
-                var lines = bufferContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-
-                // Check if buffer ends with terminator
-                bool hasTerminator = bufferContent.EndsWith("\r") || bufferContent.EndsWith("\n");
-
-                if (hasTerminator)
+                
+                if (bufferContent.Contains("\r") || bufferContent.Contains("\n"))
                 {
-                    EmitLog($"Terminator detected; delivering {lines.Length} line(s)");
-                    foreach (var line in lines)
+                    // Split the buffer by terminators
+                    var parts = bufferContent.Split(new[] { '\r', '\n' });
+                    
+                    _dataBuffer.Clear();
+                    
+                    // All elements EXCEPT the last one are guaranteed to be cleanly terminated by \r or \n.
+                    // The LAST element is the remaining un-terminated portion (could be empty if buffer ended in \r or \n).
+                    for (int i = 0; i < parts.Length - 1; i++)
                     {
+                        var line = parts[i].Trim();
                         if (!string.IsNullOrWhiteSpace(line))
                         {
-                            DataReceived?.Invoke(this, new ScannerDataReceivedEventArgs(Config, line.Trim()));
+                            EmitLog($"Terminator line delivered: \"{line}\"");
+                            DataReceived?.Invoke(this, new ScannerDataReceivedEventArgs(Config, line));
                         }
                     }
-                    _dataBuffer.Clear();
-                }
-                else if (lines.Length > 1)
-                {
-                    for (int i = 0; i < lines.Length - 1; i++)
+                    
+                    // Put the last undetermined piece back in the buffer for the next reading
+                    string remainder = parts[parts.Length - 1];
+                    if (!string.IsNullOrEmpty(remainder))
                     {
-                        if (!string.IsNullOrWhiteSpace(lines[i]))
-                        {
-                            DataReceived?.Invoke(this, new ScannerDataReceivedEventArgs(Config, lines[i].Trim()));
-                        }
+                        _dataBuffer.Append(remainder);
+                        EmitLog($"Buffered partial line; buffer length now {_dataBuffer.Length}");
                     }
-                    _dataBuffer.Clear();
-                    _dataBuffer.Append(lines[lines.Length - 1]);
-                    EmitLog($"Buffered partial line; buffer length now {_dataBuffer.Length}");
                 }
             }
         }

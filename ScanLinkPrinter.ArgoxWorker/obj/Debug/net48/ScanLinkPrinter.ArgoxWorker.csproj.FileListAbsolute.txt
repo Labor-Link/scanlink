@@ -11,3 +11,17 @@ E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLink.1B66D95B.Up2Date
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
 E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\bin\Debug\net48\BarcodePrinter_API.dll
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.AssemblyReference.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe.config
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfoInputs.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.AssemblyInfo.cs
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.csproj.CoreCompileInputs.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.sourcelink.json
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLink.1B66D95B.Up2Date
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.exe
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.ArgoxWorker\obj\Debug\net48\ScanLinkPrinter.ArgoxWorker.pdb
