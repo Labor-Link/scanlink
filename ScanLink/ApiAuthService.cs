@@ -322,6 +322,30 @@ namespace ScanLink
         }
 
         /// <summary>
+        /// Gets the effective, robust site ID across dropdown, active_site, and raw payloads
+        /// </summary>
+        public string GetEffectiveSiteId()
+        {
+            string id = GetSelectedSiteId();
+            if (!string.IsNullOrEmpty(id)) return id;
+
+            id = GetActiveSiteId();
+            if (!string.IsNullOrEmpty(id)) return id;
+
+            var payload = GetCurrentTokenPayload();
+            if (payload != null)
+            {
+                var allSites = GetAllSiteIdsFromPayload(payload);
+                if (allSites != null && allSites.Count > 0)
+                {
+                    return allSites[0].Id;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// Gets the currently selected site name
         /// </summary>
         /// <returns>The selected site name or null if not set</returns>
@@ -521,33 +545,52 @@ namespace ScanLink
                         {
                             if (authority is Dictionary<string, object> authorityDict)
                             {
-                                if (authorityDict.ContainsKey("authority") && authorityDict["authority"]?.ToString() == "EMPLOYEE")
+                                string authType = authorityDict.ContainsKey("authority") ? authorityDict["authority"]?.ToString() : "Unknown";
+                                if (authType == "EMPLOYEE" || authType == "OWNER")
                                 {
                                     // Check for active_site
-                                    if (authorityDict.ContainsKey("active_site"))
+                                    if (authorityDict.ContainsKey("active_site") && authorityDict["active_site"] is Dictionary<string, object> activeSiteDict)
                                     {
-                                        var activeSite = authorityDict["active_site"];
-                                        if (activeSite is Dictionary<string, object> activeSiteDict)
+                                        if (activeSiteDict.ContainsKey("first") && activeSiteDict.ContainsKey("second"))
                                         {
-                                            if (activeSiteDict.ContainsKey("first") && activeSiteDict.ContainsKey("second"))
+                                            string siteId = activeSiteDict["first"]?.ToString();
+                                            if (!string.IsNullOrEmpty(siteId) && !siteList.Any(s => s.Id == siteId))
                                             {
-                                                string siteId = activeSiteDict["first"]?.ToString();
-                                                // Check for duplicates
+                                                siteList.Add(new SiteInfo { Id = siteId, Name = activeSiteDict["second"]?.ToString(), Type = "Active Site", Authority = authType });
+                                            }
+                                        }
+                                    }
+
+                                    // Check for farm (single)
+                                    if (authorityDict.ContainsKey("farm") && authorityDict["farm"] is Dictionary<string, object> farmDict)
+                                    {
+                                        if (farmDict.ContainsKey("first") && farmDict.ContainsKey("second"))
+                                        {
+                                            string siteId = farmDict["first"]?.ToString();
+                                            if (!string.IsNullOrEmpty(siteId) && !siteList.Any(s => s.Id == siteId))
+                                            {
+                                                siteList.Add(new SiteInfo { Id = siteId, Name = farmDict["second"]?.ToString(), Type = "Owner Farm", Authority = authType });
+                                            }
+                                        }
+                                    }
+
+                                    // Check for farms (dictionary)
+                                    if (authorityDict.ContainsKey("farms") && authorityDict["farms"] is Dictionary<string, object> farmsDict)
+                                    {
+                                        foreach (var kvp in farmsDict)
+                                        {
+                                            if (kvp.Value is Dictionary<string, object> fDict && fDict.ContainsKey("first") && fDict.ContainsKey("second"))
+                                            {
+                                                string siteId = fDict["first"]?.ToString();
                                                 if (!string.IsNullOrEmpty(siteId) && !siteList.Any(s => s.Id == siteId))
                                                 {
-                                                    siteList.Add(new SiteInfo
-                                                    {
-                                                        Id = siteId,
-                                                    Name = activeSiteDict["second"]?.ToString(),
-                                                    Type = "Active Site",
-                                                    Authority = authorityDict.ContainsKey("authority") ? authorityDict["authority"]?.ToString() : "Unknown"
-                                                });
+                                                    siteList.Add(new SiteInfo { Id = siteId, Name = fDict["second"]?.ToString(), Type = "Owner Farm", Authority = authType });
                                                 }
                                             }
                                         }
                                     }
 
-                                    // Check for sites
+                                    // Check for sites array or single object
                                     if (authorityDict.ContainsKey("sites"))
                                     {
                                         var sites = authorityDict["sites"];
@@ -556,16 +599,23 @@ namespace ScanLink
                                             if (sitesDict.ContainsKey("first") && sitesDict.ContainsKey("second"))
                                             {
                                                 string siteId = sitesDict["first"]?.ToString();
-                                                // Check for duplicates
                                                 if (!string.IsNullOrEmpty(siteId) && !siteList.Any(s => s.Id == siteId))
                                                 {
-                                                    siteList.Add(new SiteInfo
+                                                    siteList.Add(new SiteInfo { Id = siteId, Name = sitesDict["second"]?.ToString(), Type = "Site", Authority = authType });
+                                                }
+                                            }
+                                        }
+                                        else if (sites is System.Collections.ArrayList sitesList)
+                                        {
+                                            foreach (var siteObj in sitesList)
+                                            {
+                                                if (siteObj is Dictionary<string, object> sDict && sDict.ContainsKey("first") && sDict.ContainsKey("second"))
+                                                {
+                                                    string siteId = sDict["first"]?.ToString();
+                                                    if (!string.IsNullOrEmpty(siteId) && !siteList.Any(s => s.Id == siteId))
                                                     {
-                                                        Id = siteId,
-                                                    Name = sitesDict["second"]?.ToString(),
-                                                    Type = "Site",
-                                                    Authority = authorityDict.ContainsKey("authority") ? authorityDict["authority"]?.ToString() : "Unknown"
-                                                });
+                                                        siteList.Add(new SiteInfo { Id = siteId, Name = sDict["second"]?.ToString(), Type = "Site", Authority = authType });
+                                                    }
                                                 }
                                             }
                                         }

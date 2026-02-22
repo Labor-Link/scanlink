@@ -150,12 +150,6 @@ namespace ScanLink
                 // Auto-select the single site
                 var singleSite = _siteTiles[0];
 
-                // Show loading message
-                MessageBox.Show($"Automatically selected site: {singleSite.Name}\n\nLoading application...",
-                    "Single Site Selection",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-
                 // Auto-select and close
                 _selectedSiteId = singleSite.Id;
                 _selectedSiteName = singleSite.Name;

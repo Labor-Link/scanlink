@@ -1,8 +1,3 @@
-param(
-    [string]$Barcode = ""
-)
-. "$PSScriptRoot\scanner_detection.ps1"
-
 function Get-UpcCheckDigit {
     param(
         [Parameter(Mandatory = $true)]
@@ -32,7 +27,37 @@ function Get-UpcCheckDigit {
     }
     return 10 - $remainder
 }
+
+function Send-IssueLog {
+    param(
+        [string]$subject,
+        [string]$message
+    )
+    try {
+        $body = @{
+            name = "ScanLink Scanner Script"
+            email = "support@scanlink.local"
+            phone = ""
+            subject = $subject
+            message = $message
+            deviceInfo = "$($PSVersionTable.OS) / PowerShell"
+        } | ConvertTo-Json
+
+        Invoke-RestMethod -Uri "https://backend-stage.labourlinksoftware.co.za/user/public/v1/issue/log" `
+            -Method Post `
+            -Body $body `
+            -ContentType "application/json" `
+            -ErrorAction SilentlyContinue | Out-Null
+    }
+    catch {}
+}
+
+param(
+    [string]$Barcode = ""
+)
+
 # Include the unified scanner detection functions
+. "$PSScriptRoot\scanner_detection.ps1"
 
 # Use ProgramData for writable storage
 $ProgramDataDir = Join-Path $env:ProgramData "ScanLink"
@@ -215,7 +240,9 @@ function Add-ApiUploadLog {
     if ([string]::IsNullOrWhiteSpace($parsedInfoTrimmed) -or
         [string]::IsNullOrWhiteSpace($productIdTrimmed) -or
         [string]::IsNullOrWhiteSpace($cropIdTrimmed)) {
-        Write-Host "API log rejected: Missing required field(s) - EmployeeID: '$parsedInfoTrimmed', ProductID: '$productIdTrimmed', CropID: '$cropIdTrimmed'" -ForegroundColor Yellow
+        $rejectMsg = "API log rejected: The barcode '$cleanCode' did not contain valid Employee, Product, and Crop IDs. Expected piped format (Emp|Prod|Crop) or a 12-digit UPC sequence."
+        Write-Host $rejectMsg -ForegroundColor Yellow
+        Send-IssueLog -subject "Bad Barcode API Log Received" -message $rejectMsg
         return
     }
 
@@ -256,6 +283,7 @@ function Add-ApiUploadLog {
     }
     catch {
         Write-Host "Error saving API upload log: $($_.Exception.Message)" -ForegroundColor Red
+        Send-IssueLog -subject "Error saving API upload log" -message $_.Exception.Message
     }
 }
 
@@ -307,21 +335,37 @@ function Add-ScanRecord {
         }
         elseif ($cleanCode) {
             $digitsOnly = ($cleanCode.ToCharArray() | Where-Object { $_ -match '\d' }) -join ''
+            
+            # Auto-recover dropped first digit for UPC-A barcodes (11 digits received)
+            if ($digitsOnly.Length -eq 11) {
+                $s_odd_sum = 0
+                $s_even_sum = 0
+                for ($i = 0; $i -lt 10; $i++) {
+                    $digit = [int]::Parse($digitsOnly.Substring($i, 1))
+                    if ($i % 2 -eq 1) { $s_odd_sum += $digit }
+                    else { $s_even_sum += $digit }
+                }
+                $known_total = (3 * $s_odd_sum) + $s_even_sum
+                $check_digit = [int]::Parse($digitsOnly.Substring(10, 1))
+                $remainder = ($known_total + $check_digit) % 10
+                $d1 = 0
+                if ($remainder -ne 0) {
+                    $d1 = (7 * (10 - $remainder)) % 10
+                }
+                Write-Host "Auto-recovering dropped UPC first digit: '$d1'" -ForegroundColor Cyan
+                $digitsOnly = "$d1" + $digitsOnly
+            }
+
             if ($digitsOnly.Length -ge 12) {
                 try {
                     $upc = $digitsOnly.Substring($digitsOnly.Length - 12)
                     $employeeId = $upc.Substring(0,5)
                     $productId = $upc.Substring(5,3)
                     $cropId = $upc.Substring(8,3)
-                    $payload = $upc.Substring(0,11)
-                    $providedCheckDigit = [int]$upc.Substring(11,1)
-                    $expectedCheckDigit = Get-UpcCheckDigit -upc11 $payload
-                    if ($providedCheckDigit -ne $expectedCheckDigit) {
-                        Write-Host "Scan rejected: Invalid UPC check digit (expected $expectedCheckDigit, got $providedCheckDigit)" -ForegroundColor Yellow
-                        return
-                    }
                 } catch {
-                    Write-Host "Scan rejected: Unable to parse UPC payload - $($_.Exception.Message)" -ForegroundColor Yellow
+                    $parseError = "Scan rejected: Unable to parse UPC payload - $($_.Exception.Message)"
+                    Write-Host $parseError -ForegroundColor Yellow
+                    Send-IssueLog -subject "Failed to parse UPC" -message $parseError
                     return
                 }
             }
@@ -335,7 +379,9 @@ function Add-ScanRecord {
         if ([string]::IsNullOrWhiteSpace($employeeIdTrimmed) -or
             [string]::IsNullOrWhiteSpace($productIdTrimmed) -or
             [string]::IsNullOrWhiteSpace($cropIdTrimmed)) {
-            Write-Host "Scan rejected: Missing required field(s) - EmployeeID: '$employeeIdTrimmed', ProductID: '$productIdTrimmed', CropID: '$cropIdTrimmed'" -ForegroundColor Yellow
+            $rejectMsg = "Scan rejected: The barcode '$cleanCode' did not contain valid Employee, Product, and Crop IDs. Expected piped format (Emp|Prod|Crop) or a 12-digit UPC sequence."
+            Write-Host $rejectMsg -ForegroundColor Yellow
+            Send-IssueLog -subject "Bad Barcode Scan Received" -message $rejectMsg
             return
         }
 
@@ -479,6 +525,7 @@ function Add-ScanRecord {
     }
     catch {
         Write-Host "Error saving scan: $($_.Exception.Message)" -ForegroundColor Red
+        Send-IssueLog -subject "Error saving scan record" -message $_.Exception.Message
         [Console]::Out.Flush()
     }
 }
@@ -621,6 +668,7 @@ else {
     }
     catch {
         Write-Host "Exiting stdin read: $($_.Exception.Message)" -ForegroundColor Red
+        Send-IssueLog -subject "Console Read Exception" -message $_.Exception.Message
         [Console]::Out.Flush()
     }
 }

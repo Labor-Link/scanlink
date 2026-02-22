@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = ScanLinkPrinter.Protocol
-build_property.ProjectDir = E:\documents\new_code - almost UI\scanlink\ScanLinkPrinter.Protocol\
+build_property.ProjectDir = c:\Users\dell\Downloads\scanlink zip\scanlink\ScanLinkPrinter.Protocol\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

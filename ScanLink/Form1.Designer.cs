@@ -183,7 +183,7 @@ namespace ScanLink
             // 
             this.loginPanel.AutoScroll = true;
             this.loginPanel.AutoScrollMinSize = new System.Drawing.Size(0, 800);
-            this.loginPanel.BackColor = System.Drawing.Color.White;
+            this.loginPanel.BackColor = System.Drawing.Color.FromArgb(248, 249, 250); // Light gray enterprise bg
             this.loginPanel.Controls.Add(this.loginStatusLabel);
             this.loginPanel.Controls.Add(this.loadingProgressBar);
             this.loginPanel.Controls.Add(this.loadingStatusLabel);
@@ -578,14 +578,28 @@ namespace ScanLink
             this.scannerDataGridView.AllowUserToDeleteRows = false;
             this.scannerDataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.scannerDataGridView.BackgroundColor = System.Drawing.Color.White;
-            this.scannerDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.scannerDataGridView.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.scannerDataGridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.SingleHorizontal;
+            this.scannerDataGridView.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
+            this.scannerDataGridView.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
+            this.scannerDataGridView.ColumnHeadersDefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
+            this.scannerDataGridView.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.scannerDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            this.scannerDataGridView.ColumnHeadersHeight = 30;
+            this.scannerDataGridView.EnableHeadersVisualStyles = false;
+            this.scannerDataGridView.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(232, 240, 254);
+            this.scannerDataGridView.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
+            this.scannerDataGridView.DefaultCellStyle.Padding = new System.Windows.Forms.Padding(5, 0, 5, 0);
+            this.scannerDataGridView.RowTemplate.Height = 28;
+            this.scannerDataGridView.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(250, 250, 251);
+            this.scannerDataGridView.GridColor = System.Drawing.Color.FromArgb(233, 236, 239);
             this.scannerDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.scannerDataGridView.Location = new System.Drawing.Point(20, 220);
+            this.scannerDataGridView.Location = new System.Drawing.Point(0, 220); // Removed padding offset
             this.scannerDataGridView.Name = "scannerDataGridView";
             this.scannerDataGridView.ReadOnly = true;
             this.scannerDataGridView.RowHeadersVisible = false;
             this.scannerDataGridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.scannerDataGridView.Size = new System.Drawing.Size(560, 300);
+            this.scannerDataGridView.Size = new System.Drawing.Size(600, 300); // Full width
             this.scannerDataGridView.TabIndex = 0;
             
             // 
@@ -618,14 +632,15 @@ namespace ScanLink
             // 
             // previousPageButton
             // 
-            this.previousPageButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.previousPageButton.FlatAppearance.BorderSize = 0;
+            this.previousPageButton.BackColor = System.Drawing.Color.White;
+            this.previousPageButton.FlatAppearance.BorderSize = 1;
+            this.previousPageButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(206, 212, 218);
             this.previousPageButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.previousPageButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-            this.previousPageButton.ForeColor = System.Drawing.Color.White;
+            this.previousPageButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.previousPageButton.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
             this.previousPageButton.Location = new System.Drawing.Point(20, 500);
             this.previousPageButton.Name = "previousPageButton";
-            this.previousPageButton.Size = new System.Drawing.Size(80, 30);
+            this.previousPageButton.Size = new System.Drawing.Size(80, 26);
             this.previousPageButton.TabIndex = 5;
             this.previousPageButton.Text = "Previous";
             this.previousPageButton.UseVisualStyleBackColor = false;
@@ -635,14 +650,15 @@ namespace ScanLink
             // 
             // nextPageButton
             // 
-            this.nextPageButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.nextPageButton.FlatAppearance.BorderSize = 0;
+            this.nextPageButton.BackColor = System.Drawing.Color.White;
+            this.nextPageButton.FlatAppearance.BorderSize = 1;
+            this.nextPageButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(206, 212, 218);
             this.nextPageButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.nextPageButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-            this.nextPageButton.ForeColor = System.Drawing.Color.White;
+            this.nextPageButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.nextPageButton.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
             this.nextPageButton.Location = new System.Drawing.Point(500, 500);
             this.nextPageButton.Name = "nextPageButton";
-            this.nextPageButton.Size = new System.Drawing.Size(80, 30);
+            this.nextPageButton.Size = new System.Drawing.Size(80, 26);
             this.nextPageButton.TabIndex = 6;
             this.nextPageButton.Text = "Next";
             this.nextPageButton.UseVisualStyleBackColor = false;
@@ -653,8 +669,8 @@ namespace ScanLink
             // pageInfoLabel
             // 
             this.pageInfoLabel.AutoSize = true;
-            this.pageInfoLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
-            this.pageInfoLabel.ForeColor = System.Drawing.Color.Black;
+            this.pageInfoLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.pageInfoLabel.ForeColor = System.Drawing.Color.FromArgb(108, 117, 125); // Muted text
             this.pageInfoLabel.Location = new System.Drawing.Point(250, 505);
             this.pageInfoLabel.Name = "pageInfoLabel";
             this.pageInfoLabel.Size = new System.Drawing.Size(100, 19);
@@ -819,17 +835,17 @@ namespace ScanLink
             // 
             // applyFiltersButton
             // 
-            this.applyFiltersButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
+            this.applyFiltersButton.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
             this.applyFiltersButton.FlatAppearance.BorderSize = 0;
             this.applyFiltersButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.applyFiltersButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
+            this.applyFiltersButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.applyFiltersButton.ForeColor = System.Drawing.Color.White;
             this.applyFiltersButton.Location = new System.Drawing.Point(280, 310);
             this.applyFiltersButton.Name = "applyFiltersButton";
-            this.applyFiltersButton.Size = new System.Drawing.Size(80, 25);
+            this.applyFiltersButton.Size = new System.Drawing.Size(80, 24);
             this.applyFiltersButton.TabIndex = 18;
             this.applyFiltersButton.Text = "Apply";
-            this.applyFiltersButton.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.applyFiltersButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter; // Centered
             this.applyFiltersButton.UseVisualStyleBackColor = false;
             this.applyFiltersButton.Anchor = System.Windows.Forms.AnchorStyles.Right;
             this.applyFiltersButton.Click += new System.EventHandler(this.applyFiltersButton_Click);
@@ -839,17 +855,18 @@ namespace ScanLink
             //
             // clearFiltersButton
             // 
-            this.clearFiltersButton.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.clearFiltersButton.FlatAppearance.BorderSize = 0;
+            this.clearFiltersButton.BackColor = System.Drawing.Color.White;
+            this.clearFiltersButton.FlatAppearance.BorderSize = 1;
+            this.clearFiltersButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(206, 212, 218);
             this.clearFiltersButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.clearFiltersButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-            this.clearFiltersButton.ForeColor = System.Drawing.Color.White;
+            this.clearFiltersButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.clearFiltersButton.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
             this.clearFiltersButton.Location = new System.Drawing.Point(370, 310);
             this.clearFiltersButton.Name = "clearFiltersButton";
-            this.clearFiltersButton.Size = new System.Drawing.Size(80, 25);
+            this.clearFiltersButton.Size = new System.Drawing.Size(80, 24);
             this.clearFiltersButton.TabIndex = 19;
             this.clearFiltersButton.Text = "Clear";
-            this.clearFiltersButton.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.clearFiltersButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter; // Centered
             this.clearFiltersButton.UseVisualStyleBackColor = false;
             this.clearFiltersButton.Click += new System.EventHandler(this.clearFiltersButton_Click);
             
@@ -908,13 +925,13 @@ namespace ScanLink
             // 
             // headerPanel
             // 
-            this.headerPanel.BackColor = System.Drawing.Color.FromArgb(27, 42, 65);
+            this.headerPanel.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
             this.headerPanel.Controls.Add(this.headerTableLayoutPanel);
             this.headerPanel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.headerPanel.Location = new System.Drawing.Point(20, 20);
+            this.headerPanel.Location = new System.Drawing.Point(0, 0); // Removed padding gap
             this.headerPanel.Name = "headerPanel";
-            this.headerPanel.Padding = new System.Windows.Forms.Padding(10, 10, 10, 10);
-            this.headerPanel.Size = new System.Drawing.Size(560, 100);
+            this.headerPanel.Padding = new System.Windows.Forms.Padding(10, 5, 10, 5); // Tighter padding
+            this.headerPanel.Size = new System.Drawing.Size(560, 60); // Smaller height
             this.headerPanel.TabIndex = 0;
 
             //
@@ -930,15 +947,15 @@ namespace ScanLink
             this.headerTableLayoutPanel.Name = "headerTableLayoutPanel";
             this.headerTableLayoutPanel.RowCount = 1;
             this.headerTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.headerTableLayoutPanel.Size = new System.Drawing.Size(500, 60);
+            this.headerTableLayoutPanel.Size = new System.Drawing.Size(500, 75); // Increased height to fit descriptions
             this.headerTableLayoutPanel.TabIndex = 0;
 
             //
             // titlepanel
             //
-            this.titlepanel.BackColor = System.Drawing.Color.FromArgb(27, 42, 65);
+            this.titlepanel.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
             this.titlepanel.Controls.Add(this.titleLabel);
-            this.titlepanel.Controls.Add(this.subtitleLabel);
+            // Subtitle label removed for compactness
             this.titlepanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.titlepanel.Location = new System.Drawing.Point(3, 3);
             this.titlepanel.Name = "titlepanel";
@@ -948,7 +965,7 @@ namespace ScanLink
             //
             // buttonpanel
             //
-            this.buttonpanel.BackColor = System.Drawing.Color.FromArgb(27, 42, 65);
+            this.buttonpanel.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
             this.buttonpanel.Controls.Add(this.buttonTableLayoutPanel);
             this.buttonpanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.buttonpanel.Location = new System.Drawing.Point(103, 3);
@@ -979,24 +996,25 @@ namespace ScanLink
             this.buttonTableLayoutPanel.Name = "buttonTableLayoutPanel";
             this.buttonTableLayoutPanel.RowCount = 1;
             this.buttonTableLayoutPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.buttonTableLayoutPanel.Size = new System.Drawing.Size(394, 54);
+            this.buttonTableLayoutPanel.Size = new System.Drawing.Size(394, 69); // Increased height
             this.buttonTableLayoutPanel.TabIndex = 0;
 
             //
             // setupButton
             //
-            this.setupButton.BackColor = System.Drawing.Color.FromArgb(46, 125, 50);
+            this.setupButton.BackColor = System.Drawing.Color.FromArgb(13, 110, 253); // Corporate primary blue
             this.setupButton.Dock = System.Windows.Forms.DockStyle.Fill;
             this.setupButton.FlatAppearance.BorderSize = 0;
-            this.setupButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(27, 94, 32);
-            this.setupButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(76, 175, 80);
+            this.setupButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(10, 88, 202);
+            this.setupButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(11, 94, 215);
             this.setupButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.setupButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.setupButton.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.setupButton.ForeColor = System.Drawing.Color.White;
-            this.setupButton.Margin = new System.Windows.Forms.Padding(3);
+            this.setupButton.Margin = new System.Windows.Forms.Padding(2);
             this.setupButton.Name = "setupButton";
             this.setupButton.TabIndex = 0;
-            this.setupButton.Text = "Setup";
+            this.setupButton.Text = "";
+            this.setupButton.Tag = "Setup|System settings";
             this.setupButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.setupButton.UseVisualStyleBackColor = false;
             this.setupButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
@@ -1006,18 +1024,19 @@ namespace ScanLink
             //
             // scannerSetupButton
             //
-            this.scannerSetupButton.BackColor = System.Drawing.Color.FromArgb(25, 118, 210);
+            this.scannerSetupButton.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
             this.scannerSetupButton.Dock = System.Windows.Forms.DockStyle.Fill;
             this.scannerSetupButton.FlatAppearance.BorderSize = 0;
-            this.scannerSetupButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(13, 71, 161);
-            this.scannerSetupButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(66, 165, 245);
+            this.scannerSetupButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(10, 88, 202);
+            this.scannerSetupButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(11, 94, 215);
             this.scannerSetupButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.scannerSetupButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.scannerSetupButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.scannerSetupButton.ForeColor = System.Drawing.Color.White;
-            this.scannerSetupButton.Margin = new System.Windows.Forms.Padding(3);
+            this.scannerSetupButton.Margin = new System.Windows.Forms.Padding(2);
             this.scannerSetupButton.Name = "scannerSetupButton";
             this.scannerSetupButton.TabIndex = 1;
-            this.scannerSetupButton.Text = "Scanner\r\nSetup";
+            this.scannerSetupButton.Text = ""; 
+            this.scannerSetupButton.Tag = "Scanner|Manage devices";
             this.scannerSetupButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.scannerSetupButton.UseVisualStyleBackColor = false;
             this.scannerSetupButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
@@ -1027,18 +1046,19 @@ namespace ScanLink
             //
             // printerConnectionButton
             //
-            this.printerConnectionButton.BackColor = System.Drawing.Color.FromArgb(255, 152, 0);
+            this.printerConnectionButton.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
             this.printerConnectionButton.Dock = System.Windows.Forms.DockStyle.Fill;
             this.printerConnectionButton.FlatAppearance.BorderSize = 0;
-            this.printerConnectionButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(245, 127, 23);
-            this.printerConnectionButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(255, 193, 7);
+            this.printerConnectionButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(10, 88, 202);
+            this.printerConnectionButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(11, 94, 215);
             this.printerConnectionButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.printerConnectionButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.printerConnectionButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.printerConnectionButton.ForeColor = System.Drawing.Color.White;
-            this.printerConnectionButton.Margin = new System.Windows.Forms.Padding(3);
+            this.printerConnectionButton.Margin = new System.Windows.Forms.Padding(2);
             this.printerConnectionButton.Name = "printerConnectionButton";
             this.printerConnectionButton.TabIndex = 2;
-            this.printerConnectionButton.Text = "Printer\r\nConnection";
+            this.printerConnectionButton.Text = ""; 
+            this.printerConnectionButton.Tag = "Printer|Setup connection";
             this.printerConnectionButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.printerConnectionButton.UseVisualStyleBackColor = false;
             this.printerConnectionButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
@@ -1048,18 +1068,19 @@ namespace ScanLink
             //
             // barCodesButton
             //
-            this.barCodesButton.BackColor = System.Drawing.Color.FromArgb(156, 39, 176);
+            this.barCodesButton.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
             this.barCodesButton.Dock = System.Windows.Forms.DockStyle.Fill;
             this.barCodesButton.FlatAppearance.BorderSize = 0;
-            this.barCodesButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(123, 31, 162);
-            this.barCodesButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(186, 104, 200);
+            this.barCodesButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(10, 88, 202);
+            this.barCodesButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(11, 94, 215);
             this.barCodesButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.barCodesButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.barCodesButton.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.barCodesButton.ForeColor = System.Drawing.Color.White;
-            this.barCodesButton.Margin = new System.Windows.Forms.Padding(3);
+            this.barCodesButton.Margin = new System.Windows.Forms.Padding(2);
             this.barCodesButton.Name = "barCodesButton";
             this.barCodesButton.TabIndex = 3;
-            this.barCodesButton.Text = "Bar Codes";
+            this.barCodesButton.Text = "";
+            this.barCodesButton.Tag = "Bar Codes|Generate labels";
             this.barCodesButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.barCodesButton.UseVisualStyleBackColor = false;
             this.barCodesButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
@@ -1069,18 +1090,19 @@ namespace ScanLink
             //
             // boxLabelsButton
             //
-            this.boxLabelsButton.BackColor = System.Drawing.Color.FromArgb(0, 150, 136);
+            this.boxLabelsButton.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
             this.boxLabelsButton.Dock = System.Windows.Forms.DockStyle.Fill;
             this.boxLabelsButton.FlatAppearance.BorderSize = 0;
-            this.boxLabelsButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 121, 107);
-            this.boxLabelsButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(77, 182, 172);
+            this.boxLabelsButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(10, 88, 202);
+            this.boxLabelsButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(11, 94, 215);
             this.boxLabelsButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.boxLabelsButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.boxLabelsButton.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.boxLabelsButton.ForeColor = System.Drawing.Color.White;
-            this.boxLabelsButton.Margin = new System.Windows.Forms.Padding(3);
+            this.boxLabelsButton.Margin = new System.Windows.Forms.Padding(2);
             this.boxLabelsButton.Name = "boxLabelsButton";
             this.boxLabelsButton.TabIndex = 4;
-            this.boxLabelsButton.Text = "Box Labels";
+            this.boxLabelsButton.Text = "";
+            this.boxLabelsButton.Tag = "Box Labels|Print dispatch";
             this.boxLabelsButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.boxLabelsButton.UseVisualStyleBackColor = false;
             this.boxLabelsButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
@@ -1090,18 +1112,19 @@ namespace ScanLink
             //
             // reportsButton
             //
-            this.reportsButton.BackColor = System.Drawing.Color.FromArgb(121, 85, 72);
+            this.reportsButton.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
             this.reportsButton.Dock = System.Windows.Forms.DockStyle.Fill;
             this.reportsButton.FlatAppearance.BorderSize = 0;
-            this.reportsButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(96, 64, 54);
-            this.reportsButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(161, 136, 127);
+            this.reportsButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(10, 88, 202);
+            this.reportsButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(11, 94, 215);
             this.reportsButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.reportsButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.reportsButton.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.reportsButton.ForeColor = System.Drawing.Color.White;
-            this.reportsButton.Margin = new System.Windows.Forms.Padding(3);
+            this.reportsButton.Margin = new System.Windows.Forms.Padding(2);
             this.reportsButton.Name = "reportsButton";
             this.reportsButton.TabIndex = 5;
-            this.reportsButton.Text = "Reports";
+            this.reportsButton.Text = "";
+            this.reportsButton.Tag = "Reports|View web stats";
             this.reportsButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.reportsButton.UseVisualStyleBackColor = false;
             this.reportsButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
@@ -1111,18 +1134,20 @@ namespace ScanLink
             //
             // logoutButton
             //
-            this.logoutButton.BackColor = System.Drawing.Color.FromArgb(244, 67, 54);
+            this.logoutButton.BackColor = System.Drawing.Color.FromArgb(248, 249, 250); // Blends in normally
             this.logoutButton.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.logoutButton.FlatAppearance.BorderSize = 0;
-            this.logoutButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(211, 47, 47);
-            this.logoutButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(244, 143, 177);
+            this.logoutButton.FlatAppearance.BorderSize = 1;
+            this.logoutButton.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(206, 212, 218); // Light gray border
+            this.logoutButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(220, 53, 69); // Danger red
+            this.logoutButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(220, 53, 69); // Danger red
             this.logoutButton.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.logoutButton.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.logoutButton.ForeColor = System.Drawing.Color.White;
-            this.logoutButton.Margin = new System.Windows.Forms.Padding(3);
+            this.logoutButton.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.logoutButton.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
+            this.logoutButton.Margin = new System.Windows.Forms.Padding(2);
             this.logoutButton.Name = "logoutButton";
             this.logoutButton.TabIndex = 6;
-            this.logoutButton.Text = "logout";
+            this.logoutButton.Text = "";
+            this.logoutButton.Tag = "Logout|End session";
             this.logoutButton.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.logoutButton.UseVisualStyleBackColor = false;
             this.logoutButton.SizeChanged += new System.EventHandler(this.Button_SizeChanged);
@@ -1133,13 +1158,13 @@ namespace ScanLink
             // titleLabel
             // 
             this.titleLabel.AutoSize = true;
-            this.titleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 26F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.titleLabel.ForeColor = System.Drawing.Color.White;
-            this.titleLabel.Location = new System.Drawing.Point(0, 0);
+            this.titleLabel.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.titleLabel.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
+            this.titleLabel.Location = new System.Drawing.Point(0, 5); // Vertically centered
             this.titleLabel.Name = "titleLabel";
             this.titleLabel.Size = new System.Drawing.Size(168, 45);
             this.titleLabel.TabIndex = 0;
-            this.titleLabel.Text = "Scan Link";
+            this.titleLabel.Text = "ScanLink";
             
             // 
             // subtitleLabel
@@ -1153,18 +1178,16 @@ namespace ScanLink
             this.subtitleLabel.TabIndex = 1;
             this.subtitleLabel.Text = "Professional Barcode Printing Solution";
             
-            // 
             // configPanel
             // 
             this.configPanel.Controls.Add(this.configGroupBox);
             this.configPanel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.configPanel.Location = new System.Drawing.Point(20, 280);
+            this.configPanel.Location = new System.Drawing.Point(0, 280); // Removed left padding
             this.configPanel.Name = "configPanel";
-            this.configPanel.Padding = new System.Windows.Forms.Padding(50, 20, 50, 0);
-            this.configPanel.Size = new System.Drawing.Size(560, 290);
+            this.configPanel.Padding = new System.Windows.Forms.Padding(20, 10, 20, 0); // Tighter padding
+            this.configPanel.Size = new System.Drawing.Size(600, 250); // Adjusted height
             this.configPanel.TabIndex = 2;
             
-            // 
             // configGroupBox
             // 
             this.configGroupBox.Controls.Add(this.barcodeTextPanel);
@@ -1172,17 +1195,16 @@ namespace ScanLink
             this.configGroupBox.Controls.Add(this.numericUpDown_count);
             this.configGroupBox.Controls.Add(this.button_generateBarcode);
             this.configGroupBox.Controls.Add(this.button_preview);
-            // this.configGroupBox.Controls.Add(this.checkBox_showAdvanced);
             this.configGroupBox.Dock = System.Windows.Forms.DockStyle.Top;
-            this.configGroupBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-            this.configGroupBox.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.configGroupBox.Location = new System.Drawing.Point(0, 20);
+            this.configGroupBox.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.configGroupBox.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
+            this.configGroupBox.Location = new System.Drawing.Point(20, 10);
             this.configGroupBox.Name = "configGroupBox";
-            this.configGroupBox.Padding = new System.Windows.Forms.Padding(20,20,20,20);
-            this.configGroupBox.Size = new System.Drawing.Size(460, 215);
+            this.configGroupBox.Padding = new System.Windows.Forms.Padding(10, 10, 10, 10); // Tighter padding
+            this.configGroupBox.Size = new System.Drawing.Size(560, 215); // Wider
             this.configGroupBox.TabIndex = 0;
             this.configGroupBox.TabStop = false;
-            this.configGroupBox.Text = "⚙️ Print Configuration";
+            this.configGroupBox.Text = "Print Configuration"; // Removed emoji for cleaner look
             
             // 
             // barcodeTextPanel
@@ -1205,7 +1227,7 @@ namespace ScanLink
             // label_EmployeeID
             // 
             this.label_EmployeeID.AutoSize = true;
-            this.label_EmployeeID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.label_EmployeeID.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.label_EmployeeID.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_EmployeeID.Location = new System.Drawing.Point(5, 5);
             this.label_EmployeeID.Name = "label_EmployeeID";
@@ -1216,23 +1238,25 @@ namespace ScanLink
             // 
             // textBox_EmployeeID
             // 
-            this.textBox_EmployeeID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.textBox_EmployeeID.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
+            this.textBox_EmployeeID.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.textBox_EmployeeID.Location = new System.Drawing.Point(170, 2);
             this.textBox_EmployeeID.Name = "textBox_EmployeeID";
-            this.textBox_EmployeeID.Size = new System.Drawing.Size(300, 20);
+            this.textBox_EmployeeID.Size = new System.Drawing.Size(200, 24); // Shorter width to look cleaner
             this.textBox_EmployeeID.TabIndex = 1;
             this.textBox_EmployeeID.Text = "123456";
             
             // 
             // button_FetchEmployees
             // 
-            this.button_FetchEmployees.BackColor = System.Drawing.Color.FromArgb(52, 152, 219);
+            this.button_FetchEmployees.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
             this.button_FetchEmployees.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_FetchEmployees.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
+            this.button_FetchEmployees.FlatAppearance.BorderSize = 0;
+            this.button_FetchEmployees.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.button_FetchEmployees.ForeColor = System.Drawing.Color.White;
-            this.button_FetchEmployees.Location = new System.Drawing.Point(476, 2);
+            this.button_FetchEmployees.Location = new System.Drawing.Point(380, 2);
             this.button_FetchEmployees.Name = "button_FetchEmployees";
-            this.button_FetchEmployees.Size = new System.Drawing.Size(77, 23);
+            this.button_FetchEmployees.Size = new System.Drawing.Size(80, 24);
             this.button_FetchEmployees.TabIndex = 2;
             this.button_FetchEmployees.Text = "Fetch";
             this.button_FetchEmployees.UseVisualStyleBackColor = false;
@@ -1243,9 +1267,8 @@ namespace ScanLink
             // label_CropID
             // 
             this.label_CropID.AutoSize = true;
-            this.label_CropID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.label_CropID.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.label_CropID.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            // this.label_CropID.Location = new System.Drawing.Point(320, 40);
             this.label_CropID.Location = new System.Drawing.Point(5, 40);
             this.label_CropID.Name = "label_CropID";
             this.label_CropID.Size = new System.Drawing.Size(52, 15);
@@ -1256,23 +1279,23 @@ namespace ScanLink
             // comboBox_CropID
             // 
             this.comboBox_CropID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_CropID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.comboBox_CropID.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.comboBox_CropID.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.comboBox_CropID.FormattingEnabled = true;
-            // this.comboBox_CropID.Location = new System.Drawing.Point(380, 35);
             this.comboBox_CropID.Location = new System.Drawing.Point(170, 35);
             this.comboBox_CropID.Name = "comboBox_CropID";
-            this.comboBox_CropID.Size = new System.Drawing.Size(150, 20);
+            this.comboBox_CropID.Size = new System.Drawing.Size(200, 24); // Match Employee ID width
             this.comboBox_CropID.TabIndex = 2;
 
             //
             // label_ProductID
             // 
             this.label_ProductID.AutoSize = true;
-            this.label_ProductID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.label_ProductID.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.label_ProductID.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
             this.label_ProductID.Location = new System.Drawing.Point(5, 75);
             this.label_ProductID.Name = "label_ProductID";
-            this.label_ProductID.Size = new System.Drawing.Size(90, 15);
+            this.label_ProductID.Size = new System.Drawing.Size(130, 15);
             this.label_ProductID.TabIndex = 0;
             this.label_ProductID.Text = "Product Combination"; 
             
@@ -1280,21 +1303,26 @@ namespace ScanLink
             // comboBox_ProductID
             // 
             this.comboBox_ProductID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_ProductID.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.comboBox_ProductID.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
+            this.comboBox_ProductID.ItemHeight = 22;
+            this.comboBox_ProductID.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.comboBox_ProductID.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.comboBox_ProductID.FormattingEnabled = true;
             this.comboBox_ProductID.Location = new System.Drawing.Point(170, 70);
             this.comboBox_ProductID.Name = "comboBox_ProductID";
-            this.comboBox_ProductID.Size = new System.Drawing.Size(550, 20);
+            this.comboBox_ProductID.Size = new System.Drawing.Size(430, 24); 
+            this.comboBox_ProductID.DropDownWidth = 520; // Enough width for tabular columns
             this.comboBox_ProductID.TabIndex = 1;
+            this.comboBox_ProductID.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.comboBox_ProductID_DrawItem);
 
             
             //
             // label_ProductDetail
             //
             this.label_ProductDetail.AutoSize = true;
-            this.label_ProductDetail.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
-            this.label_ProductDetail.ForeColor = System.Drawing.Color.FromArgb(230, 126, 34);
-            this.label_ProductDetail.Location = new System.Drawing.Point(5, 100);
+            this.label_ProductDetail.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Regular);
+            this.label_ProductDetail.ForeColor = System.Drawing.Color.FromArgb(230, 126, 34); // Keep orange but lighter font
+            this.label_ProductDetail.Location = new System.Drawing.Point(170, 100); // Align with combobox
             this.label_ProductDetail.Name = "label_ProductDetail";
             this.label_ProductDetail.Size = new System.Drawing.Size(100, 15);
             this.label_ProductDetail.TabIndex = 8;
@@ -1305,9 +1333,9 @@ namespace ScanLink
             // label_count
             // 
             this.label_count.AutoSize = true;
-            this.label_count.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.label_count.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.label_count.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.label_count.Location = new System.Drawing.Point(25, 170);
+            this.label_count.Location = new System.Drawing.Point(25, 153);
             this.label_count.Name = "label_count";
             this.label_count.Size = new System.Drawing.Size(65, 20);
             this.label_count.TabIndex = 6;
@@ -1316,12 +1344,13 @@ namespace ScanLink
             // 
             // numericUpDown_count
             // 
-            this.numericUpDown_count.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
-            this.numericUpDown_count.Location = new System.Drawing.Point(190, 167);
+            this.numericUpDown_count.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_count.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.numericUpDown_count.Location = new System.Drawing.Point(190, 150);
             this.numericUpDown_count.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
             this.numericUpDown_count.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
             this.numericUpDown_count.Name = "numericUpDown_count";
-            this.numericUpDown_count.Size = new System.Drawing.Size(150, 28);
+            this.numericUpDown_count.Size = new System.Drawing.Size(140, 24); // Matched height and proportion
             this.numericUpDown_count.TabIndex = 7;
             this.numericUpDown_count.Value = new decimal(new int[] { 1, 0, 0, 0 });
             this.numericUpDown_count.ValueChanged += new System.EventHandler(this.numericUpDown_count_ValueChanged);
@@ -1333,10 +1362,10 @@ namespace ScanLink
             // 
             this.advancedPanel.Controls.Add(this.advancedGroupBox);
             this.advancedPanel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.advancedPanel.Location = new System.Drawing.Point(20, 500);
+            this.advancedPanel.Location = new System.Drawing.Point(0, 530); // Adjusted location based on previous panel changes
             this.advancedPanel.Name = "advancedPanel";
-            this.advancedPanel.Padding = new System.Windows.Forms.Padding(50, 20, 50, 0);
-            this.advancedPanel.Size = new System.Drawing.Size(560, 470);
+            this.advancedPanel.Padding = new System.Windows.Forms.Padding(20, 10, 20, 0); // Tighter padding
+            this.advancedPanel.Size = new System.Drawing.Size(600, 470);
             this.advancedPanel.TabIndex = 3;
             this.advancedPanel.Visible = false;
             this.advancedPanel.AutoSize = true;
@@ -1351,15 +1380,15 @@ namespace ScanLink
             this.advancedGroupBox.Controls.Add(this.dimensionVisualizationPictureBox);
             this.advancedGroupBox.Controls.Add(this.dimensionVisualizationPictureBox_TwoUp);
             this.advancedGroupBox.Dock = System.Windows.Forms.DockStyle.Top;
-            this.advancedGroupBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-            this.advancedGroupBox.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
-            this.advancedGroupBox.Location = new System.Drawing.Point(0, 20);
+            this.advancedGroupBox.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.advancedGroupBox.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
+            this.advancedGroupBox.Location = new System.Drawing.Point(20, 10);
             this.advancedGroupBox.Name = "advancedGroupBox";
-            this.advancedGroupBox.Padding = new System.Windows.Forms.Padding(20,20,20,0);
+            this.advancedGroupBox.Padding = new System.Windows.Forms.Padding(10, 10, 10, 0); // Tighter padding
             this.advancedGroupBox.Size = new System.Drawing.Size(560, 470);
             this.advancedGroupBox.TabIndex = 0;
             this.advancedGroupBox.TabStop = false;
-            this.advancedGroupBox.Text = "🔧 Advanced Print Settings";
+            this.advancedGroupBox.Text = "Advanced Print Settings"; // Removed emoji
             this.advancedGroupBox.AutoSize = true;
             this.advancedGroupBox.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
 
@@ -1421,7 +1450,8 @@ namespace ScanLink
             // comboBox_emulation
             // 
             this.comboBox_emulation.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_emulation.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.comboBox_emulation.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.comboBox_emulation.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.comboBox_emulation.FormattingEnabled = true;
             this.comboBox_emulation.Location = new System.Drawing.Point(170, 2);
             this.comboBox_emulation.Name = "comboBox_emulation";
@@ -1445,7 +1475,8 @@ namespace ScanLink
             // comboBox_test
             // 
             this.comboBox_test.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_test.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.comboBox_test.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.comboBox_test.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.comboBox_test.FormattingEnabled = true;
             this.comboBox_test.Location = new System.Drawing.Point(170, 42);
             this.comboBox_test.Name = "comboBox_test";
@@ -1469,7 +1500,8 @@ namespace ScanLink
             // comboBox_barcode
             // 
             this.comboBox_barcode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_barcode.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.comboBox_barcode.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.comboBox_barcode.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.comboBox_barcode.FormattingEnabled = true;
             this.comboBox_barcode.Location = new System.Drawing.Point(170, 82);
             this.comboBox_barcode.Name = "comboBox_barcode";
@@ -1517,7 +1549,8 @@ namespace ScanLink
             // 
             // numericUpDown_width
             // 
-            this.numericUpDown_width.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_width.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_width.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.numericUpDown_width.Location = new System.Drawing.Point(170, 12);
             this.numericUpDown_width.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_width.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
@@ -1542,7 +1575,8 @@ namespace ScanLink
             // 
             // numericUpDown_height
             // 
-            this.numericUpDown_height.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_height.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_height.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.numericUpDown_height.Location = new System.Drawing.Point(500, 12);
             this.numericUpDown_height.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_height.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
@@ -1567,7 +1601,8 @@ namespace ScanLink
             // 
             // numericUpDown_xCoordinate
             // 
-            this.numericUpDown_xCoordinate.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_xCoordinate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_xCoordinate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.numericUpDown_xCoordinate.Location = new System.Drawing.Point(170, 47);
             this.numericUpDown_xCoordinate.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_xCoordinate.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
@@ -1591,7 +1626,8 @@ namespace ScanLink
             // 
             // numericUpDown_x2Coordinate
             // 
-            this.numericUpDown_x2Coordinate.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_x2Coordinate.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_x2Coordinate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.numericUpDown_x2Coordinate.Location = new System.Drawing.Point(500, 47);
             this.numericUpDown_x2Coordinate.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_x2Coordinate.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
@@ -1664,7 +1700,8 @@ namespace ScanLink
             // 
             // numericUpDown_gap
             // 
-            this.numericUpDown_gap.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_gap.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_gap.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.numericUpDown_gap.Location = new System.Drawing.Point(170, 82);
             this.numericUpDown_gap.Maximum = new decimal(new int[] { 100, 0, 0, 0 });
             this.numericUpDown_gap.Name = "numericUpDown_gap";
@@ -1771,7 +1808,8 @@ namespace ScanLink
             // comboBox_speed
             // 
             this.comboBox_speed.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.comboBox_speed.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.comboBox_speed.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.comboBox_speed.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.comboBox_speed.FormattingEnabled = true;
             this.comboBox_speed.Items.AddRange(new object[] { "1 - Slowest", "2", "3", "4", "5 - Medium", "6", "7", "8", "9 - Fastest" });
             this.comboBox_speed.Location = new System.Drawing.Point(170, 56);
@@ -1796,7 +1834,8 @@ namespace ScanLink
             //
             // numericUpDown_dpi
             //
-            this.numericUpDown_dpi.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_dpi.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
+            this.numericUpDown_dpi.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.numericUpDown_dpi.Location = new System.Drawing.Point(500, 56);
             this.numericUpDown_dpi.Maximum = new decimal(new int[] { 999, 0, 0, 0 });
             this.numericUpDown_dpi.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
@@ -1819,37 +1858,38 @@ namespace ScanLink
             //
             // button_generateBarcode
             //
-            this.button_generateBarcode.BackColor = System.Drawing.Color.FromArgb(46, 125, 50);
+            this.button_generateBarcode.BackColor = System.Drawing.Color.FromArgb(25, 135, 84); // Success green
             this.button_generateBarcode.FlatAppearance.BorderSize = 0;
             this.button_generateBarcode.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_generateBarcode.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
+            this.button_generateBarcode.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.button_generateBarcode.ForeColor = System.Drawing.Color.White;
-            this.button_generateBarcode.Location = new System.Drawing.Point(360, 167);
+            this.button_generateBarcode.Location = new System.Drawing.Point(360, 146);
             this.button_generateBarcode.Name = "button_generateBarcode";
-            this.button_generateBarcode.Size = new System.Drawing.Size(150, 35);
+            this.button_generateBarcode.Size = new System.Drawing.Size(140, 32);
             this.button_generateBarcode.TabIndex = 0;
-            this.button_generateBarcode.Text = "🎯 Generate Barcode";
+            this.button_generateBarcode.Text = "Generate Barcode";
             this.button_generateBarcode.UseVisualStyleBackColor = false;
-            this.button_generateBarcode.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 94, 32);
-            this.button_generateBarcode.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
+            this.button_generateBarcode.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(21, 115, 71);
+            this.button_generateBarcode.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(20, 108, 67);
             this.button_generateBarcode.Click += new System.EventHandler(this.button_generateBarcode_Click);
 
             //
             // button_preview
             //
-            this.button_preview.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.button_preview.FlatAppearance.BorderSize = 0;
+            this.button_preview.BackColor = System.Drawing.Color.White;
+            this.button_preview.FlatAppearance.BorderSize = 1;
+            this.button_preview.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(206, 212, 218);
             this.button_preview.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_preview.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F);
-            this.button_preview.ForeColor = System.Drawing.Color.White;
-            this.button_preview.Location = new System.Drawing.Point(520, 167);
+            this.button_preview.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
+            this.button_preview.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
+            this.button_preview.Location = new System.Drawing.Point(520, 146);
             this.button_preview.Name = "button_preview";
-            this.button_preview.Size = new System.Drawing.Size(150, 35);
+            this.button_preview.Size = new System.Drawing.Size(120, 32);
             this.button_preview.TabIndex = 1;
-            this.button_preview.Text = "👁️ Preview Label";
+            this.button_preview.Text = "Preview Label";
             this.button_preview.UseVisualStyleBackColor = false;
-            this.button_preview.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.button_preview.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
+            this.button_preview.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(248, 249, 250);
+            this.button_preview.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(226, 230, 234);
             this.button_preview.Click += new System.EventHandler(this.button_preview_Click);
             
             // 
@@ -1867,27 +1907,29 @@ namespace ScanLink
             // 
             // button_send
             // 
-            this.button_send.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
+            this.button_send.BackColor = System.Drawing.Color.FromArgb(13, 110, 253); // Primary blue
             this.button_send.FlatAppearance.BorderSize = 0;
             this.button_send.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_send.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
+            this.button_send.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.button_send.ForeColor = System.Drawing.Color.White;
-            this.button_send.Location = new System.Drawing.Point(50, 18);
+            this.button_send.Location = new System.Drawing.Point(20, 10); // Account for 20px padding
             this.button_send.Name = "button_send";
-            this.button_send.Size = new System.Drawing.Size(560, 50);
+            this.button_send.Size = new System.Drawing.Size(520, 45); // Taller, friendlier button (560 - 40)
+            this.button_send.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             this.button_send.TabIndex = 0;
-            this.button_send.Text = "🖨️ Generate Barcode";
+            this.button_send.Text = "Print Barcode";
             this.button_send.UseVisualStyleBackColor = false;
-            this.button_send.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.button_send.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
+            this.button_send.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(11, 94, 215);
+            this.button_send.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(10, 88, 202);
             this.button_send.Click += new System.EventHandler(this.button_send_Click);
             
             // 
             // progressBar
             // 
-            this.progressBar.Location = new System.Drawing.Point(50, 70);
+            this.progressBar.Location = new System.Drawing.Point(20, 65);
             this.progressBar.Name = "progressBar";
-            this.progressBar.Size = new System.Drawing.Size(560, 8);
+            this.progressBar.Size = new System.Drawing.Size(520, 8);
+            this.progressBar.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             this.progressBar.Style = System.Windows.Forms.ProgressBarStyle.Continuous;
             this.progressBar.MarqueeAnimationSpeed = 30;
             this.progressBar.TabIndex = 1;
@@ -1907,16 +1949,16 @@ namespace ScanLink
             // 
             // statusLabel
             // 
-            this.statusLabel.BackColor = System.Drawing.Color.FromArgb(204, 201, 220);
+            this.statusLabel.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
             this.statusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.statusLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular); 
-            this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular); 
+            this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(108, 117, 125);
             this.statusLabel.Location = new System.Drawing.Point(0, 0);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Padding = new System.Windows.Forms.Padding(0);
-            this.statusLabel.Size = new System.Drawing.Size(560, 40);
+            this.statusLabel.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0); // Slight indent
+            this.statusLabel.Size = new System.Drawing.Size(560, 30);
             this.statusLabel.TabIndex = 0;
-            this.statusLabel.Text = "Ready. Choose connection and configure settings above.";
+            this.statusLabel.Text = "Ready.";
             this.statusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             
             // 

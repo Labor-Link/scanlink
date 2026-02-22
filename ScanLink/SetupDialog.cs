@@ -298,6 +298,7 @@ namespace ScanLink
             dataGridView.Columns.Add("variety_id", "Variety ID");
             dataGridView.Columns.Add("grade_id", "Grade ID");
             dataGridView.Columns.Add("count_id", "Count ID");
+            dataGridView.Columns.Add("carton_type", "Carton Type");
             dataGridView.Columns.Add("avg_weight_kg", "Avg Weight (KG)");
 
             _currentDataGridView = dataGridView;
@@ -417,9 +418,21 @@ namespace ScanLink
                     $"{combo.variety_id} ({GetVarietyName(combo.variety_id)})",
                     $"{combo.grade_id} ({GetGradeName(combo.grade_id)})",
                     $"{combo.count_id} ({GetCountName(combo.count_id)})",
+                    GetCartonTypeName(combo.carton_type_id),
                     combo.avg_weight_kg
                 );
             }
+        }
+
+        private string GetCartonTypeName(string cartonId)
+        {
+            if (string.IsNullOrWhiteSpace(cartonId)) return "Unknown";
+            
+            if (cartonId == "001") return "D15D - 15kg";
+            if (cartonId == "002") return "E15D - 15kg";
+            if (cartonId == "003") return "J60B - 600kg";
+            
+            return $"Unknown ({cartonId})";
         }
 
         private string GetCropName(string cropId)

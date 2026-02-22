@@ -107,10 +107,12 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IssueLoggingService.cs" />
     <Compile Include="ApiAuthService.cs" />
-    <Compile Include="ScanLogUploadService.cs" />
+    <Compile Include="ScanLogUploadService.cs" />     
     <Compile Include="ProductCombinationsService.cs" />
-    <Compile Include="EmployeeSelectionDialog.cs" />
+    <Compile Include="DailyStatsService.cs" />
+    <Compile Include="EmployeeSelectionDialog.cs" />  
     <Compile Include="Program.cs" />
     <Compile Include="ShowException.cs" />
     <Compile Include="ErrorDialog.cs">

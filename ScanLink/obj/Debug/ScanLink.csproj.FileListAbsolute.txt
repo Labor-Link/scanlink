@@ -10,3 +10,15 @@ E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.Co
 E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
 E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.exe
 E:\documents\new_code - almost UI\scanlink\ScanLink\obj\Debug\ScanLink.pdb
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\bin\Debug\scanner_detection.ps1
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\bin\Debug\scan_capture.ps1
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\bin\Debug\ScanLink.exe
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\bin\Debug\ScanLink.pdb
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\bin\Debug\BarcodePrinter_API.dll
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\obj\Debug\ScanLink.csproj.AssemblyReference.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\obj\Debug\ScanLink.Form1.resources
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\obj\Debug\ScanLink.csproj.GenerateResource.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\obj\Debug\ScanLink.csproj.CoreCompileInputs.cache
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\obj\Debug\ScanLink.csproj.Up2Date
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\obj\Debug\ScanLink.exe
+C:\Users\dell\Downloads\scanlink zip\scanlink\ScanLink\obj\Debug\ScanLink.pdb

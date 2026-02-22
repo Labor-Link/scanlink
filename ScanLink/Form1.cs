@@ -112,6 +112,20 @@ namespace ScanLink
         // FunctionData[] PPLZ_ItemList;
         // string[] PPLZ_BarcodeList = { "QR Code", "Code 128" };
 
+        private Label lblDashboardPrinterStatus;
+        private Label lblDashboardScannerStatus;
+        private System.Windows.Forms.Timer statusRefreshTimer;
+
+        private DataGridView dgvActiveScanners;
+        private Panel activeScannersPanel;
+
+        private DailyStatsService _dailyStatsService;
+        private Panel dailyStatsPanel;
+        private DateTimePicker dtpDailyStats;
+        private TextBox txtStatHours, txtStatWage, txtStatActiveEmps, txtStatPackers, txtStatBoxes;
+        private Button btnSaveDailyStats;
+        private Label lblDailyStatsStatus;
+
         private Task<bool> _cropOptionsLoadTask;
         private List<CropOption> _cropOptionsCache = new List<CropOption>();
         private string _cropOptionsErrorMessage = "";
@@ -140,6 +154,7 @@ namespace ScanLink
             public string grade_name = null;
             public string count_id = null;
             public string count_name = null;
+            public string carton_type_id = null;
             public double avg_weight_kg = 0;
         }
 
@@ -158,6 +173,7 @@ namespace ScanLink
             public string VarietyName;
             public string GradeName;
             public string CountName;
+            public string CartonTypeId;
             public double AvgWeightKg;
         }
 
@@ -171,6 +187,12 @@ namespace ScanLink
         {
             public string Name { get; set; }
             public string Value { get; set; }
+            public string ProductName { get; set; }
+            public string Variety { get; set; }
+            public string Grade { get; set; }
+            public string Count { get; set; }
+            public string Carton { get; set; }
+            public string AvgWeightKg { get; set; }
         }
 
         BarcodePrinter BarcodePrinter;
@@ -199,6 +221,7 @@ namespace ScanLink
         {
             InitializeComponent();
             _apiAuthService = new ApiAuthService();
+            _dailyStatsService = new DailyStatsService(_apiAuthService);
             
             // Initialize scan log upload service
             _scanLogUploadService = new ScanLogUploadService(_apiAuthService);
@@ -343,7 +366,423 @@ namespace ScanLink
             ApplyModernStylesToButtons();
             LayoutRootPanels();
             
+            InitDashboardStatusUI();
             InitializeProductAndCropSelectors();
+        }
+
+        private void InitDashboardStatusUI()
+        {
+            lblDashboardPrinterStatus = new Label();
+            lblDashboardPrinterStatus.AutoSize = true;
+            lblDashboardPrinterStatus.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            lblDashboardPrinterStatus.ForeColor = Color.FromArgb(52, 152, 219); 
+            lblDashboardPrinterStatus.Padding = new Padding(15, 0, 15, 0);
+            lblDashboardPrinterStatus.Dock = DockStyle.Right;
+            lblDashboardPrinterStatus.TextAlign = ContentAlignment.MiddleRight;
+
+            lblDashboardScannerStatus = new Label();
+            lblDashboardScannerStatus.AutoSize = true;
+            lblDashboardScannerStatus.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            lblDashboardScannerStatus.ForeColor = Color.FromArgb(46, 204, 113); 
+            lblDashboardScannerStatus.Padding = new Padding(15, 0, 15, 0);
+            lblDashboardScannerStatus.Dock = DockStyle.Right;
+            lblDashboardScannerStatus.TextAlign = ContentAlignment.MiddleRight;
+            
+            if (this.headerPanel != null)
+            {
+                FlowLayoutPanel statusFlow = new FlowLayoutPanel();
+                statusFlow.FlowDirection = FlowDirection.RightToLeft;
+                statusFlow.Dock = DockStyle.Right;
+                statusFlow.AutoSize = true;
+                statusFlow.WrapContents = false;
+                statusFlow.BackColor = Color.Transparent;
+
+                statusFlow.Controls.Add(lblDashboardScannerStatus);
+                statusFlow.Controls.Add(lblDashboardPrinterStatus);
+                
+                if (this.buttonpanel != null)
+                {
+                    this.buttonpanel.Controls.Add(statusFlow);
+                }
+                else
+                {
+                    this.headerPanel.Controls.Add(statusFlow);
+                }
+            }
+
+            statusRefreshTimer = new System.Windows.Forms.Timer();
+            statusRefreshTimer.Interval = 2000;
+            statusRefreshTimer.Tick += StatusRefreshTimer_Tick;
+            statusRefreshTimer.Start();
+            
+            InitActiveScannersDashboardGrid();
+
+            // Initial update
+            StatusRefreshTimer_Tick(null, null);
+        }
+
+        private void InitActiveScannersDashboardGrid()
+        {
+            activeScannersPanel = new Panel();
+            activeScannersPanel.Dock = DockStyle.Fill;
+            activeScannersPanel.Height = 150;
+            activeScannersPanel.Padding = new Padding(10);
+            
+            Label lblScanners = new Label();
+            lblScanners.Text = "Connected Scanners (Quick Update Line/Block)";
+            lblScanners.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            lblScanners.Dock = DockStyle.Top;
+            lblScanners.Padding = new Padding(0, 0, 0, 5);
+            activeScannersPanel.Controls.Add(lblScanners);
+
+            dgvActiveScanners = new DataGridView();
+            dgvActiveScanners.Dock = DockStyle.Fill;
+            dgvActiveScanners.AllowUserToAddRows = false;
+            dgvActiveScanners.AllowUserToDeleteRows = false;
+            dgvActiveScanners.BackgroundColor = Color.White;
+            dgvActiveScanners.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvActiveScanners.RowHeadersVisible = false;
+
+            dgvActiveScanners.Columns.Add("PNPDeviceID", "PNPDeviceID");
+            dgvActiveScanners.Columns["PNPDeviceID"].Visible = false;
+            
+            dgvActiveScanners.Columns.Add("DeviceName", "Scanner");
+            dgvActiveScanners.Columns["DeviceName"].ReadOnly = true;
+            dgvActiveScanners.Columns["DeviceName"].FillWeight = 30;
+            
+            dgvActiveScanners.Columns.Add("ComPort", "Port");
+            dgvActiveScanners.Columns["ComPort"].ReadOnly = true;
+            dgvActiveScanners.Columns["ComPort"].FillWeight = 15;
+            
+            dgvActiveScanners.Columns.Add("LineID", "Line");
+            dgvActiveScanners.Columns["LineID"].FillWeight = 15;
+            
+            dgvActiveScanners.Columns.Add("BlockID", "Block");
+            dgvActiveScanners.Columns["BlockID"].FillWeight = 15;
+            
+            DataGridViewButtonColumn btnSave = new DataGridViewButtonColumn();
+            btnSave.Name = "Action";
+            btnSave.Text = "Save";
+            btnSave.UseColumnTextForButtonValue = true;
+            btnSave.FillWeight = 25;
+            dgvActiveScanners.Columns.Add(btnSave);
+
+            dgvActiveScanners.CellContentClick += DgvActiveScanners_CellContentClick;
+            
+            activeScannersPanel.Controls.Add(dgvActiveScanners);
+            dgvActiveScanners.BringToFront();
+
+            TableLayoutPanel splitPanel = new TableLayoutPanel();
+            splitPanel.RowCount = 2;
+            splitPanel.ColumnCount = 2;
+            splitPanel.Dock = DockStyle.Fill;
+            splitPanel.AutoSize = true;
+            splitPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            splitPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 250));
+            splitPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            splitPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            
+            InitDailyStatsPanel();
+
+            Control existingStatsPanel = this.statsPanel;
+            if (existingStatsPanel != null && scannerContentPanel.Controls.Contains(existingStatsPanel)) 
+            {
+                scannerContentPanel.Controls.Remove(existingStatsPanel);
+                splitPanel.Controls.Add(existingStatsPanel, 0, 0);
+                splitPanel.SetColumnSpan(existingStatsPanel, 2);
+                splitPanel.Controls.Add(dailyStatsPanel, 0, 1);
+                splitPanel.Controls.Add(activeScannersPanel, 1, 1);
+                scannerContentPanel.Controls.Add(splitPanel, 0, 2);
+            }
+        }
+
+        private void InitDailyStatsPanel()
+        {
+            dailyStatsPanel = new Panel();
+            dailyStatsPanel.Dock = DockStyle.Fill;
+            dailyStatsPanel.Padding = new Padding(10);
+            dailyStatsPanel.BackColor = Color.White;
+            dailyStatsPanel.BorderStyle = BorderStyle.FixedSingle;
+            
+            Label lblHeader = new Label();
+            lblHeader.Text = "Daily Stats Logger";
+            lblHeader.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            lblHeader.Dock = DockStyle.Top;
+            lblHeader.Padding = new Padding(0, 0, 0, 10);
+            lblHeader.AutoSize = true;
+
+            FlowLayoutPanel flowPanel = new FlowLayoutPanel();
+            flowPanel.Dock = DockStyle.Fill;
+            flowPanel.FlowDirection = FlowDirection.LeftToRight;
+            flowPanel.WrapContents = true;
+            flowPanel.AutoScroll = true;
+            flowPanel.Padding = new Padding(0, 15, 0, 0); // push content down to avoid clipping
+
+            dailyStatsPanel.Controls.Add(flowPanel);
+            dailyStatsPanel.Controls.Add(lblHeader);
+            lblHeader.BringToFront(); // Ensure header remains on top of flow panel in Z-order
+
+            // Date picker
+            Panel datePanel = new Panel() { Width = 250, Height = 80 };
+            Label lblDate = new Label() { Text = "Date Selected", AutoSize = true, Location = new Point(0, 5), Font = new Font("Segoe UI", 9F, FontStyle.Bold) };
+            dtpDailyStats = new DateTimePicker() { Location = new Point(0, 30), Width = 150, Format = DateTimePickerFormat.Short };
+            dtpDailyStats.ValueChanged += async (s, e) => await LoadDailyStatsAsync();
+            
+            lblDailyStatsStatus = new Label() { Location = new Point(0, 55), AutoSize = true, ForeColor = Color.Blue };
+            datePanel.Controls.Add(lblDate);
+            datePanel.Controls.Add(dtpDailyStats);
+            datePanel.Controls.Add(lblDailyStatsStatus);
+            flowPanel.Controls.Add(datePanel);
+
+            // Helpers for textboxes
+            TextBox AddStatField(string labelText, string statName)
+            {
+                Panel pnl = new Panel() { Width = 135, Height = 80 };
+                Label lbl = new Label() { Text = labelText, AutoSize = true, Location = new Point(0, 5) };
+                TextBox txt = new TextBox() { Name = statName, Width = 120, Location = new Point(0, 30) };
+                pnl.Controls.Add(lbl);
+                pnl.Controls.Add(txt);
+                flowPanel.Controls.Add(pnl);
+                return txt;
+            }
+
+            txtStatHours = AddStatField("Hours", "hours");
+            txtStatWage = AddStatField("Basic Wage", "basic_wage");
+            txtStatActiveEmps = AddStatField("Active Employees", "active_employees");
+            txtStatPackers = AddStatField("Packers Count", "packers_count");
+            txtStatBoxes = AddStatField("Boxes Packed", "boxes_packed");
+
+            btnSaveDailyStats = new Button();
+            btnSaveDailyStats.Text = "Save Stats";
+            btnSaveDailyStats.BackColor = Color.FromArgb(0, 122, 204);
+            btnSaveDailyStats.ForeColor = Color.White;
+            btnSaveDailyStats.FlatStyle = FlatStyle.Flat;
+            btnSaveDailyStats.Width = 120;
+            btnSaveDailyStats.Height = 35;
+            btnSaveDailyStats.Margin = new Padding(10, 15, 0, 0);
+            btnSaveDailyStats.Click += async (s, e) => await SaveDailyStatsWorkerAsync();
+            flowPanel.Controls.Add(btnSaveDailyStats);
+
+            Button btnDebugSiteId = new Button();
+            btnDebugSiteId.Text = "Debug Token";
+            btnDebugSiteId.BackColor = Color.Orange;
+            btnDebugSiteId.ForeColor = Color.White;
+            btnDebugSiteId.FlatStyle = FlatStyle.Flat;
+            btnDebugSiteId.Width = 120;
+            btnDebugSiteId.Height = 35;
+            btnDebugSiteId.Margin = new Padding(10, 15, 0, 0);
+            btnDebugSiteId.Click += (s, e) => {
+                string eff = _apiAuthService?.GetEffectiveSiteId();
+                var payload = _apiAuthService?.GetCurrentTokenPayload();
+                string json = payload != null ? new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(payload) : "null";
+                MessageBox.Show($"Effective Site ID: {eff}\n\nLast API Error:\n{_lastStatsError}\n\nToken Payload:\n{json}", "Token Debug Logs");
+            };
+            flowPanel.Controls.Add(btnDebugSiteId);
+            
+            dailyStatsPanel.BringToFront();
+            dtpDailyStats.Value = DateTime.Today; // triggers load initially
+        }
+
+        private async Task LoadDailyStatsAsync()
+        {
+            lblDailyStatsStatus.Text = "Loading...";
+            lblDailyStatsStatus.ForeColor = Color.DarkOrange;
+            
+            string siteId = _apiAuthService?.GetEffectiveSiteId();
+
+            if (string.IsNullOrEmpty(siteId))
+            {
+                lblDailyStatsStatus.Text = "No Site Selected";
+                lblDailyStatsStatus.ForeColor = Color.Red;
+                return;
+            }
+
+            var stats = await _dailyStatsService.GetDailyStatsAsync(siteId, dtpDailyStats.Value);
+            
+            txtStatHours.Text = stats.ContainsKey("hours") ? stats["hours"] : "";
+            txtStatWage.Text = stats.ContainsKey("basic_wage") ? stats["basic_wage"] : "";
+            txtStatActiveEmps.Text = stats.ContainsKey("active_employees") ? stats["active_employees"] : "";
+            txtStatPackers.Text = stats.ContainsKey("packers_count") ? stats["packers_count"] : "";
+            txtStatBoxes.Text = stats.ContainsKey("boxes_packed") ? stats["boxes_packed"] : "";
+
+            bool anySet = stats.Count > 0;
+            lblDailyStatsStatus.Text = anySet ? "Data loaded" : "Not set";
+            lblDailyStatsStatus.ForeColor = anySet ? Color.Green : Color.Gray;
+        }
+
+        private string _lastStatsError = "No errors yet.";
+
+        private async Task SaveDailyStatsWorkerAsync()
+        {
+            string siteId = _apiAuthService?.GetEffectiveSiteId();
+
+            if (string.IsNullOrEmpty(siteId))
+            {
+                MessageBox.Show("Cannot save stats: No active site selected.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            btnSaveDailyStats.Enabled = false;
+            btnSaveDailyStats.Text = "Saving...";
+
+            var statsDict = new Dictionary<string, string>();
+            if (!string.IsNullOrWhiteSpace(txtStatHours.Text)) statsDict["hours"] = txtStatHours.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatWage.Text)) statsDict["basic_wage"] = txtStatWage.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatActiveEmps.Text)) statsDict["active_employees"] = txtStatActiveEmps.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatPackers.Text)) statsDict["packers_count"] = txtStatPackers.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatBoxes.Text)) statsDict["boxes_packed"] = txtStatBoxes.Text.Trim();
+
+            var result = await _dailyStatsService.SaveDailyStatsAsync(siteId, dtpDailyStats.Value, statsDict);
+            
+            if (result.Success)
+            {
+                lblDailyStatsStatus.Text = "Saved successfully";
+                lblDailyStatsStatus.ForeColor = Color.Green;
+                _lastStatsError = "Last save successful.";
+                MessageBox.Show($"Daily Stats for {dtpDailyStats.Value.ToShortDateString()} saved successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                lblDailyStatsStatus.Text = "Failed to save";
+                lblDailyStatsStatus.ForeColor = Color.Red;
+                _lastStatsError = $"Error: {result.ErrorMessage}\n\nPayload Sent: {result.Payload}";
+                MessageBox.Show("Failed to save daily stats to the cloud. Click 'Debug Token' to see the exact API rejection reason.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            btnSaveDailyStats.Text = "Save Stats";
+            btnSaveDailyStats.Enabled = true;
+        }
+
+        private void DgvActiveScanners_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0 && e.ColumnIndex == dgvActiveScanners.Columns["Action"].Index)
+            {
+                string pnp = dgvActiveScanners.Rows[e.RowIndex].Cells["PNPDeviceID"].Value?.ToString();
+                string newLine = dgvActiveScanners.Rows[e.RowIndex].Cells["LineID"].Value?.ToString() ?? "";
+                string newBlock = dgvActiveScanners.Rows[e.RowIndex].Cells["BlockID"].Value?.ToString() ?? "";
+                
+                var activeScanners = _scannerComPortManager.GetActiveScanners();
+                var scanner = activeScanners.FirstOrDefault(s => s.PNPDeviceID == pnp);
+                if (scanner != null)
+                {
+                    scanner.LineID = newLine;
+                    scanner.BlockID = newBlock;
+                    
+                    UpdateScannerAssignmentFile(pnp, newLine, newBlock);
+                    
+                    if (scannerOutputTextBox != null) 
+                    {
+                        scannerOutputTextBox.AppendText($"[C# INFO] Updated Scanner {scanner.DeviceName} to Line {newLine}, Block {newBlock}\r\n");
+                        scannerOutputTextBox.ScrollToCaret();
+                    }
+                    MessageBox.Show($"Updated Scanner {scanner.DeviceName} Line/Block successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
+
+        private void UpdateScannerAssignmentFile(string pnpDeviceId, string newLineId, string newBlockId)
+        {
+            string savePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink", "scanner_assignments.txt");
+            if (!File.Exists(savePath)) return;
+
+            try 
+            {
+                string[] lines = File.ReadAllLines(savePath);
+                bool inTargetScanner = false;
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    if (lines[i].StartsWith("Scanner #"))
+                    {
+                        inTargetScanner = false;
+                    }
+                    if (lines[i].Contains("PNPDeviceID: ") && lines[i].Contains(pnpDeviceId))
+                    {
+                        inTargetScanner = true;
+                    }
+                    if (inTargetScanner)
+                    {
+                        if (lines[i].TrimStart().StartsWith("Line ID:"))
+                        {
+                            lines[i] = $"  Line ID: {newLineId}";
+                        }
+                        else if (lines[i].TrimStart().StartsWith("Block ID:"))
+                        {
+                            lines[i] = $"  Block ID: {newBlockId}";
+                        }
+                    }
+                }
+                File.WriteAllLines(savePath, lines);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Failed to update scanner assignments: {ex.Message}");
+            }
+        }
+
+        private void StatusRefreshTimer_Tick(object sender, EventArgs e)
+        {
+            int scannerCount = 0;
+            if (_scannerComPortManager != null)
+            {
+                scannerCount = _scannerComPortManager.GetActiveScanners().Count;
+            }
+            lblDashboardScannerStatus.Text = $"{scannerCount} Scanner{(scannerCount != 1 ? "s" : "")} Connected";
+            
+            bool isPrinterConnected = false;
+            if (!string.IsNullOrEmpty(CurrentConnectionType))
+            {
+                if (CurrentConnectionType == "USB")
+                {
+                    isPrinterConnected = !string.IsNullOrWhiteSpace(this.m_USBDevicePath);
+                }
+                else if (CurrentConnectionType != "Multi-LAN")
+                {
+                    isPrinterConnected = true;
+                }
+            }
+            lblDashboardPrinterStatus.Text = isPrinterConnected ? "1 Printer Connected" : "0 Printer Connected";
+
+            RefreshActiveScannersGrid();
+        }
+
+        private void RefreshActiveScannersGrid()
+        {
+            if (dgvActiveScanners == null || _scannerComPortManager == null) return;
+            
+            var activeScanners = _scannerComPortManager.GetActiveScanners();
+            bool needsRebuild = false;
+            
+            if (dgvActiveScanners.Rows.Count != activeScanners.Count) 
+            {
+                needsRebuild = true;
+            } 
+            else 
+            {
+                for (int i = 0; i < activeScanners.Count; i++) 
+                {
+                    if (dgvActiveScanners.Rows[i].Cells["PNPDeviceID"].Value?.ToString() != activeScanners[i].PNPDeviceID) 
+                    {
+                        needsRebuild = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (needsRebuild) 
+            {
+                dgvActiveScanners.Rows.Clear();
+                foreach (var scanner in activeScanners) 
+                {
+                    dgvActiveScanners.Rows.Add(
+                        scanner.PNPDeviceID,
+                        scanner.DeviceName ?? scanner.PNPDeviceID,
+                        scanner.ComPort,
+                        scanner.LineID,
+                        scanner.BlockID
+                    );
+                }
+            }
         }
 
         private void LoadLoginLogo()
@@ -608,6 +1047,9 @@ namespace ScanLink
 
                         // Apply layout to ensure new UI is properly displayed
                         LayoutRootPanels();
+                        
+                        // Force a refresh of the daily stats panel now that we are authenticated and selected a site
+                        _ = LoadDailyStatsAsync();
                     }
                     else
                     {
@@ -1680,6 +2122,15 @@ namespace ScanLink
             return items;
         }
 
+        private string GetCartonNameFromId(string cartonId)
+        {
+            if (string.IsNullOrWhiteSpace(cartonId)) return "-";
+            if (cartonId == "001") return "D15D - 15kg";
+            if (cartonId == "002") return "E15D - 15kg";
+            if (cartonId == "003") return "J60B - 600kg";
+            return $"Unknown ({cartonId})";
+        }
+
         private List<ProductComboItem> CreateProductComboItemsFromCache(string cropCode)
         {
             if (string.IsNullOrEmpty(cropCode)) return null;
@@ -1692,8 +2143,14 @@ namespace ScanLink
                 {
                     return products
                         .Select(p => new ProductComboItem {
-                            Name = $"{p.product_name}   (Variety: {p.variety_name},   Grade: {p.grade_name},   Count: {p.count_name},   Avg Weight: {p.avg_weight_kg})",
-                            Value = p.product_id
+                            Name = $"{p.product_name}  ({p.variety_name} | {p.grade_name} | {p.count_name} | {GetCartonNameFromId(p.carton_type_id)} | {p.avg_weight_kg}kg)",
+                            Value = p.product_id,
+                            ProductName = p.product_name,
+                            Variety = p.variety_name,
+                            Grade = p.grade_name,
+                            Count = p.count_name,
+                            Carton = GetCartonNameFromId(p.carton_type_id),
+                            AvgWeightKg = p.avg_weight_kg.ToString()
                         })
                         .ToList();
                 }
@@ -1706,8 +2163,14 @@ namespace ScanLink
 
             return fallbackProducts
                 .Select(p => new ProductComboItem {
-                    Name = $"{p.ProductName}   (Variety: {p.VarietyName},   Grade: {p.GradeName},   Count: {p.CountName})",
-                    Value = p.ProductIdShort
+                    Name = $"{p.ProductName}  ({p.VarietyName} | {p.GradeName} | {p.CountName} | {GetCartonNameFromId(p.CartonTypeId)})",
+                    Value = p.ProductIdShort,
+                    ProductName = p.ProductName,
+                    Variety = p.VarietyName,
+                    Grade = p.GradeName,
+                    Count = p.CountName,
+                    Carton = GetCartonNameFromId(p.CartonTypeId),
+                    AvgWeightKg = p.AvgWeightKg.ToString()
                 })  
                 .ToList();
         }
@@ -1981,11 +2444,11 @@ namespace ScanLink
         {
             try
             {
-                // Run initialization tasks on background threads
-                await Task.Run(() => InitializeScannerDataGridView());
-                await Task.Run(() => LoadScansData());
-                await Task.Run(() => StartScanFileMonitoring());
-                await Task.Run(() => InitializeComPortScanners());
+                // Run initialization tasks on UI thread to prevent deadlocks and cross-thread operation exceptions
+                InitializeScannerDataGridView();
+                LoadScansData();
+                StartScanFileMonitoring();
+                InitializeComPortScanners();
 
                 // Layout needs to be done on UI thread
                 if (InvokeRequired)
@@ -2120,7 +2583,8 @@ namespace ScanLink
                                     ProductName = p.product_name,
                                     VarietyName = p.variety_name,
                                     GradeName = p.grade_name,
-                                    CountName = p.count_name
+                                    CountName = p.count_name,
+                                    CartonTypeId = p.carton_type_id
                                 })
                                 .OrderBy(p => p.ProductName, StringComparer.OrdinalIgnoreCase)
                                 .ToList()
@@ -2316,6 +2780,7 @@ namespace ScanLink
                         grade_name = productOption.GradeName ?? "Unknown",
                         count_id = "unknown",
                         count_name = productOption.CountName ?? "Unknown",
+                        carton_type_id = productOption.CartonTypeId,
                         avg_weight_kg = productOption.AvgWeightKg
                     };
                 }
@@ -2339,6 +2804,7 @@ namespace ScanLink
                 VarietyName = combination.variety_name,
                 GradeName = combination.grade_name,
                 CountName = combination.count_name,
+                CartonTypeId = combination.carton_type_id,
                 AvgWeightKg = combination.avg_weight_kg
             };
         }
@@ -2368,19 +2834,30 @@ namespace ScanLink
             return string.IsNullOrWhiteSpace(value) || value.StartsWith("manual", StringComparison.OrdinalIgnoreCase);
         }
 
-        private void SetProductDetailFields(string variety, string grade, string count, string weight = null)
+        private void SetProductDetailFields(string variety, string grade, string count, string weight = null, string cartonId = null)
         {
             if (label_ProductDetail == null) return;
             if (label_ProductDetail.IsDisposed) return;
 
             if (label_ProductDetail.InvokeRequired)
             {
-                label_ProductDetail.Invoke(new Action(() => SetProductDetailFields(variety, grade, count, weight)));
+                label_ProductDetail.Invoke(new Action(() => SetProductDetailFields(variety, grade, count, weight, cartonId)));
                 return;
             }
 
             string weightText = string.IsNullOrWhiteSpace(weight) ? "N/A" : weight;
-            label_ProductDetail.Text = $"Variety: {(string.IsNullOrWhiteSpace(variety) ? "N/A" : variety)}      Grade: {(string.IsNullOrWhiteSpace(grade) ? "N/A" : grade)}      Count: {(string.IsNullOrWhiteSpace(count) ? "N/A" : count)}      Avg Weight (kg): {weightText}";
+            string cartonText = "N/A";
+            
+            // Map the carton type ID to its friendly name and weight
+            if (!string.IsNullOrWhiteSpace(cartonId))
+            {
+                if (cartonId == "001") cartonText = "D15D - 15kg";
+                else if (cartonId == "002") cartonText = "E15D - 15kg";
+                else if (cartonId == "003") cartonText = "J60B - 600kg";
+                else cartonText = $"Unknown ({cartonId})";
+            }
+            
+            label_ProductDetail.Text = $"Variety: {(string.IsNullOrWhiteSpace(variety) ? "N/A" : variety)}      Grade: {(string.IsNullOrWhiteSpace(grade) ? "N/A" : grade)}      Count: {(string.IsNullOrWhiteSpace(count) ? "N/A" : count)}      Carton: {cartonText}      Avg Weight (kg): {weightText}";
         }
 
         private void UpdateProductDetailFieldsFromSelection()
@@ -2392,12 +2869,13 @@ namespace ScanLink
                     selectedProduct.VarietyName ?? "N/A",
                     selectedProduct.GradeName ?? "N/A",
                     selectedProduct.CountName ?? "N/A",
-                    selectedProduct.AvgWeightKg.ToString()
+                    selectedProduct.AvgWeightKg.ToString(),
+                    selectedProduct.CartonTypeId
                 );
             }
             else
             {
-                SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
+                SetProductDetailFields("N/A", "N/A", "N/A", "N/A", null);
             }
         }
 
@@ -2414,18 +2892,18 @@ namespace ScanLink
             if (string.IsNullOrEmpty(cropFull) || string.IsNullOrEmpty(productFull) ||
                 IsManualIdentifier(cropFull) || IsManualIdentifier(productFull))
             {
-                SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
+                SetProductDetailFields("N/A", "N/A", "N/A", "N/A", null);
                 return;
             }
 
             string token = _apiAuthService?.GetCurrentToken();
             if (string.IsNullOrEmpty(token))
             {
-                SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
+                SetProductDetailFields("N/A", "N/A", "N/A", "N/A", null);
                 return;
             }
 
-            SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
+            SetProductDetailFields("N/A", "N/A", "N/A", "N/A", null);
 
             _productDetailCts?.Cancel();
             _productDetailCts = new CancellationTokenSource();
@@ -2447,7 +2925,7 @@ namespace ScanLink
 
                         if (!response.IsSuccessStatusCode)
                         {
-                            SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
+                            SetProductDetailFields("N/A", "N/A", "N/A", "N/A", null);
                             return;
                         }
 
@@ -2460,11 +2938,11 @@ namespace ScanLink
 
                         if (combination == null)
                         {
-                            SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
+                            SetProductDetailFields("N/A", "N/A", "N/A", "N/A", null);
                             return;
                         }
 
-                        SetProductDetailFields(combination.variety_name, combination.grade_name, combination.count_name, combination.avg_weight_kg.ToString());
+                        SetProductDetailFields(combination.variety_name, combination.grade_name, combination.count_name, combination.avg_weight_kg.ToString(), combination.carton_type_id);
                     }
                 }
             }
@@ -2476,7 +2954,7 @@ namespace ScanLink
             {
                 if (!ct.IsCancellationRequested)
                 {
-                    SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
+                    SetProductDetailFields("N/A", "N/A", "N/A", "N/A", null);
                 }
             }
         }
@@ -2513,6 +2991,108 @@ namespace ScanLink
 
             // Update product details directly from selected product option
             UpdateProductDetailFieldsFromSelection();
+        }
+
+        private void comboBox_ProductID_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0) return;
+
+            ComboBox combo = sender as ComboBox;
+            var item = combo.Items[e.Index] as ProductComboItem;
+
+            // Handle the collapsed edit box view
+            if ((e.State & DrawItemState.ComboBoxEdit) == DrawItemState.ComboBoxEdit)
+            {
+                e.DrawBackground();
+                string text = item?.Name ?? combo.GetItemText(combo.Items[e.Index]);
+                using (Brush editBrush = new SolidBrush(e.ForeColor))
+                {
+                    e.Graphics.DrawString(text, e.Font, editBrush, e.Bounds, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+                }
+                return;
+            }
+
+            e.DrawBackground();
+
+            Font mainFont = e.Font;
+            Font subFont = new Font(e.Font.FontFamily, Math.Max(e.Font.Size - 1, 7), FontStyle.Regular);
+            Brush textBrush = new SolidBrush(e.ForeColor);
+            Brush subBrush = new SolidBrush(e.State.HasFlag(DrawItemState.Selected) ? e.ForeColor : Color.FromArgb(80, 80, 80));
+            Brush customHighlightBrush = new SolidBrush(System.Drawing.Color.FromArgb(52, 152, 219)); // Same blue
+            Brush borderBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
+            Pen borderPen = new Pen(borderBrush);
+
+            if (e.State.HasFlag(DrawItemState.Selected))
+            {
+                e.Graphics.FillRectangle(customHighlightBrush, e.Bounds);
+                textBrush = new SolidBrush(Color.White);
+                subBrush = new SolidBrush(Color.WhiteSmoke);
+            }
+
+            if (item != null && !string.IsNullOrEmpty(item.ProductName))
+            {
+                // Tabular Columns Layout
+                int col1Width = 140; // Product Name
+                int col2Width = 120; // Variety
+                int col3Width = 60;  // Grade
+                int col4Width = 60;  // Count
+                int col5Width = 90;  // Carton
+                int col6Width = 70;  // Weight
+                
+                int x = e.Bounds.X + 4;
+
+                // Col 1: Product Name
+                Rectangle rect1 = new Rectangle(x, e.Bounds.Y, col1Width, e.Bounds.Height);
+                e.Graphics.DrawString(item.ProductName ?? "-", mainFont, textBrush, rect1, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+                e.Graphics.DrawLine(borderPen, x + col1Width, e.Bounds.Y, x + col1Width, e.Bounds.Bottom);
+                x += col1Width + 6;
+
+                // Col 2: Variety
+                Rectangle rect2 = new Rectangle(x, e.Bounds.Y, col2Width, e.Bounds.Height);
+                e.Graphics.DrawString(item.Variety ?? "-", subFont, subBrush, rect2, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+                e.Graphics.DrawLine(borderPen, x + col2Width, e.Bounds.Y, x + col2Width, e.Bounds.Bottom);
+                x += col2Width + 6;
+
+                // Col 3: Grade
+                Rectangle rect3 = new Rectangle(x, e.Bounds.Y, col3Width, e.Bounds.Height);
+                e.Graphics.DrawString(item.Grade ?? "-", subFont, subBrush, rect3, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+                e.Graphics.DrawLine(borderPen, x + col3Width, e.Bounds.Y, x + col3Width, e.Bounds.Bottom);
+                x += col3Width + 6;
+
+                // Col 4: Count
+                Rectangle rect4 = new Rectangle(x, e.Bounds.Y, col4Width, e.Bounds.Height);
+                e.Graphics.DrawString(item.Count ?? "-", subFont, subBrush, rect4, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+                e.Graphics.DrawLine(borderPen, x + col4Width, e.Bounds.Y, x + col4Width, e.Bounds.Bottom);
+                x += col4Width + 6;
+                
+                // Col 5: Carton
+                Rectangle rect5 = new Rectangle(x, e.Bounds.Y, col5Width, e.Bounds.Height);
+                e.Graphics.DrawString(item.Carton ?? "-", subFont, subBrush, rect5, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+                e.Graphics.DrawLine(borderPen, x + col5Width, e.Bounds.Y, x + col5Width, e.Bounds.Bottom);
+                x += col5Width + 6;
+
+                // Col 6: Avg Weight
+                Rectangle rect6 = new Rectangle(x, e.Bounds.Y, col6Width, e.Bounds.Height);
+                string weightStr = !string.IsNullOrEmpty(item.AvgWeightKg) && item.AvgWeightKg != "0" ? $"{item.AvgWeightKg}kg" : "-";
+                e.Graphics.DrawString(weightStr, subFont, subBrush, rect6, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+            }
+            else
+            {
+                // Fallback for simple/unstructured items
+                string text = item?.Name ?? combo.GetItemText(combo.Items[e.Index]);
+                e.Graphics.DrawString(text, e.Font, textBrush, e.Bounds, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+            }
+
+            // Cleanup resources
+            if (e.State.HasFlag(DrawItemState.Selected))
+            {
+                textBrush.Dispose();
+                subBrush.Dispose();
+            }
+            customHighlightBrush.Dispose();
+            borderBrush.Dispose();
+            borderPen.Dispose();
+            subFont.Dispose();
         }
 
         private void comboBox_CropID_SelectedIndexChanged(object sender, EventArgs e)
@@ -2712,17 +3292,25 @@ namespace ScanLink
             marginIndicator.BackColor = Color.White;
             labelOutline.Controls.Add(marginIndicator);
             
-            int currentY = 5; // Start after margin
+            int xPos = (int)(numericUpDown_xCoordinate?.Value ?? 0);
             
-            // 1. Show main header (always printed)
+            // 1. Show main header (Matches PPLB Font_4 at Y=0)
             Label headerLabel = new Label();
             headerLabel.Text = "Scan-Link";
-            headerLabel.Font = new Font("Segoe UI", 12, FontStyle.Bold);
-            headerLabel.ForeColor = Color.FromArgb(52, 73, 94);
-            headerLabel.Location = new Point(0, 0); // 30-5 for margin
+            headerLabel.Font = new Font("Courier New", 14, FontStyle.Bold);
+            headerLabel.ForeColor = Color.Black;
+            headerLabel.Location = new Point(xPos, 0); 
             headerLabel.AutoSize = true;
             marginIndicator.Controls.Add(headerLabel);
-            currentY += 25;
+            
+            // Add standard horizontal line in preview (Matches dashes payload at Y=30)
+            Label hrLineLabel = new Label();
+            hrLineLabel.Text = "-------------------";
+            hrLineLabel.Font = new Font("Courier New", 12, FontStyle.Regular);
+            hrLineLabel.ForeColor = Color.Black;
+            hrLineLabel.Location = new Point(xPos, 30);
+            hrLineLabel.AutoSize = true;
+            marginIndicator.Controls.Add(hrLineLabel);
             
             // // 2. Show barcode type (always printed)
             // Label typeLabel = new Label();
@@ -2761,21 +3349,8 @@ namespace ScanLink
             //     currentY += 10; // Extra spacing
             // }
             
-            // 4. Show barcode positioning (centered by default)
-            int barcodeX = (width / 2) - 50; // Center
-            
-            // 5. Show barcode type labels (normal/human readable)
-            // Label normalLabel = new Label();
-            // normalLabel.Text = "normal";
-            // normalLabel.Font = new Font("Segoe UI", 8);
-            // normalLabel.ForeColor = Color.FromArgb(231, 76, 60);
-            // normalLabel.Location = new Point(barcodeX, currentY - 5);
-            // normalLabel.AutoSize = true;
-            // marginIndicator.Controls.Add(normalLabel);
-            
             // 6. Simulated barcode visual
             Panel barcodeVisual = new Panel();
-			int barcodeHeight = (int)numericUpDown_height.Value;
             
             // Calculate barcode width using same logic as printer
             int desiredWidth = (int)numericUpDown_width.Value;
@@ -2786,20 +3361,29 @@ namespace ScanLink
             if (narrowBarWidth > 10) narrowBarWidth = 10;
             
             // Calculate actual barcode width based on narrow bar width
-            int barcodeWidth = Math.Min(width - barcodeX - 10, estimatedTotalBars * narrowBarWidth + 6 * narrowBarWidth); // +6 for quiet zones
+            int barcodeWidth = Math.Min(width - xPos - 10, estimatedTotalBars * narrowBarWidth + 6 * narrowBarWidth); // +6 for quiet zones
             barcodeWidth = Math.Max(barcodeWidth, 150); // ensure visible minimum for scannability
-            //Sticker height
-            int stickerHeight = (int)numericUpDown_height.Value;
 
-            barcodeVisual.Location = new Point(0, stickerHeight-120);
-			barcodeVisual.Size = new Size(Math.Min(Math.Max(barcodeWidth, 220), 260), 50);
+            // Match physical hardware printing absolute coordinates (Y=55, Height=110)
+            int actualBarcodeHeight = 110; 
+            barcodeVisual.Location = new Point(xPos, 55);
+			barcodeVisual.Size = new Size(Math.Min(Math.Max(barcodeWidth, 220), marginIndicator.Width - xPos), actualBarcodeHeight);
             barcodeVisual.BackColor = Color.White;
-            // barcodeVisual.BorderStyle = BorderStyle.FixedSingle;
             marginIndicator.Controls.Add(barcodeVisual);
             
             // Create barcode pattern with calculated dimensions
             barcodeVisual.Paint += (s, pe) => DrawBarcodePreview(pe.Graphics, new Rectangle(Point.Empty, barcodeVisual.Size), BarcodeID, comboBox_barcode.Text);
-            currentY += barcodeVisual.Height + 15;
+            
+            // Print barcode text data below the barcode (Mimics True 'humanReadable' hardware flag)
+            Label barcodeDataLabel = new Label();
+            barcodeDataLabel.Text = BarcodeID;
+            barcodeDataLabel.Font = new Font("Courier New", 10, FontStyle.Bold);
+            barcodeDataLabel.ForeColor = Color.Black;
+            barcodeDataLabel.AutoSize = true;
+            marginIndicator.Controls.Add(barcodeDataLabel);
+            
+            // Dynamically center the text below the simulated barcode object 
+            barcodeDataLabel.Location = new Point(xPos + Math.Max(0, (barcodeVisual.Width / 2) - (barcodeDataLabel.PreferredWidth / 2)), 55 + actualBarcodeHeight + 5);
             
             // // 7. Show human readable label
             // Label humanLabel = new Label();
@@ -3329,6 +3913,10 @@ namespace ScanLink
                         fs = new SerialConnection(m_ComName, m_baudRate, m_parity, m_dataBits, m_stopBits, m_handshake);
                         break;
                     case "USB":
+                        if (string.IsNullOrWhiteSpace(m_USBDevicePath))
+                        {
+                            throw new Exception("No USB device selected. Please click 'Printer Setup' or 'Configure' and select your printer from the list first.");
+                        }
                         fs = new USBConnection(m_USBDevicePath);
                         break;
                     case "LAN":
@@ -3694,6 +4282,10 @@ namespace ScanLink
                 //If roll applied in center
                 buf = encoder.GetBytes("Scan-Link");
                 PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
+                
+                // Add standard horizontal line separator to make layout compact
+                byte[] initialLineBuf = encoder.GetBytes("-------------------");
+                PPLBEmulation.TextUtil.PrintText(xCoordinate, 30, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, initialLineBuf);
 
                 //If roll applied on x=0
                 // buf = encoder.GetBytes("|| Scan-Link ||");
@@ -3798,7 +4390,8 @@ namespace ScanLink
 
                 if (!twoUp)
                 {
-                    PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, stickerHeight-120, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
+                    // Print barcode dynamically and compactly below the header. humanReadable flag true to show data text.
+                    PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 55, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, true, bufBarcode);
                     // EmployeeID and CropID/ProductID text removed per user request
                     PPLBEmulation.SetUtil.SetPrintOut(remaining, 1);
                     PPLBEmulation.IOUtil.PrintOut();
@@ -3808,6 +4401,8 @@ namespace ScanLink
                     if (xCoordinate < 0 || xCoordinate > labelWidthTwoUp) warnings.Add($"Left X ({xCoordinate}) out of bounds");
                     if (x2Coordinate < 0 || x2Coordinate > labelWidthTwoUp) warnings.Add($"Right X ({x2Coordinate}) out of bounds");
 
+                    byte[] lineBuf = encoder.GetBytes("-------------------");
+
                     while (remaining > 0)
                     {
                         PPLBEmulation.SetUtil.SetClearImageBuffer();
@@ -3815,28 +4410,28 @@ namespace ScanLink
                         // left
                         buf = encoder.GetBytes("Scan-Link");
                         PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
-                        PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, stickerHeight-120, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
-                        // EmployeeID and CropID/ProductID text removed per user request
+                        PPLBEmulation.TextUtil.PrintText(xCoordinate, 30, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, lineBuf);
+                        PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 55, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, true, bufBarcode);
 
                         // right (if any remaining)
                         if (remaining > 1)
                         {
                             buf = encoder.GetBytes("Scan-Link");
                             PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
-                            PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, stickerHeight-120, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
-                            // EmployeeID and CropID/ProductID text removed per user request
+                            PPLBEmulation.TextUtil.PrintText(x2Coordinate, 30, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, lineBuf);
+                            PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, 55, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, true, bufBarcode);
                         }
 
                         PPLBEmulation.SetUtil.SetPrintOut(1, 1);
                         PPLBEmulation.IOUtil.PrintOut();
                         remaining -= Math.Min(2, remaining);
                     }
-
-                    if (warnings.Count > 0)
-                    {
-                        statusLabel.Text = "⚠️ " + string.Join("; ", warnings);
-                        statusLabel.ForeColor = System.Drawing.Color.FromArgb(255, 193, 7);
-                    }
+                }
+                
+                if (warnings.Count > 0)
+                {
+                    statusLabel.Text = "⚠️ " + string.Join("; ", warnings);
+                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(255, 193, 7);
                 }
                 
                 // Update status
@@ -4012,6 +4607,29 @@ namespace ScanLink
                         }
                         const int encodedDataLength = 12; // employee5 + product3 + crop3 + check digit
                         string digitsOnly = new string(code.Where(char.IsDigit).ToArray());
+
+                        // Auto-recover dropped first digit for UPC-A barcodes (11 digits received)
+                        if (digitsOnly.Length == 11)
+                        {
+                            int s_odd_sum = 0;
+                            int s_even_sum = 0;
+                            for (int i = 0; i < 10; i++)
+                            {
+                                int digit = digitsOnly[i] - '0';
+                                if (i % 2 == 1) s_odd_sum += digit;
+                                else s_even_sum += digit;
+                            }
+                            int known_total = (3 * s_odd_sum) + s_even_sum;
+                            int check_digit = digitsOnly[10] - '0';
+                            int remainder = (known_total + check_digit) % 10;
+                            int d1 = 0;
+                            if (remainder != 0)
+                            {
+                                d1 = (7 * (10 - remainder)) % 10;
+                            }
+                            digitsOnly = d1.ToString() + digitsOnly;
+                        }
+
                         if (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= encodedDataLength)
                         {
                             string upc = digitsOnly.Substring(digitsOnly.Length - encodedDataLength, encodedDataLength);
@@ -5042,6 +5660,11 @@ namespace ScanLink
                 if (scannerContentPanel.Visible && scannerOutputTextBox != null)
                 {
                     scannerOutputTextBox.AppendText($"[ERROR] {e.Scanner.DeviceName}: {e.ErrorMessage}\r\n");
+                }
+
+                if (e.ErrorMessage.Contains("already in use by another application"))
+                {
+                    MessageBox.Show(e.ErrorMessage, "Scanner Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             });
         }
@@ -6205,6 +6828,42 @@ namespace ScanLink
                         e.Graphics.DrawPath(pen, path);
                     }
                 }
+
+                // Custom Text Drawing using Tag property ("Title|Description")
+                if (button.Tag != null && button.Tag.ToString().Contains("|"))
+                {
+                    string[] parts = button.Tag.ToString().Split('|');
+                    string title = parts[0];
+                    string desc = parts[1];
+
+                    e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+
+                    // Calculate color - use ForeColor, but if it's somehow transparent or we're hovering/pressing, adapt
+                    Color textColor = button.ForeColor;
+                    if (textColor == Color.Transparent) textColor = Color.White;
+
+                    using (Font titleFont = new Font("Segoe UI", 10F, FontStyle.Bold))
+                    using (Font descFont = new Font("Segoe UI", 8F, FontStyle.Regular))
+                    using (StringFormat sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                    using (Brush textBrush = new SolidBrush(textColor))
+                    {
+                        // Draw Title slightly above center
+                        Rectangle rectTitle = new Rectangle(0, 0, button.Width, button.Height / 2 + 5);
+                        sf.LineAlignment = StringAlignment.Far; // Bottom
+                        e.Graphics.DrawString(title, titleFont, textBrush, rectTitle, sf);
+
+                        // Draw Description slightly below center
+                        Rectangle rectDesc = new Rectangle(0, button.Height / 2 + 5, button.Width, button.Height / 2 - 5);
+                        sf.LineAlignment = StringAlignment.Near; // Top
+                        
+                        // Use a slightly dimmer color for description if text is white
+                        Color descColor = textColor == Color.White ? Color.FromArgb(200, 255, 255, 255) : Color.FromArgb(180, textColor);
+                        using (Brush descBrush = new SolidBrush(descColor))
+                        {
+                            e.Graphics.DrawString(desc, descFont, descBrush, rectDesc, sf);
+                        }
+                    }
+                }
             }
         }
 
@@ -6386,7 +7045,7 @@ namespace ScanLink
             configPanel.Size = new Size(containerPanel.Width, 250);
             configPanel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             configPanel.Visible = true;
-            configPanel.Padding = new Padding(50, 20, 50, 0); // Restore original padding
+            configPanel.Padding = new Padding(20, 10, 20, 10); // Tighter padding
             containerPanel.Controls.Add(configPanel);
 
             actionPanel.Dock = DockStyle.None; // Remove docking
@@ -6395,7 +7054,7 @@ namespace ScanLink
             actionPanel.Size = new Size(containerPanel.Width, 110); // Increased height to accommodate content
             actionPanel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             actionPanel.Visible = true;
-            actionPanel.Padding = new Padding(50, 10, 50, 10); // Consistent padding with configPanel
+            actionPanel.Padding = new Padding(20, 10, 20, 10); // Consistent padding with configPanel
             containerPanel.Controls.Add(actionPanel);
 
             this.Controls.Add(containerPanel);
