@@ -20,6 +20,7 @@ namespace ScanLink
         private readonly int _uploadIntervalSeconds = 30; // Check every 30 seconds
         private bool _isUploading = false;
         private readonly object _uploadLock = new object();
+        private readonly object _fileLock = new object();
 
         public event EventHandler<string> LogMessage;
 
@@ -46,8 +47,7 @@ namespace ScanLink
 
         public void Start()
         {
-            // Start the timer to periodically check and upload logs
-            _uploadTimer = new Timer(async _ => await TryUploadLogs(), null, TimeSpan.Zero, TimeSpan.FromSeconds(_uploadIntervalSeconds));
+            _uploadTimer = new Timer(async _ => await TryUploadLogsAsync(), null, TimeSpan.Zero, TimeSpan.FromSeconds(_uploadIntervalSeconds));
             OnLogMessage("Scan log upload service started");
         }
 
@@ -58,7 +58,7 @@ namespace ScanLink
             OnLogMessage("Scan log upload service stopped");
         }
 
-        private async Task TryUploadLogs()
+        public async Task TryUploadLogsAsync()
         {
             // Prevent concurrent uploads
             if (_isUploading)
@@ -104,13 +104,15 @@ namespace ScanLink
 
                 OnLogMessage($"Found {logs.Count} log(s) to upload");
 
-                // Enrich logs with userId and siteId from token (always), and write back for visibility
+                // Enrich logs with userId, siteId (and _uploadId for tracking)
                 var enrichedLogs = EnrichLogsWithTokenData(logs);
                 try
                 {
-                    JavaScriptSerializer writerSerializer = new JavaScriptSerializer();
-                    string enrichedJson = writerSerializer.Serialize(enrichedLogs);
-                    File.WriteAllText(_apiLogsFilePath, enrichedJson);
+                    lock (_fileLock)
+                    {
+                        JavaScriptSerializer writerSerializer = new JavaScriptSerializer();
+                        File.WriteAllText(_apiLogsFilePath, writerSerializer.Serialize(enrichedLogs));
+                    }
                 }
                 catch { }
 
@@ -126,9 +128,14 @@ namespace ScanLink
 
                 if (success)
                 {
-                    // Clear the uploaded logs from the file
-                    File.WriteAllText(_apiLogsFilePath, "[]");
-                    OnLogMessage($"Successfully uploaded and cleared {enrichedLogs.Count} log(s)");
+                    // Safely remove only the logs we just uploaded, keeping any new logs that 
+                    // were added to the file by PowerShell during the API call.
+                    var uploadedIds = enrichedLogs
+                        .Where(l => l.ContainsKey("_uploadId"))
+                        .Select(l => l["_uploadId"].ToString())
+                        .ToList();
+                    SafelyRemoveUploadedLogs(uploadedIds);
+                    OnLogMessage($"Successfully uploaded and removed {enrichedLogs.Count} log(s) from queue.");
                 }
             }
             catch (Exception ex)
@@ -175,9 +182,48 @@ namespace ScanLink
 
                 // Ensure cropId field exists (default empty string for now)
                 if (!log.ContainsKey("cropId")) log["cropId"] = "";
+
+                // Generate a unique transaction ID for robust tracking in the queue file
+                // This prevents deleting new logs that PS1 adds during an active upload
+                if (!log.ContainsKey("_uploadId"))
+                {
+                    log["_uploadId"] = Guid.NewGuid().ToString();
+                }
             }
 
             return logs;
+        }
+
+        private void SafelyRemoveUploadedLogs(List<string> successfulUploadIds)
+        {
+            if (successfulUploadIds == null || successfulUploadIds.Count == 0) return;
+            
+            try
+            {
+                lock (_fileLock)
+                {
+                    if (!File.Exists(_apiLogsFilePath)) return;
+                    string content = File.ReadAllText(_apiLogsFilePath);
+                    if (string.IsNullOrWhiteSpace(content)) return;
+
+                    JavaScriptSerializer serializer = new JavaScriptSerializer();
+                    var logs = serializer.Deserialize<List<Dictionary<string, object>>>(content);
+                    if (logs == null) return;
+
+                    var idsToRemove = new HashSet<string>(successfulUploadIds);
+                    // Keep logs that don't have an ID yet, or aren't in the successful list
+                    var remainingLogs = logs.Where(l => 
+                        !l.ContainsKey("_uploadId") || 
+                        !idsToRemove.Contains(l["_uploadId"]?.ToString())
+                    ).ToList();
+
+                    File.WriteAllText(_apiLogsFilePath, serializer.Serialize(remainingLogs));
+                }
+            }
+            catch (Exception ex)
+            {
+                OnLogMessage($"Failed to clean up queue: {ex.Message}");
+            }
         }
 
         // Public method to enrich and persist without attempting upload
@@ -337,7 +383,10 @@ namespace ScanLink
                 var enriched = EnrichLogsWithTokenData(logs);
                 try
                 {
-                    File.WriteAllText(_apiLogsFilePath, serializer.Serialize(enriched));
+                    lock (_fileLock)
+                    {
+                        File.WriteAllText(_apiLogsFilePath, serializer.Serialize(enriched));
+                    }
                 }
                 catch { }
 
@@ -355,7 +404,7 @@ namespace ScanLink
 
                 int ok = 0, bad = 0;
                 string lastErr = null;
-                var remaining = new List<Dictionary<string, object>>();
+                var successfulIds = new List<string>();
 
                 using (var client = new System.Net.Http.HttpClient())
                 {
@@ -365,36 +414,31 @@ namespace ScanLink
                     {
                         try
                         {
-                            var apiEntry = MapToApiSchema(entry);
+                    var apiEntry = MapToApiSchema(entry);
                             string payload = serializer.Serialize(new List<Dictionary<string, object>> { apiEntry });
                             var content = new System.Net.Http.StringContent(payload, Encoding.UTF8, "application/json");
                             var response = await client.PostAsync(apiUrl, content);
                             if (response.IsSuccessStatusCode)
                             {
                                 ok++;
+                                successfulIds.Add(entry.ContainsKey("_uploadId") ? entry["_uploadId"].ToString() : "");
                             }
                             else
                             {
                                 bad++;
-                                remaining.Add(entry);
                                 lastErr = $"{(int)response.StatusCode} {response.StatusCode}: " + await response.Content.ReadAsStringAsync();
                             }
                         }
                         catch (Exception ex)
                         {
                             bad++;
-                            remaining.Add(entry);
                             lastErr = ex.Message;
                         }
                     }
                 }
 
-                // Persist only remaining (failed) entries
-                try
-                {
-                    File.WriteAllText(_apiLogsFilePath, serializer.Serialize(remaining));
-                }
-                catch { }
+                // Remove securely
+                SafelyRemoveUploadedLogs(successfulIds.Where(id => !string.IsNullOrEmpty(id)).ToList());
 
                 if (ok > 0)
                 {
