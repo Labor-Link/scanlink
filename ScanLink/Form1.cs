@@ -27,6 +27,8 @@ namespace ScanLink
 
     public partial class Form1 : Form
     {
+        private const string AppVersion = "4.1.2";
+
         public class FunctionData
         {
             public string Descration;
@@ -282,6 +284,11 @@ namespace ScanLink
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            // Set version in window title bar and header
+            this.Text = $"Scan Link v{AppVersion}";
+            if (titleLabel != null)
+                titleLabel.Text = $"ScanLink v{AppVersion}";
+
             // Initialize rounded corners for buttons
             Button_SizeChanged(setupButton, EventArgs.Empty);
             Button_SizeChanged(scannerSetupButton, EventArgs.Empty);
@@ -1290,12 +1297,17 @@ namespace ScanLink
                         var selectedEmployee = employeeDialog.SelectedEmployee;
                         if (selectedEmployee != null)
                         {
-                            // Update the Employee ID textbox with the last 6 characters of the selected employee's scanlink_id
-                            string employeeId = selectedEmployee.scanlink_id;
+                            // Update the Employee ID textbox with the last 4 digits of the selected employee's scanlink_id
+                            // (barcode format: guard(1) + employee(4) + product(3) + crop(3) + check(1) = 12 digits)
+                            string fullId = selectedEmployee.scanlink_id ?? "";
+                            string digitsOnly = new string(fullId.Where(char.IsDigit).ToArray());
+                            string employeeId = digitsOnly.Length >= 4
+                                ? digitsOnly.Substring(digitsOnly.Length - 4)
+                                : digitsOnly.PadLeft(4, '0');
                             textBox_EmployeeID.Text = employeeId;
                             
                             // Update status
-                            statusLabel.Text = $"Selected employee: {selectedEmployee.first_name} {selectedEmployee.last_name} (User ID: {selectedEmployee.scanlink_id})";
+                            statusLabel.Text = $"Selected employee: {selectedEmployee.first_name} {selectedEmployee.last_name} (ScanLink ID: {selectedEmployee.scanlink_id} → Barcode: {employeeId})";
                             statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
                         }
                     }
@@ -2674,12 +2686,17 @@ namespace ScanLink
             return digitsOnly.PadLeft(requiredLength, '0');
         }
 
+        // Guard digit prefix for UPC-A barcodes. This known first digit allows detection
+        // of scanners that suppress the UPC-A Number System digit.
+        // Barcode layout: Guard(1) + Employee(4) + Product(3) + Crop(3) + Check(1) = 12
+        private const string UpcGuardDigit = "1";
+
         private string BuildUpc11Payload(out string employeeSegment, out string productSegment, out string cropSegment)
         {
-            employeeSegment = NormalizeNumericComponent(textBox_EmployeeID?.Text ?? "", 5);
+            employeeSegment = NormalizeNumericComponent(textBox_EmployeeID?.Text ?? "", 4);
             productSegment = NormalizeNumericComponent(GetSelectedProductCode(), 3);
             cropSegment = NormalizeNumericComponent(GetSelectedCropCode(), 3);
-            return $"{employeeSegment}{productSegment}{cropSegment}";
+            return $"{UpcGuardDigit}{employeeSegment}{productSegment}{cropSegment}";
         }
 
         private string BuildUpcBarcodeFromInputs()
@@ -4605,37 +4622,24 @@ namespace ScanLink
                                 code = code.Substring(3);
                             }
                         }
-                        const int encodedDataLength = 12; // employee5 + product3 + crop3 + check digit
+                        // Barcode layout: Guard(1) + Employee(4) + Product(3) + Crop(3) + Check(1) = 12
+                        const int encodedDataLength = 12;
                         string digitsOnly = new string(code.Where(char.IsDigit).ToArray());
 
-                        // Auto-recover dropped first digit for UPC-A barcodes (11 digits received)
+                        // Guard digit recovery: if scanner dropped the first digit,
+                        // we receive 11 digits instead of 12. Prepend the known guard '1'.
                         if (digitsOnly.Length == 11)
                         {
-                            int s_odd_sum = 0;
-                            int s_even_sum = 0;
-                            for (int i = 0; i < 10; i++)
-                            {
-                                int digit = digitsOnly[i] - '0';
-                                if (i % 2 == 1) s_odd_sum += digit;
-                                else s_even_sum += digit;
-                            }
-                            int known_total = (3 * s_odd_sum) + s_even_sum;
-                            int check_digit = digitsOnly[10] - '0';
-                            int remainder = (known_total + check_digit) % 10;
-                            int d1 = 0;
-                            if (remainder != 0)
-                            {
-                                d1 = (7 * (10 - remainder)) % 10;
-                            }
-                            digitsOnly = d1.ToString() + digitsOnly;
+                            digitsOnly = "1" + digitsOnly;
                         }
 
                         if (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= encodedDataLength)
                         {
+                            // Skip guard digit (position 0), then parse: employee(4) + product(3) + crop(3)
                             string upc = digitsOnly.Substring(digitsOnly.Length - encodedDataLength, encodedDataLength);
                             if (string.IsNullOrEmpty(employeeId))
                             {
-                                employeeId = upc.Substring(0, 5);
+                                employeeId = upc.Substring(1, 4); // skip guard digit
                             }
                             if (string.IsNullOrEmpty(productId))
                             {
@@ -4715,6 +4719,10 @@ namespace ScanLink
                             scannerOutputTextBox.ScrollToCaret();
                         }
                         LoadScansData();
+                        
+                        // Fire-and-forget an immediate API upload round so logs 
+                        // push up to the cloud instantly when a scan happens
+                        _ = _scanLogUploadService?.TryUploadLogsAsync();
                     }
                 };
 
@@ -5398,6 +5406,37 @@ namespace ScanLink
             }
         }
 
+        /// <summary>
+        /// Recovers a dropped first digit from a UPC-A barcode.
+        /// Many scanners are configured to suppress the UPC-A "Number System" digit,
+        /// transmitting only 11 of the 12 digits. This method uses the UPC-A check
+        /// digit algorithm to mathematically recover the missing first digit.
+        /// </summary>
+        private static string RecoverUpcFirstDigitIfNeeded(string rawBarcode)
+        {
+            if (string.IsNullOrEmpty(rawBarcode))
+                return rawBarcode;
+
+            // Strip any AIM Symbology Identifier prefix (e.g. ]C1)
+            string cleaned = rawBarcode.Trim();
+            if (cleaned.StartsWith("]") && cleaned.Length >= 3)
+                cleaned = cleaned.Substring(3);
+
+            // Extract only digit characters
+            string digitsOnly = new string(cleaned.Where(char.IsDigit).ToArray());
+
+            // Only apply recovery when we have exactly 11 digits (dropped first digit)
+            if (digitsOnly.Length != 11)
+                return rawBarcode;
+
+            // We know our barcodes always use '1' as the guard digit.
+            // If the scanner dropped the first digit, it was the '1'.
+            string recoveredBarcode = "1" + digitsOnly;
+            Debug.WriteLine($"[UPC-RECOVERY] Scanner sent 11 digits, prepended guard digit '1': {digitsOnly} → {recoveredBarcode}");
+
+            return recoveredBarcode;
+        }
+
         private void ScannerComPortManager_DataReceived(object sender, ScannerDataReceivedEventArgs e)
         {
             this.Invoke((MethodInvoker)delegate
@@ -5406,6 +5445,13 @@ namespace ScanLink
                 {
                     string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
                     Debug.WriteLine($"[SCAN] Data received: {e.Data} from {e.Scanner.DeviceName} ({e.Scanner.ComPort})");
+
+                    // Recover dropped first digit if scanner suppressed UPC-A Number System digit
+                    string barcodeData = RecoverUpcFirstDigitIfNeeded(e.Data);
+                    if (barcodeData != e.Data)
+                    {
+                        Debug.WriteLine($"[SCAN] UPC-A first digit recovered: '{e.Data}' → '{barcodeData}'");
+                    }
                     
                     // ALWAYS show in scanner output textbox with detailed info (even if panel not visible)
                     if (scannerOutputTextBox != null)
@@ -5415,7 +5461,10 @@ namespace ScanLink
                         scannerOutputTextBox.AppendText($"[{timestamp}] 📥 SCAN RECEIVED\r\n");
                         scannerOutputTextBox.AppendText($"════════════════════════════════════════\r\n");
                         scannerOutputTextBox.AppendText($"    Port: {e.Scanner.ComPort}\r\n");
-                        scannerOutputTextBox.AppendText($"    Data: {e.Data}\r\n");
+                        scannerOutputTextBox.AppendText($"    Raw:  {e.Data}\r\n");
+                        scannerOutputTextBox.AppendText($"    Data: {barcodeData}\r\n");
+                        if (barcodeData != e.Data)
+                            scannerOutputTextBox.AppendText($"    ⚡ UPC-A first digit auto-recovered\r\n");
                         scannerOutputTextBox.AppendText($"    Line ID: {e.Scanner.LineID ?? "Not Set"}\r\n");
                         scannerOutputTextBox.AppendText($"    Block ID: {e.Scanner.BlockID ?? "Not Set"}\r\n");
                     }
@@ -5425,7 +5474,7 @@ namespace ScanLink
                 {
                         // Send data to PowerShell script with scanner identification
                         // Format: "PNPDeviceID|BarcodeData"
-                        string formattedData = $"{e.Scanner.PNPDeviceID}|{e.Data}";
+                        string formattedData = $"{e.Scanner.PNPDeviceID}|{barcodeData}";
                         
                         try
                         {
@@ -5467,7 +5516,7 @@ namespace ScanLink
                             {
                                 if (_scannerProcess != null && !_scannerProcess.HasExited)
                                 {
-                                    string formattedData = $"{e.Scanner.PNPDeviceID}|{e.Data}";
+                                    string formattedData = $"{e.Scanner.PNPDeviceID}|{barcodeData}";
                                     _scannerProcess.StandardInput.WriteLine(formattedData);
                                     _scannerProcess.StandardInput.Flush();
                                 }
@@ -5594,7 +5643,13 @@ namespace ScanLink
             };
 
             string metaJson = HidMetaSerializer.Serialize(meta);
-            string formattedData = $"{metaJson}|{data}";
+            // Recover dropped first digit if HID scanner suppressed UPC-A Number System digit
+            string recoveredData = RecoverUpcFirstDigitIfNeeded(data);
+            if (recoveredData != data)
+            {
+                Debug.WriteLine($"[HID] UPC-A first digit recovered: '{data}' → '{recoveredData}'");
+            }
+            string formattedData = $"{metaJson}|{recoveredData}";
 
             if (_scannerProcess != null && !_scannerProcess.HasExited)
             {

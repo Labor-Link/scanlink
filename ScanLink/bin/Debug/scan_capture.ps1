@@ -36,7 +36,7 @@ function Send-IssueLog {
     try {
         $body = @{
             name = "ScanLink Scanner Script"
-            email = "support@scanlink.local"
+            email = "priyanshu@vidyayatan.com"
             phone = ""
             subject = $subject
             message = $message
@@ -336,30 +336,16 @@ function Add-ScanRecord {
         elseif ($cleanCode) {
             $digitsOnly = ($cleanCode.ToCharArray() | Where-Object { $_ -match '\d' }) -join ''
             
-            # Auto-recover dropped first digit for UPC-A barcodes (11 digits received)
+            # Guard digit recovery: if scanner dropped the first digit, prepend known guard '1'
             if ($digitsOnly.Length -eq 11) {
-                $s_odd_sum = 0
-                $s_even_sum = 0
-                for ($i = 0; $i -lt 10; $i++) {
-                    $digit = [int]::Parse($digitsOnly.Substring($i, 1))
-                    if ($i % 2 -eq 1) { $s_odd_sum += $digit }
-                    else { $s_even_sum += $digit }
-                }
-                $known_total = (3 * $s_odd_sum) + $s_even_sum
-                $check_digit = [int]::Parse($digitsOnly.Substring(10, 1))
-                $remainder = ($known_total + $check_digit) % 10
-                $d1 = 0
-                if ($remainder -ne 0) {
-                    $d1 = (7 * (10 - $remainder)) % 10
-                }
-                Write-Host "Auto-recovering dropped UPC first digit: '$d1'" -ForegroundColor Cyan
-                $digitsOnly = "$d1" + $digitsOnly
+                Write-Host "Auto-recovering dropped UPC guard digit '1'" -ForegroundColor Cyan
+                $digitsOnly = "1" + $digitsOnly
             }
 
             if ($digitsOnly.Length -ge 12) {
                 try {
                     $upc = $digitsOnly.Substring($digitsOnly.Length - 12)
-                    $employeeId = $upc.Substring(0,5)
+                    $employeeId = $upc.Substring(1,4)  # skip guard digit
                     $productId = $upc.Substring(5,3)
                     $cropId = $upc.Substring(8,3)
                 } catch {

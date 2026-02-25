@@ -15,7 +15,7 @@ namespace ScanLink
         /// <summary>
         /// Asynchronously logs an issue to the cloud API.
         /// </summary>
-        public static async Task LogIssueAsync(string subject, string message, string name = "ScanLink App", string email = "support@scanlink.local", string phone = "", string deviceInfo = "")
+        public static async Task LogIssueAsync(string subject, string message, string name = "ScanLink App", string email = "priyanshu@vidyayatan.com", string phone = "", string deviceInfo = "")
         {
             try
             {
@@ -52,7 +52,7 @@ namespace ScanLink
         /// <summary>
         /// Fire and forget wrapper to easily log an issue from synchronous methods without awaiting.
         /// </summary>
-        public static void LogIssue(string subject, string message, string name = "ScanLink App", string email = "support@scanlink.local", string phone = "", string deviceInfo = "")
+        public static void LogIssue(string subject, string message, string name = "ScanLink App", string email = "priyanshu@vidyayatan.com", string phone = "", string deviceInfo = "")
         {
             Task.Run(() => LogIssueAsync(subject, message, name, email, phone, deviceInfo));
         }
