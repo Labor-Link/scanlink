@@ -344,10 +344,35 @@ function Add-ScanRecord {
 
             if ($digitsOnly.Length -ge 12) {
                 try {
-                    $upc = $digitsOnly.Substring($digitsOnly.Length - 12)
-                    $employeeId = $upc.Substring(1,4)  # skip guard digit
-                    $productId = $upc.Substring(5,3)
-                    $cropId = $upc.Substring(8,3)
+                    $bestUpc = $null
+
+                    # Search for a valid 12-digit sequence that matches the checksum
+                    $maxStartIndex = $digitsOnly.Length - 12
+                    for ($i = 0; $i -le $maxStartIndex; $i++) {
+                        $candidate = $digitsOnly.Substring($i, 12)
+                        if ($candidate.StartsWith("1")) {
+                            $upc11 = $candidate.Substring(0, 11)
+                            $expectedCheck = Get-UpcCheckDigit -upc11 $upc11
+                            $actualCheck = [int]::Parse($candidate.Substring(11, 1))
+                            if ($expectedCheck -eq $actualCheck) {
+                                $bestUpc = $candidate
+                                break
+                            }
+                        }
+                    }
+
+                    if (-not $bestUpc) {
+                        # Fallback: strip EAN-13 zeroes and grab first 12
+                        $tempDigits = $digitsOnly
+                        while ($tempDigits.Length -gt 12 -and $tempDigits.StartsWith("0")) {
+                            $tempDigits = $tempDigits.Substring(1)
+                        }
+                        $bestUpc = $tempDigits.Substring(0, 12)
+                    }
+
+                    $employeeId = $bestUpc.Substring(1,4)  # skip guard digit
+                    $productId = $bestUpc.Substring(5,3)
+                    $cropId = $bestUpc.Substring(8,3)
                 } catch {
                     $parseError = "Scan rejected: Unable to parse UPC payload - $($_.Exception.Message)"
                     Write-Host $parseError -ForegroundColor Yellow

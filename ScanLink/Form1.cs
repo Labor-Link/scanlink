@@ -4635,19 +4635,53 @@ namespace ScanLink
 
                         if (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= encodedDataLength)
                         {
-                            // Skip guard digit (position 0), then parse: employee(4) + product(3) + crop(3)
-                            string upc = digitsOnly.Substring(digitsOnly.Length - encodedDataLength, encodedDataLength);
+                            string bestUpc = null;
+
+                            // Try all possible 12-digit substrings to find the valid one
+                            // This reliably ignores any scanner-prepended EAN zeros or appended check digits
+                            for (int i = 0; i <= digitsOnly.Length - encodedDataLength; i++)
+                            {
+                                string candidate = digitsOnly.Substring(i, encodedDataLength);
+                                if (candidate.StartsWith("1"))
+                                {
+                                    try 
+                                    {
+                                        string upc11 = candidate.Substring(0, 11);
+                                        int expectedCheckDigit = GetUpcCheckDigit(upc11);
+                                        int actualCheckDigit = candidate[11] - '0';
+                                        
+                                        if (expectedCheckDigit == actualCheckDigit)
+                                        {
+                                            bestUpc = candidate;
+                                            break; // Found the valid sequence!
+                                        }
+                                    } 
+                                    catch { } // Ignore if check digit calc fails
+                                }
+                            }
+
+                            // Fallback if no valid checksum found
+                            if (bestUpc == null)
+                            {
+                                string tempDigits = digitsOnly;
+                                while (tempDigits.Length > encodedDataLength && tempDigits.StartsWith("0"))
+                                {
+                                    tempDigits = tempDigits.Substring(1);
+                                }
+                                bestUpc = tempDigits.Substring(0, encodedDataLength);
+                            }
+
                             if (string.IsNullOrEmpty(employeeId))
                             {
-                                employeeId = upc.Substring(1, 4); // skip guard digit
+                                employeeId = bestUpc.Substring(1, 4); // skip guard digit
                             }
                             if (string.IsNullOrEmpty(productId))
                             {
-                                productId = upc.Substring(5, 3);
+                                productId = bestUpc.Substring(5, 3);
                             }
                             if (string.IsNullOrEmpty(cropId))
                             {
-                                cropId = upc.Substring(8, 3);
+                                cropId = bestUpc.Substring(8, 3);
                             }
 
                         }
