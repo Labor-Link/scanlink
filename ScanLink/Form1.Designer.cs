@@ -1285,6 +1285,8 @@ namespace ScanLink
             this.comboBox_CropID.Location = new System.Drawing.Point(170, 35);
             this.comboBox_CropID.Name = "comboBox_CropID";
             this.comboBox_CropID.Size = new System.Drawing.Size(200, 24); // Match Employee ID width
+            this.comboBox_CropID.MaxDropDownItems = 20;
+            this.comboBox_CropID.DropDownHeight = 300;
             this.comboBox_CropID.TabIndex = 2;
 
             //
@@ -1312,6 +1314,8 @@ namespace ScanLink
             this.comboBox_ProductID.Name = "comboBox_ProductID";
             this.comboBox_ProductID.Size = new System.Drawing.Size(430, 24); 
             this.comboBox_ProductID.DropDownWidth = 520; // Enough width for tabular columns
+            this.comboBox_ProductID.MaxDropDownItems = 20;
+            this.comboBox_ProductID.DropDownHeight = 400;
             this.comboBox_ProductID.TabIndex = 1;
             this.comboBox_ProductID.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.comboBox_ProductID_DrawItem);
 

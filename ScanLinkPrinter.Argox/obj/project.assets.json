@@ -27,39 +27,33 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\dell\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "/Users/priyanshu/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.Argox\\ScanLinkPrinter.Argox.csproj",
+      "projectUniqueName": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.Argox/ScanLinkPrinter.Argox.csproj",
       "projectName": "ScanLinkPrinter.Argox",
-      "projectPath": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.Argox\\ScanLinkPrinter.Argox.csproj",
-      "packagesPath": "C:\\Users\\dell\\.nuget\\packages\\",
-      "outputPath": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.Argox\\obj\\",
+      "projectPath": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.Argox/ScanLinkPrinter.Argox.csproj",
+      "packagesPath": "/Users/priyanshu/.nuget/packages/",
+      "outputPath": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.Argox/obj/",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\dell\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/Users/priyanshu/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "/opt/homebrew/Cellar/dotnet/10.0.105/libexec/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.Protocol\\ScanLinkPrinter.Protocol.csproj": {
-              "projectPath": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.Protocol\\ScanLinkPrinter.Protocol.csproj"
+            "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.Protocol/ScanLinkPrinter.Protocol.csproj": {
+              "projectPath": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.Protocol/ScanLinkPrinter.Protocol.csproj"
             }
           }
         }
@@ -74,7 +68,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "net9.0": {
@@ -90,12 +84,22 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[9.0.14, 9.0.14]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[9.0.14, 9.0.14]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/10.0.105/libexec/sdk/10.0.105/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

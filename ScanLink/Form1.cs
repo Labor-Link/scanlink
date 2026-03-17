@@ -125,6 +125,7 @@ namespace ScanLink
         private Panel dailyStatsPanel;
         private DateTimePicker dtpDailyStats;
         private TextBox txtStatHours, txtStatWage, txtStatActiveEmps, txtStatPackers, txtStatBoxes;
+        private TextBox txtStatCell, txtStatAddress, txtStatDeliveryNote, txtStatTruckReg, txtStatTransporter, txtStatDriverName;
         private Button btnSaveDailyStats;
         private Label lblDailyStatsStatus;
 
@@ -465,8 +466,11 @@ namespace ScanLink
             dgvActiveScanners.Columns["LineID"].FillWeight = 15;
             
             dgvActiveScanners.Columns.Add("BlockID", "Block");
-            dgvActiveScanners.Columns["BlockID"].FillWeight = 15;
-            
+            dgvActiveScanners.Columns["BlockID"].FillWeight = 12;
+
+            dgvActiveScanners.Columns.Add("Supplier", "Supplier");
+            dgvActiveScanners.Columns["Supplier"].FillWeight = 15;
+
             DataGridViewButtonColumn btnSave = new DataGridViewButtonColumn();
             btnSave.Name = "Action";
             btnSave.Text = "Save";
@@ -558,6 +562,12 @@ namespace ScanLink
             txtStatActiveEmps = AddStatField("Active Employees", "active_employees");
             txtStatPackers = AddStatField("Packers Count", "packers_count");
             txtStatBoxes = AddStatField("Boxes Packed", "boxes_packed");
+            txtStatCell = AddStatField("Cell", "cell");
+            txtStatAddress = AddStatField("Address", "address");
+            txtStatDeliveryNote = AddStatField("Delivery Note", "delivery_note");
+            txtStatTruckReg = AddStatField("Truck Registration", "truck_registration");
+            txtStatTransporter = AddStatField("Transporter", "transporter");
+            txtStatDriverName = AddStatField("Driver Name", "driver_name");
 
             btnSaveDailyStats = new Button();
             btnSaveDailyStats.Text = "Save Stats";
@@ -611,6 +621,12 @@ namespace ScanLink
             txtStatActiveEmps.Text = stats.ContainsKey("active_employees") ? stats["active_employees"] : "";
             txtStatPackers.Text = stats.ContainsKey("packers_count") ? stats["packers_count"] : "";
             txtStatBoxes.Text = stats.ContainsKey("boxes_packed") ? stats["boxes_packed"] : "";
+            txtStatCell.Text = stats.ContainsKey("cell") ? stats["cell"] : "";
+            txtStatAddress.Text = stats.ContainsKey("address") ? stats["address"] : "";
+            txtStatDeliveryNote.Text = stats.ContainsKey("delivery_note") ? stats["delivery_note"] : "";
+            txtStatTruckReg.Text = stats.ContainsKey("truck_registration") ? stats["truck_registration"] : "";
+            txtStatTransporter.Text = stats.ContainsKey("transporter") ? stats["transporter"] : "";
+            txtStatDriverName.Text = stats.ContainsKey("driver_name") ? stats["driver_name"] : "";
 
             bool anySet = stats.Count > 0;
             lblDailyStatsStatus.Text = anySet ? "Data loaded" : "Not set";
@@ -638,6 +654,12 @@ namespace ScanLink
             if (!string.IsNullOrWhiteSpace(txtStatActiveEmps.Text)) statsDict["active_employees"] = txtStatActiveEmps.Text.Trim();
             if (!string.IsNullOrWhiteSpace(txtStatPackers.Text)) statsDict["packers_count"] = txtStatPackers.Text.Trim();
             if (!string.IsNullOrWhiteSpace(txtStatBoxes.Text)) statsDict["boxes_packed"] = txtStatBoxes.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatCell.Text)) statsDict["cell"] = txtStatCell.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatAddress.Text)) statsDict["address"] = txtStatAddress.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatDeliveryNote.Text)) statsDict["delivery_note"] = txtStatDeliveryNote.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatTruckReg.Text)) statsDict["truck_registration"] = txtStatTruckReg.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatTransporter.Text)) statsDict["transporter"] = txtStatTransporter.Text.Trim();
+            if (!string.IsNullOrWhiteSpace(txtStatDriverName.Text)) statsDict["driver_name"] = txtStatDriverName.Text.Trim();
 
             var result = await _dailyStatsService.SaveDailyStatsAsync(siteId, dtpDailyStats.Value, statsDict);
             
@@ -667,27 +689,29 @@ namespace ScanLink
                 string pnp = dgvActiveScanners.Rows[e.RowIndex].Cells["PNPDeviceID"].Value?.ToString();
                 string newLine = dgvActiveScanners.Rows[e.RowIndex].Cells["LineID"].Value?.ToString() ?? "";
                 string newBlock = dgvActiveScanners.Rows[e.RowIndex].Cells["BlockID"].Value?.ToString() ?? "";
-                
+                string newSupplier = dgvActiveScanners.Rows[e.RowIndex].Cells["Supplier"].Value?.ToString() ?? "";
+
                 var activeScanners = _scannerComPortManager.GetActiveScanners();
                 var scanner = activeScanners.FirstOrDefault(s => s.PNPDeviceID == pnp);
                 if (scanner != null)
                 {
                     scanner.LineID = newLine;
                     scanner.BlockID = newBlock;
-                    
-                    UpdateScannerAssignmentFile(pnp, newLine, newBlock);
-                    
-                    if (scannerOutputTextBox != null) 
+                    scanner.Supplier = newSupplier;
+
+                    UpdateScannerAssignmentFile(pnp, newLine, newBlock, newSupplier);
+
+                    if (scannerOutputTextBox != null)
                     {
-                        scannerOutputTextBox.AppendText($"[C# INFO] Updated Scanner {scanner.DeviceName} to Line {newLine}, Block {newBlock}\r\n");
+                        scannerOutputTextBox.AppendText($"[C# INFO] Updated Scanner {scanner.DeviceName} to Line {newLine}, Block {newBlock}, Supplier {newSupplier}\r\n");
                         scannerOutputTextBox.ScrollToCaret();
                     }
-                    MessageBox.Show($"Updated Scanner {scanner.DeviceName} Line/Block successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show($"Updated Scanner {scanner.DeviceName} Line/Block/Supplier successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
         }
 
-        private void UpdateScannerAssignmentFile(string pnpDeviceId, string newLineId, string newBlockId)
+        private void UpdateScannerAssignmentFile(string pnpDeviceId, string newLineId, string newBlockId, string newSupplier = "")
         {
             string savePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink", "scanner_assignments.txt");
             if (!File.Exists(savePath)) return;
@@ -716,6 +740,10 @@ namespace ScanLink
                         else if (lines[i].TrimStart().StartsWith("Block ID:"))
                         {
                             lines[i] = $"  Block ID: {newBlockId}";
+                        }
+                        else if (lines[i].TrimStart().StartsWith("Supplier:"))
+                        {
+                            lines[i] = $"  Supplier: {newSupplier}";
                         }
                     }
                 }
@@ -786,7 +814,8 @@ namespace ScanLink
                         scanner.DeviceName ?? scanner.PNPDeviceID,
                         scanner.ComPort,
                         scanner.LineID,
-                        scanner.BlockID
+                        scanner.BlockID,
+                        scanner.Supplier
                     );
                 }
             }
@@ -2140,6 +2169,8 @@ namespace ScanLink
             if (cartonId == "001") return "D15D - 15kg";
             if (cartonId == "002") return "E15D - 15kg";
             if (cartonId == "003") return "J60B - 600kg";
+            if (cartonId == "004") return "Bins - 300kg";
+            if (cartonId == "005") return "Foldable Bins - 350kg";
             return $"Unknown ({cartonId})";
         }
 
@@ -3311,23 +3342,25 @@ namespace ScanLink
             
             int xPos = (int)(numericUpDown_xCoordinate?.Value ?? 0);
             
-            // 1. Show main header (Matches PPLB Font_4 at Y=0)
+            // 1. Compact header: "Scan-Link" left + barcode number right (same line, smaller font)
             Label headerLabel = new Label();
             headerLabel.Text = "Scan-Link";
-            headerLabel.Font = new Font("Courier New", 14, FontStyle.Bold);
+            headerLabel.Font = new Font("Courier New", 9, FontStyle.Bold);
             headerLabel.ForeColor = Color.Black;
-            headerLabel.Location = new Point(xPos, 0); 
+            headerLabel.Location = new Point(xPos, 2);
             headerLabel.AutoSize = true;
             marginIndicator.Controls.Add(headerLabel);
-            
-            // Add standard horizontal line in preview (Matches dashes payload at Y=30)
-            Label hrLineLabel = new Label();
-            hrLineLabel.Text = "-------------------";
-            hrLineLabel.Font = new Font("Courier New", 12, FontStyle.Regular);
-            hrLineLabel.ForeColor = Color.Black;
-            hrLineLabel.Location = new Point(xPos, 30);
-            hrLineLabel.AutoSize = true;
-            marginIndicator.Controls.Add(hrLineLabel);
+
+            // Barcode number on the right side of the header line
+            Label headerBarcodeLabel = new Label();
+            headerBarcodeLabel.Text = BarcodeID;
+            headerBarcodeLabel.Font = new Font("Courier New", 9, FontStyle.Bold);
+            headerBarcodeLabel.ForeColor = Color.Black;
+            headerBarcodeLabel.AutoSize = true;
+            marginIndicator.Controls.Add(headerBarcodeLabel);
+            // Right-align within the margin indicator
+            int rightX = marginIndicator.Width - headerBarcodeLabel.PreferredWidth - 5;
+            headerBarcodeLabel.Location = new Point(Math.Max(xPos + headerLabel.PreferredWidth + 10, rightX), 2);
             
             // // 2. Show barcode type (always printed)
             // Label typeLabel = new Label();
@@ -3381,9 +3414,9 @@ namespace ScanLink
             int barcodeWidth = Math.Min(width - xPos - 10, estimatedTotalBars * narrowBarWidth + 6 * narrowBarWidth); // +6 for quiet zones
             barcodeWidth = Math.Max(barcodeWidth, 150); // ensure visible minimum for scannability
 
-            // Match physical hardware printing absolute coordinates (Y=55, Height=110)
-            int actualBarcodeHeight = 110; 
-            barcodeVisual.Location = new Point(xPos, 55);
+            // Match physical hardware printing absolute coordinates (Y=20, Height=110) - compact layout
+            int actualBarcodeHeight = 110;
+            barcodeVisual.Location = new Point(xPos, 20);
 			barcodeVisual.Size = new Size(Math.Min(Math.Max(barcodeWidth, 220), marginIndicator.Width - xPos), actualBarcodeHeight);
             barcodeVisual.BackColor = Color.White;
             marginIndicator.Controls.Add(barcodeVisual);
@@ -3391,16 +3424,7 @@ namespace ScanLink
             // Create barcode pattern with calculated dimensions
             barcodeVisual.Paint += (s, pe) => DrawBarcodePreview(pe.Graphics, new Rectangle(Point.Empty, barcodeVisual.Size), BarcodeID, comboBox_barcode.Text);
             
-            // Print barcode text data below the barcode (Mimics True 'humanReadable' hardware flag)
-            Label barcodeDataLabel = new Label();
-            barcodeDataLabel.Text = BarcodeID;
-            barcodeDataLabel.Font = new Font("Courier New", 10, FontStyle.Bold);
-            barcodeDataLabel.ForeColor = Color.Black;
-            barcodeDataLabel.AutoSize = true;
-            marginIndicator.Controls.Add(barcodeDataLabel);
-            
-            // Dynamically center the text below the simulated barcode object 
-            barcodeDataLabel.Location = new Point(xPos + Math.Max(0, (barcodeVisual.Width / 2) - (barcodeDataLabel.PreferredWidth / 2)), 55 + actualBarcodeHeight + 5);
+            // Barcode number is now shown in the header line (no longer below bars)
             
             // // 7. Show human readable label
             // Label humanLabel = new Label();
@@ -4295,14 +4319,9 @@ namespace ScanLink
                 int xCoordinate = (int)(numericUpDown_xCoordinate?.Value ?? 0);
                 int x2Coordinate = (int)(numericUpDown_x2Coordinate?.Value ?? 0);
                 
-                // Custom header with settings info
-                //If roll applied in center
+                // Compact header: "Scan-Link" on the left, barcode number on the right (same line, smaller font)
                 buf = encoder.GetBytes("Scan-Link");
-                PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
-                
-                // Add standard horizontal line separator to make layout compact
-                byte[] initialLineBuf = encoder.GetBytes("-------------------");
-                PPLBEmulation.TextUtil.PrintText(xCoordinate, 30, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, initialLineBuf);
+                PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
 
                 //If roll applied on x=0
                 // buf = encoder.GetBytes("|| Scan-Link ||");
@@ -4336,6 +4355,11 @@ namespace ScanLink
 
                 buf = encoder.GetBytes(BarcodeID);
                 var bufBarcode = buf;
+
+                // Print barcode number on the right side of the header line (same Y=0, smaller font)
+                byte[] bufBarcodeText = encoder.GetBytes(BarcodeID);
+                int barcodeTextXRight = xCoordinate + stickerWidth - (BarcodeID.Length * 8) - 10; // approximate right-align
+                PPLBEmulation.TextUtil.PrintText(Math.Max(xCoordinate + 80, barcodeTextXRight), 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                 
                 // Calculate optimal text layout for the specified width
                 int labelWidth = (int)numericUpDown_width.Value;
@@ -4407,8 +4431,8 @@ namespace ScanLink
 
                 if (!twoUp)
                 {
-                    // Print barcode dynamically and compactly below the header. humanReadable flag true to show data text.
-                    PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 55, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, true, bufBarcode);
+                    // Print barcode below compact header line (Y=20 since header is now single small line)
+                    PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
                     // EmployeeID and CropID/ProductID text removed per user request
                     PPLBEmulation.SetUtil.SetPrintOut(remaining, 1);
                     PPLBEmulation.IOUtil.PrintOut();
@@ -4418,25 +4442,23 @@ namespace ScanLink
                     if (xCoordinate < 0 || xCoordinate > labelWidthTwoUp) warnings.Add($"Left X ({xCoordinate}) out of bounds");
                     if (x2Coordinate < 0 || x2Coordinate > labelWidthTwoUp) warnings.Add($"Right X ({x2Coordinate}) out of bounds");
 
-                    byte[] lineBuf = encoder.GetBytes("-------------------");
-
                     while (remaining > 0)
                     {
                         PPLBEmulation.SetUtil.SetClearImageBuffer();
 
-                        // left
+                        // left - compact header: "Scan-Link" left + barcode number right, same line
                         buf = encoder.GetBytes("Scan-Link");
-                        PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
-                        PPLBEmulation.TextUtil.PrintText(xCoordinate, 30, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, lineBuf);
-                        PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 55, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, true, bufBarcode);
+                        PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
+                        PPLBEmulation.TextUtil.PrintText(Math.Max(xCoordinate + 80, xCoordinate + stickerWidth / 2 - (BarcodeID.Length * 8) - 10), 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                        PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
 
                         // right (if any remaining)
                         if (remaining > 1)
                         {
                             buf = encoder.GetBytes("Scan-Link");
-                            PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_4, 1, 1, false, buf);
-                            PPLBEmulation.TextUtil.PrintText(x2Coordinate, 30, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_3, 1, 1, false, lineBuf);
-                            PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, 55, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, true, bufBarcode);
+                            PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
+                            PPLBEmulation.TextUtil.PrintText(Math.Max(x2Coordinate + 80, x2Coordinate + stickerWidth / 2 - (BarcodeID.Length * 8) - 10), 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                            PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
                         }
 
                         PPLBEmulation.SetUtil.SetPrintOut(1, 1);
@@ -5240,6 +5262,7 @@ namespace ScanLink
                         var assignment = assignments[scanner.PNPDeviceID];
                         scanner.LineID = assignment.LineID;
                         scanner.BlockID = assignment.BlockID;
+                        scanner.Supplier = assignment.Supplier;
                         scanner.BaudRate = assignment.BaudRate;
                         scanner.Parity = assignment.Parity;
                         scanner.DataBits = assignment.DataBits;
@@ -5342,6 +5365,10 @@ namespace ScanLink
                         else if (trimmed.StartsWith("Block ID:"))
                         {
                             currentScanner.BlockID = trimmed.Substring("Block ID:".Length).Trim();
+                        }
+                        else if (trimmed.StartsWith("Supplier:"))
+                        {
+                            currentScanner.Supplier = trimmed.Substring("Supplier:".Length).Trim();
                         }
                         else if (trimmed.StartsWith("Baud Rate:"))
                         {
@@ -5501,6 +5528,7 @@ namespace ScanLink
                             scannerOutputTextBox.AppendText($"    ⚡ UPC-A first digit auto-recovered\r\n");
                         scannerOutputTextBox.AppendText($"    Line ID: {e.Scanner.LineID ?? "Not Set"}\r\n");
                         scannerOutputTextBox.AppendText($"    Block ID: {e.Scanner.BlockID ?? "Not Set"}\r\n");
+                        scannerOutputTextBox.AppendText($"    Supplier: {e.Scanner.Supplier ?? "Not Set"}\r\n");
                     }
                     
                     // Process scanned barcode from COM port scanner

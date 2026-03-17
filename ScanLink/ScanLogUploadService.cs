@@ -516,6 +516,7 @@ namespace ScanLink
                 { "timestamp", formattedTs },
                 { "lineNumber", GetString("lineNumber") },
                 { "blockNumber", GetString("blockNumber") },
+                { "supplier", GetString("supplier") },
                 { "productId", GetString("productId") },
                 { "parsedInfo", GetString("parsedInfo") },
                 { "scanStatus", GetString("scanStatus") ?? "SCANNED" },

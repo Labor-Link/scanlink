@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = ScanLinkPrinter.ArgoxWorker
-build_property.ProjectDir = c:\Users\Admin\scanlink\ScanLinkPrinter.ArgoxWorker\
+build_property.ProjectDir = /Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.ArgoxWorker/
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

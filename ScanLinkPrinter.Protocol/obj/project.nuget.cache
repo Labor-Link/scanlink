@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "TCgcil4DD24=",
+  "dgSpecHash": "SPqm2Id9gUM=",
   "success": true,
-  "projectFilePath": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.Protocol\\ScanLinkPrinter.Protocol.csproj",
+  "projectFilePath": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.Protocol/ScanLinkPrinter.Protocol.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\dell\\.nuget\\packages\\microsoft.netcore.platforms\\1.1.0\\microsoft.netcore.platforms.1.1.0.nupkg.sha512",
-    "C:\\Users\\dell\\.nuget\\packages\\netstandard.library\\2.0.3\\netstandard.library.2.0.3.nupkg.sha512"
+    "/Users/priyanshu/.nuget/packages/microsoft.netcore.platforms/1.1.0/microsoft.netcore.platforms.1.1.0.nupkg.sha512",
+    "/Users/priyanshu/.nuget/packages/netstandard.library/2.0.3/netstandard.library.2.0.3.nupkg.sha512"
   ],
   "logs": []
 }
