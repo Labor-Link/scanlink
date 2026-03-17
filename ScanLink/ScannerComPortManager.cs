@@ -518,6 +518,7 @@ namespace ScanLink
         public StopBits StopBits { get; set; } = StopBits.One;
         public string LineID { get; set; }
         public string BlockID { get; set; }
+        public string Supplier { get; set; }
 
         public ScannerConfig()
         {
