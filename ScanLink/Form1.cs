@@ -27,7 +27,7 @@ namespace ScanLink
 
     public partial class Form1 : Form
     {
-        private const string AppVersion = "4.1.2";
+        private const string AppVersion = "4.1.4";
 
         public class FunctionData
         {
@@ -514,7 +514,7 @@ namespace ScanLink
             dailyStatsPanel.Padding = new Padding(10);
             dailyStatsPanel.BackColor = Color.White;
             dailyStatsPanel.BorderStyle = BorderStyle.FixedSingle;
-            
+
             Label lblHeader = new Label();
             lblHeader.Text = "Daily Stats Logger";
             lblHeader.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
@@ -825,6 +825,17 @@ namespace ScanLink
         {
             try
             {
+                // Ensure the PictureBox exists and is properly configured
+                if (loginMainLogoPictureBox == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("❌ loginMainLogoPictureBox is null");
+                    return;
+                }
+
+                // Set initial properties
+                loginMainLogoPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+                loginMainLogoPictureBox.Visible = true;
+
                 // Try to load logo from multiple possible locations and file names
                 string[] possiblePaths = new string[]
                 {
@@ -839,34 +850,47 @@ namespace ScanLink
                     Path.Combine(Application.StartupPath, "..", "..", "Resources", "ScanLinkLogo.png")
                 };
 
+                System.Diagnostics.Debug.WriteLine($"🔍 Searching for logo files. Application.StartupPath: {Application.StartupPath}");
+
                 foreach (string path in possiblePaths)
                 {
                     string fullPath = Path.GetFullPath(path);
                     System.Diagnostics.Debug.WriteLine($"Trying: {fullPath}");
-                    
+
                     if (File.Exists(fullPath))
                     {
                         Image logoImage = Image.FromFile(fullPath);
-                        if (loginMainLogoPictureBox != null)
-                        {
-                            loginMainLogoPictureBox.Image = logoImage;
-                            loginMainLogoPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
-                            loginMainLogoPictureBox.Visible = true;
-                            System.Diagnostics.Debug.WriteLine($"✓ Successfully loaded logo from: {fullPath}");
-                            System.Diagnostics.Debug.WriteLine($"  PictureBox size: {loginMainLogoPictureBox.Width}x{loginMainLogoPictureBox.Height}");
-                            System.Diagnostics.Debug.WriteLine($"  PictureBox location: {loginMainLogoPictureBox.Location}");
-                            System.Diagnostics.Debug.WriteLine($"  PictureBox visible: {loginMainLogoPictureBox.Visible}");
-                        }
+                        loginMainLogoPictureBox.Image = logoImage;
+                        loginMainLogoPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+                        loginMainLogoPictureBox.Visible = true;
+                        System.Diagnostics.Debug.WriteLine($"✓ Successfully loaded logo from: {fullPath}");
+                        System.Diagnostics.Debug.WriteLine($"  PictureBox size: {loginMainLogoPictureBox.Width}x{loginMainLogoPictureBox.Height}");
+                        System.Diagnostics.Debug.WriteLine($"  PictureBox location: {loginMainLogoPictureBox.Location}");
+                        System.Diagnostics.Debug.WriteLine($"  PictureBox visible: {loginMainLogoPictureBox.Visible}");
+                        System.Diagnostics.Debug.WriteLine($"  Image size: {logoImage.Width}x{logoImage.Height}");
                         // start panel removed
                         return;
                     }
                 }
 
                 System.Diagnostics.Debug.WriteLine("❌ Logo file not found in any expected location");
+                System.Diagnostics.Debug.WriteLine("Available files in StartupPath:");
+                try
+                {
+                    foreach (var file in Directory.GetFiles(Application.StartupPath, "*.*"))
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  - {Path.GetFileName(file)}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error listing files: {ex.Message}");
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Error loading logo: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
             }
         }
 
@@ -3346,7 +3370,7 @@ namespace ScanLink
             
             // 1. Compact header: "Scan-Link" left + barcode number right (same line, smaller font)
             Label headerLabel = new Label();
-            headerLabel.Text = "Scan-Link";
+            headerLabel.Text = "Scan-Link ||";
             headerLabel.Font = new Font("Courier New", 9, FontStyle.Bold);
             headerLabel.ForeColor = Color.Black;
             headerLabel.Location = new Point(xPos, 2);
@@ -3360,8 +3384,8 @@ namespace ScanLink
             headerBarcodeLabel.ForeColor = Color.Black;
             headerBarcodeLabel.AutoSize = true;
             marginIndicator.Controls.Add(headerBarcodeLabel);
-            // Place right after "Scan-Link" with a small gap (matches print positioning)
-            headerBarcodeLabel.Location = new Point(xPos + headerLabel.PreferredWidth + 10, 2);
+            // Place right after "Scan-Link ||" with larger gap (matches print positioning)
+            headerBarcodeLabel.Location = new Point(xPos + headerLabel.PreferredWidth + 40, 2);
             
             // // 2. Show barcode type (always printed)
             // Label typeLabel = new Label();
@@ -4320,8 +4344,8 @@ namespace ScanLink
                 int xCoordinate = (int)(numericUpDown_xCoordinate?.Value ?? 0);
                 int x2Coordinate = (int)(numericUpDown_x2Coordinate?.Value ?? 0);
                 
-                // Compact header: "Scan-Link" on the left, barcode number on the right (same line, smaller font)
-                buf = encoder.GetBytes("Scan-Link");
+                // Compact header: "Scan-Link ||" on the left, barcode number on the right (same line, smaller font)
+                buf = encoder.GetBytes("Scan-Link ||");
                 PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
 
                 //If roll applied on x=0
@@ -4357,9 +4381,9 @@ namespace ScanLink
                 buf = encoder.GetBytes(BarcodeID);
                 var bufBarcode = buf;
 
-                // Print barcode number right after "Scan-Link" text with a small gap
+                // Print barcode number right after "Scan-Link ||" text with much more spacing
                 byte[] bufBarcodeText = encoder.GetBytes(BarcodeID);
-                PPLBEmulation.TextUtil.PrintText(xCoordinate + 85, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                PPLBEmulation.TextUtil.PrintText(xCoordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                 
                 // Calculate optimal text layout for the specified width
                 int labelWidth = (int)numericUpDown_width.Value;
@@ -4446,18 +4470,18 @@ namespace ScanLink
                     {
                         PPLBEmulation.SetUtil.SetClearImageBuffer();
 
-                        // left - compact header: "Scan-Link" left + barcode number right, same line
-                        buf = encoder.GetBytes("Scan-Link");
+                        // left - compact header: "Scan-Link ||" left + barcode number right, same line
+                        buf = encoder.GetBytes("Scan-Link ||");
                         PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
-                        PPLBEmulation.TextUtil.PrintText(xCoordinate + 85, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                        PPLBEmulation.TextUtil.PrintText(xCoordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                         PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
 
                         // right (if any remaining)
                         if (remaining > 1)
                         {
-                            buf = encoder.GetBytes("Scan-Link");
+                            buf = encoder.GetBytes("Scan-Link ||");
                             PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
-                            PPLBEmulation.TextUtil.PrintText(x2Coordinate + 85, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                            PPLBEmulation.TextUtil.PrintText(x2Coordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                             PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
                         }
 
