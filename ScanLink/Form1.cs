@@ -3360,9 +3360,8 @@ namespace ScanLink
             headerBarcodeLabel.ForeColor = Color.Black;
             headerBarcodeLabel.AutoSize = true;
             marginIndicator.Controls.Add(headerBarcodeLabel);
-            // Right-align within the margin indicator
-            int rightX = marginIndicator.Width - headerBarcodeLabel.PreferredWidth - 5;
-            headerBarcodeLabel.Location = new Point(Math.Max(xPos + headerLabel.PreferredWidth + 10, rightX), 2);
+            // Place right after "Scan-Link" with a small gap (matches print positioning)
+            headerBarcodeLabel.Location = new Point(xPos + headerLabel.PreferredWidth + 10, 2);
             
             // // 2. Show barcode type (always printed)
             // Label typeLabel = new Label();
@@ -4358,10 +4357,9 @@ namespace ScanLink
                 buf = encoder.GetBytes(BarcodeID);
                 var bufBarcode = buf;
 
-                // Print barcode number on the right side of the header line (same Y=0, smaller font)
+                // Print barcode number right after "Scan-Link" text with a small gap
                 byte[] bufBarcodeText = encoder.GetBytes(BarcodeID);
-                int barcodeTextXRight = xCoordinate + stickerWidth - (BarcodeID.Length * 8) - 10; // approximate right-align
-                PPLBEmulation.TextUtil.PrintText(Math.Max(xCoordinate + 80, barcodeTextXRight), 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                PPLBEmulation.TextUtil.PrintText(xCoordinate + 85, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                 
                 // Calculate optimal text layout for the specified width
                 int labelWidth = (int)numericUpDown_width.Value;
@@ -4451,7 +4449,7 @@ namespace ScanLink
                         // left - compact header: "Scan-Link" left + barcode number right, same line
                         buf = encoder.GetBytes("Scan-Link");
                         PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
-                        PPLBEmulation.TextUtil.PrintText(Math.Max(xCoordinate + 80, xCoordinate + stickerWidth / 2 - (BarcodeID.Length * 8) - 10), 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                        PPLBEmulation.TextUtil.PrintText(xCoordinate + 85, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                         PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
 
                         // right (if any remaining)
@@ -4459,7 +4457,7 @@ namespace ScanLink
                         {
                             buf = encoder.GetBytes("Scan-Link");
                             PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
-                            PPLBEmulation.TextUtil.PrintText(Math.Max(x2Coordinate + 80, x2Coordinate + stickerWidth / 2 - (BarcodeID.Length * 8) - 10), 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                            PPLBEmulation.TextUtil.PrintText(x2Coordinate + 85, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                             PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
                         }
 
@@ -4594,6 +4592,7 @@ namespace ScanLink
                 allData.Columns.Add("SerialNumber", typeof(string));
                 allData.Columns.Add("BlockNumber", typeof(string));
                 allData.Columns.Add("LineNumber", typeof(string));
+                allData.Columns.Add("Supplier", typeof(string));
                 allData.Columns.Add("CropID", typeof(string));
                 allData.Columns.Add("ProductID", typeof(string));
                 allData.Columns.Add("ParsedInfo", typeof(string));
@@ -4609,6 +4608,7 @@ namespace ScanLink
                     string serial = "";
                     string blockId = "";
                     string lineId = "";
+                    string supplier = "";
                     string productId = "";
                     string cropId = "";
                     string employeeId = "";
@@ -4622,7 +4622,13 @@ namespace ScanLink
                             blockId = device["blockID"]?.ToString() ?? "";
                         if (device.ContainsKey("lineID"))
                             lineId = device["lineID"]?.ToString() ?? "";
+                        if (device.ContainsKey("supplier"))
+                            supplier = device["supplier"]?.ToString() ?? "";
                     }
+
+                    // Also check top-level supplier field
+                    if (string.IsNullOrEmpty(supplier) && scan.ContainsKey("supplier"))
+                        supplier = scan["supplier"]?.ToString() ?? "";
 
                     // Extract product and employee IDs
                     if (scan.ContainsKey("productId"))
@@ -4715,7 +4721,7 @@ namespace ScanLink
                     if (scan.ContainsKey("time"))
                         time = scan["time"]?.ToString() ?? "";
 
-                    allData.Rows.Add(date, time, serial, blockId, lineId, cropId, productId, employeeId);
+                    allData.Rows.Add(date, time, serial, blockId, lineId, supplier, cropId, productId, employeeId);
                 }
 
                 // Initialize pagination with all data
@@ -5025,7 +5031,7 @@ namespace ScanLink
             loginButton.Text = "Login";
         }
 
-        private void Form1_Shown(object sender, EventArgs e)
+        private async void Form1_Shown(object sender, EventArgs e)
         {
             // Load saved advanced settings after the form is fully displayed
             // This ensures all controls are initialized and ready
@@ -5036,6 +5042,110 @@ namespace ScanLink
             // Automatically start the scan script after the form is fully displayed
             StartScanScript();
             LayoutRootPanels();
+
+            // Try auto-login from saved token
+            await TryAutoLoginAsync();
+        }
+
+        private async System.Threading.Tasks.Task TryAutoLoginAsync()
+        {
+            try
+            {
+                if (!_apiAuthService.LoadTokenFromFile())
+                    return;
+
+                if (!_apiAuthService.IsTokenValid())
+                    return;
+
+                System.Diagnostics.Debug.WriteLine("Auto-login: valid saved token found");
+
+                // Show loading state
+                loginPanel.Visible = true;
+                loginButton.Enabled = false;
+                loadingStatusLabel.Text = "Restoring session...";
+                loadingStatusLabel.Visible = true;
+                loadingProgressBar.Visible = true;
+
+                // If site was saved, skip dashboard; otherwise show it
+                string savedSiteId = _apiAuthService.GetSelectedSiteId();
+                string savedSiteName = _apiAuthService.GetSelectedSiteName();
+
+                if (string.IsNullOrEmpty(savedSiteId))
+                {
+                    // Need site selection — show dashboard
+                    var tokenPayload = _apiAuthService.GetCurrentTokenPayload();
+                    if (tokenPayload == null)
+                    {
+                        ResetToLogin("Session expired. Please login again.");
+                        return;
+                    }
+
+                    using (var dashboard = new MultiUserDashboard(_apiAuthService, tokenPayload))
+                    {
+                        var result = dashboard.ShowDialog(this);
+                        if (result == DialogResult.OK && !string.IsNullOrEmpty(dashboard.GetSelectedSiteId()))
+                        {
+                            _apiAuthService.SetSelectedSite(dashboard.GetSelectedSiteId(), dashboard.GetSelectedSiteName());
+                        }
+                        else
+                        {
+                            ResetToLogin("Site selection cancelled.");
+                            return;
+                        }
+                    }
+                }
+
+                // Enrich queued logs and start uploader
+                _scanLogUploadService?.EnrichLogsFileOnce();
+                _scanLogUploadService?.Start();
+
+                // Run scanner system initialization
+                loadingStatusLabel.Text = "Initializing scanners...";
+                bool initSuccess = await InitializeScannerSystemAsync();
+
+                if (initSuccess)
+                {
+                    // Fetch product combinations
+                    loadingStatusLabel.Text = "Loading product data...";
+                    var combinationsResult = await _productCombinationsService.FetchAndCacheProductCombinationsAsync();
+                    if (combinationsResult.Success)
+                    {
+                        _scannerProductItems = null;
+                        _cropOptionsCache = null;
+                        PopulateProductIdComboBox();
+                        PopulateCropIdComboBox();
+                    }
+
+                    // Switch to scanner panel
+                    loadingProgressBar.Visible = false;
+                    loadingStatusLabel.Visible = false;
+                    loginPanel.Visible = false;
+                    scannerContentPanel.Visible = true;
+                    LayoutRootPanels();
+                    _ = LoadDailyStatsAsync();
+                }
+                else
+                {
+                    ResetToLogin("Failed to initialize scanner system. Please login again.");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Auto-login failed: {ex.Message}");
+                ResetToLogin("Session restore failed. Please login again.");
+            }
+        }
+
+        private void ResetToLogin(string message)
+        {
+            loadingProgressBar.Visible = false;
+            loadingStatusLabel.Visible = false;
+            loginPanel.Visible = true;
+            loginButton.Enabled = true;
+            loginStatusLabel.Text = message;
+            loginStatusLabel.ForeColor = Color.FromArgb(255, 152, 0);
+            loginStatusLabel.Visible = true;
+            _apiAuthService.ClearToken();
         }
 
         private void StartScanScript()
@@ -6028,20 +6138,21 @@ namespace ScanLink
 
         private void UpdateDataGridViewColumnWidths()
         {
-            if (scannerDataGridView != null && scannerDataGridView.Columns.Count >= 8)
+            if (scannerDataGridView != null && scannerDataGridView.Columns.Count >= 9)
             {
                 // Calculate available width for columns (subtract some margin for scrollbar)
                 int availableWidth = scannerDataGridView.Width - 20; // Reserve 20px for potential scrollbar
-                
+
                 // Distribute width proportionally based on content importance and typical length
                 scannerDataGridView.Columns["Date"].Width = (int)(availableWidth * 0.08);
                 scannerDataGridView.Columns["Time"].Width = (int)(availableWidth * 0.06);
-                scannerDataGridView.Columns["SerialNumber"].Width = (int)(availableWidth * 0.10);
-                scannerDataGridView.Columns["BlockNumber"].Width = (int)(availableWidth * 0.10);
-                scannerDataGridView.Columns["LineNumber"].Width = (int)(availableWidth * 0.10);
-                scannerDataGridView.Columns["CropID"].Width = (int)(availableWidth * 0.15);
-                scannerDataGridView.Columns["ProductID"].Width = (int)(availableWidth * 0.25);
-                scannerDataGridView.Columns["ParsedInfo"].Width = (int)(availableWidth * 0.17);
+                scannerDataGridView.Columns["SerialNumber"].Width = (int)(availableWidth * 0.09);
+                scannerDataGridView.Columns["BlockNumber"].Width = (int)(availableWidth * 0.08);
+                scannerDataGridView.Columns["LineNumber"].Width = (int)(availableWidth * 0.08);
+                scannerDataGridView.Columns["Supplier"].Width = (int)(availableWidth * 0.10);
+                scannerDataGridView.Columns["CropID"].Width = (int)(availableWidth * 0.13);
+                scannerDataGridView.Columns["ProductID"].Width = (int)(availableWidth * 0.22);
+                scannerDataGridView.Columns["ParsedInfo"].Width = (int)(availableWidth * 0.16);
             }
         }
 
