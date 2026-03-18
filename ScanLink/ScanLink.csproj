@@ -106,6 +106,16 @@
       <Link>%(Filename)%(Extension)</Link>
     </None>
   </ItemGroup>
+  <!-- Copy logo files to output directory -->
+  <ItemGroup>
+    <Content Include="ScanLinkLogo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\ScanLinkLogo.png">
+      <Link>ScanLinkLogo.png</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="IssueLoggingService.cs" />
     <Compile Include="ApiAuthService.cs" />
