@@ -298,6 +298,7 @@ namespace ScanLink
             _tokenExpiry = DateTime.MinValue;
             _selectedSiteId = null;
             _selectedSiteName = null;
+            ClearTokenFile();
         }
 
         /// <summary>
@@ -310,7 +311,97 @@ namespace ScanLink
             _selectedSiteId = siteId;
             _selectedSiteName = siteName;
             System.Diagnostics.Debug.WriteLine($"Selected site set: ID={siteId}, Name={siteName}");
+            SaveTokenToFile();
         }
+
+        #region Token Persistence
+
+        private string GetTokenFilePath()
+        {
+            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string appFolder = System.IO.Path.Combine(appDataPath, "ScanLink");
+            if (!System.IO.Directory.Exists(appFolder))
+            {
+                System.IO.Directory.CreateDirectory(appFolder);
+            }
+            return System.IO.Path.Combine(appFolder, "auth_token.dat");
+        }
+
+        public void SaveTokenToFile()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_currentToken)) return;
+
+                string filePath = GetTokenFilePath();
+                var lines = new[]
+                {
+                    _currentToken,
+                    _tokenExpiry.ToString("o"),
+                    _selectedSiteId ?? "",
+                    _selectedSiteName ?? ""
+                };
+                System.IO.File.WriteAllLines(filePath, lines);
+                System.Diagnostics.Debug.WriteLine("Token saved to file");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to save token: {ex.Message}");
+            }
+        }
+
+        public bool LoadTokenFromFile()
+        {
+            try
+            {
+                string filePath = GetTokenFilePath();
+                if (!System.IO.File.Exists(filePath)) return false;
+
+                var lines = System.IO.File.ReadAllLines(filePath);
+                if (lines.Length < 2) return false;
+
+                string token = lines[0];
+                DateTime expiry = DateTime.Parse(lines[1], null, System.Globalization.DateTimeStyles.RoundtripKind);
+
+                if (string.IsNullOrEmpty(token) || DateTime.Now >= expiry)
+                {
+                    ClearTokenFile();
+                    return false;
+                }
+
+                _currentToken = token;
+                _tokenExpiry = expiry;
+                if (lines.Length > 2) _selectedSiteId = string.IsNullOrEmpty(lines[2]) ? null : lines[2];
+                if (lines.Length > 3) _selectedSiteName = string.IsNullOrEmpty(lines[3]) ? null : lines[3];
+
+                System.Diagnostics.Debug.WriteLine($"Token loaded from file. Expires: {expiry}, Site: {_selectedSiteName}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to load token: {ex.Message}");
+                return false;
+            }
+        }
+
+        private void ClearTokenFile()
+        {
+            try
+            {
+                string filePath = GetTokenFilePath();
+                if (System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                    System.Diagnostics.Debug.WriteLine("Token file cleared");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to clear token file: {ex.Message}");
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// Gets the currently selected site ID

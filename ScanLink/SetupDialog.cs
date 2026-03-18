@@ -431,7 +431,9 @@ namespace ScanLink
             if (cartonId == "001") return "D15D - 15kg";
             if (cartonId == "002") return "E15D - 15kg";
             if (cartonId == "003") return "J60B - 600kg";
-            
+            if (cartonId == "004") return "Bins - 300kg";
+            if (cartonId == "005") return "Foldable Bins - 350kg";
+
             return $"Unknown ({cartonId})";
         }
 

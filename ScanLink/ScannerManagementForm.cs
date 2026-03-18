@@ -32,6 +32,7 @@ namespace ScanLink
             public string ConnectionType { get; set; } = "USB-COM";
             public string LineID { get; set; }
             public string BlockID { get; set; }
+            public string Supplier { get; set; }
             public string BaudRate { get; set; } = "9600";
             public string Parity { get; set; } = "None";
             public string DataBits { get; set; } = "8";
@@ -112,6 +113,7 @@ namespace ScanLink
                         SerialNumber = !string.IsNullOrWhiteSpace(name) ? name : deviceId,
                         LineID = "",
                         BlockID = "",
+                        Supplier = "",
                         IsCurrentlyConnected = true,
                         Status = "Connected"
                     };
@@ -317,6 +319,11 @@ namespace ScanLink
                 existing.BlockID = incoming.BlockID;
             }
 
+            if (!string.IsNullOrWhiteSpace(incoming.Supplier))
+            {
+                existing.Supplier = incoming.Supplier;
+            }
+
             if (!string.IsNullOrWhiteSpace(incoming.BaudRate))
             {
                 existing.BaudRate = incoming.BaudRate;
@@ -421,6 +428,7 @@ namespace ScanLink
                 current.StopBits = current.StopBits ?? "One";
                 current.LineID = current.LineID ?? string.Empty;
                 current.BlockID = current.BlockID ?? string.Empty;
+                current.Supplier = current.Supplier ?? string.Empty;
                 if (!string.IsNullOrWhiteSpace(current.SerialNumber) &&
                     current.SerialNumber.StartsWith("Scanner", StringComparison.OrdinalIgnoreCase))
                 {
@@ -478,6 +486,10 @@ namespace ScanLink
                 else if (line.StartsWith("Block ID:", StringComparison.OrdinalIgnoreCase))
                 {
                     current.BlockID = line.Substring("Block ID:".Length).Trim();
+                }
+                else if (line.StartsWith("Supplier:", StringComparison.OrdinalIgnoreCase))
+                {
+                    current.Supplier = line.Substring("Supplier:".Length).Trim();
                 }
                 else if (line.StartsWith("Baud Rate:", StringComparison.OrdinalIgnoreCase))
                 {
@@ -772,8 +784,9 @@ namespace ScanLink
                 SetColumnFillWeight("SerialNumber", 10f);
                 SetColumnFillWeight("PNPDeviceID", 23f);
                 SetColumnFillWeight("ComPort", 8f);
-                SetColumnFillWeight("LineID", 9f);
-                SetColumnFillWeight("BlockID", 9f);
+                SetColumnFillWeight("LineID", 8f);
+                SetColumnFillWeight("BlockID", 8f);
+                SetColumnFillWeight("Supplier", 9f);
                 SetColumnFillWeight("BaudRate", 7f);
                 SetColumnFillWeight("Parity", 6f);
                 SetColumnFillWeight("DataBits", 5f);
@@ -784,10 +797,11 @@ namespace ScanLink
             else if (isNarrowForm)
             {
                 SetColumnFillWeight("SerialNumber", 8f);
-                SetColumnFillWeight("PNPDeviceID", 20f);
+                SetColumnFillWeight("PNPDeviceID", 18f);
                 SetColumnFillWeight("ComPort", 7f);
-                SetColumnFillWeight("LineID", 11f);
-                SetColumnFillWeight("BlockID", 11f);
+                SetColumnFillWeight("LineID", 9f);
+                SetColumnFillWeight("BlockID", 9f);
+                SetColumnFillWeight("Supplier", 10f);
                 SetColumnFillWeight("BaudRate", 8f);
                 SetColumnFillWeight("Parity", 7f);
                 SetColumnFillWeight("DataBits", 6f);
@@ -799,10 +813,11 @@ namespace ScanLink
             {
                 // Medium size - balanced
                 SetColumnFillWeight("SerialNumber", 9f);
-                SetColumnFillWeight("PNPDeviceID", 22f);
+                SetColumnFillWeight("PNPDeviceID", 20f);
                 SetColumnFillWeight("ComPort", 8f);
-                SetColumnFillWeight("LineID", 10f);
-                SetColumnFillWeight("BlockID", 10f);
+                SetColumnFillWeight("LineID", 9f);
+                SetColumnFillWeight("BlockID", 9f);
+                SetColumnFillWeight("Supplier", 9f);
                 SetColumnFillWeight("BaudRate", 7f);
                 SetColumnFillWeight("Parity", 6f);
                 SetColumnFillWeight("DataBits", 6f);
@@ -997,6 +1012,7 @@ namespace ScanLink
                         PNPDeviceID = "USB\\VID_05F9&PID_2216\\S/N_G24HD1690",
                         LineID = "5",
                         BlockID = "9",
+                        Supplier = "",
                         Status = "Not Connected",
                         IsCurrentlyConnected = false
                     });
@@ -1014,6 +1030,7 @@ namespace ScanLink
                     PNPDeviceID = "USB\\VID_05F9&PID_2216\\S/N_G24HD1690",
                     LineID = "5",
                     BlockID = "9",
+                    Supplier = "",
                     Status = "Not Connected",
                     IsCurrentlyConnected = false
                 });
@@ -1125,6 +1142,7 @@ namespace ScanLink
                     ConnectionType = "USB-COM",
                     LineID = "",
                     BlockID = "",
+                    Supplier = "",
                     Status = "Not Connected",
                     IsCurrentlyConnected = false
                 });
@@ -1183,6 +1201,13 @@ namespace ScanLink
             blockIdColumn.ReadOnly = false;
             scannerDataGridView.Columns.Add(blockIdColumn);
 
+            DataGridViewTextBoxColumn supplierColumn = new DataGridViewTextBoxColumn();
+            supplierColumn.HeaderText = "Supplier";
+            supplierColumn.Name = "Supplier";
+            supplierColumn.FillWeight = 10;
+            supplierColumn.ReadOnly = false;
+            scannerDataGridView.Columns.Add(supplierColumn);
+
             // COM Settings columns (editable for configuration)
             DataGridViewComboBoxColumn baudRateColumn = new DataGridViewComboBoxColumn();
             baudRateColumn.HeaderText = "Baud";
@@ -1238,6 +1263,7 @@ namespace ScanLink
                     scanner.GetComPortDisplay(),
                     scanner.LineID,
                     scanner.BlockID,
+                    scanner.Supplier,
                     scanner.BaudRate,
                     scanner.Parity,
                     scanner.DataBits,
@@ -1314,7 +1340,8 @@ namespace ScanLink
                         $"PNPDeviceID: {scanner.PNPDeviceID}\n" +
                         $"COM Port: {scanner.GetComPortDisplay()}\n" +
                         $"Line ID: {scanner.LineID}\n" +
-                        $"Block ID: {scanner.BlockID}",
+                        $"Block ID: {scanner.BlockID}\n" +
+                        $"Supplier: {scanner.Supplier}",
                         "Confirm Delete",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning
@@ -1437,6 +1464,7 @@ Need more help? Contact Datalogic support or check their website.";
                     {
                         detectedScanners[i].LineID = scannerDataGridView.Rows[i].Cells["LineID"].Value?.ToString() ?? "";
                         detectedScanners[i].BlockID = scannerDataGridView.Rows[i].Cells["BlockID"].Value?.ToString() ?? "";
+                        detectedScanners[i].Supplier = scannerDataGridView.Rows[i].Cells["Supplier"].Value?.ToString() ?? "";
                         detectedScanners[i].BaudRate = scannerDataGridView.Rows[i].Cells["BaudRate"].Value?.ToString() ?? "9600";
                         detectedScanners[i].Parity = scannerDataGridView.Rows[i].Cells["Parity"].Value?.ToString() ?? "None";
                         detectedScanners[i].DataBits = scannerDataGridView.Rows[i].Cells["DataBits"].Value?.ToString() ?? "8";
@@ -1490,6 +1518,7 @@ Need more help? Contact Datalogic support or check their website.";
                             : scanner.ComPort,
                         LineID = scanner.LineID,
                         BlockID = scanner.BlockID,
+                        Supplier = scanner.Supplier,
                         BaudRate = string.IsNullOrWhiteSpace(scanner.BaudRate) ? "9600" : scanner.BaudRate,
                         Parity = string.IsNullOrWhiteSpace(scanner.Parity) ? "None" : scanner.Parity,
                         DataBits = string.IsNullOrWhiteSpace(scanner.DataBits) ? "8" : scanner.DataBits,
@@ -1522,6 +1551,7 @@ Need more help? Contact Datalogic support or check their website.";
                         writer.WriteLine($"  COM Port: {comDisplay}");
                         writer.WriteLine($"  Line ID: {assignment.LineID ?? ""}");
                         writer.WriteLine($"  Block ID: {assignment.BlockID ?? ""}");
+                        writer.WriteLine($"  Supplier: {assignment.Supplier ?? ""}");
                         writer.WriteLine($"  Baud Rate: {assignment.BaudRate ?? "9600"}");
                         writer.WriteLine($"  Parity: {assignment.Parity ?? "None"}");
                         writer.WriteLine($"  Data Bits: {assignment.DataBits ?? "8"}");

@@ -1,8 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "odPn7wpCfyQ=",
+  "dgSpecHash": "F3rtRhntQmA=",
   "success": true,
-  "projectFilePath": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.ArgoxWorker/ScanLinkPrinter.ArgoxWorker.csproj",
+  "expectedPackageFiles": [
+    "/Users/priyanshu/.nuget/packages/microsoft.netframework.referenceassemblies/1.0.3/microsoft.netframework.referenceassemblies.1.0.3.nupkg.sha512",
+    "/Users/priyanshu/.nuget/packages/microsoft.netframework.referenceassemblies.net48/1.0.3/microsoft.netframework.referenceassemblies.net48.1.0.3.nupkg.sha512"
+  ],
   "logs": []
 }

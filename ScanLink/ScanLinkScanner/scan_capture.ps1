@@ -119,6 +119,7 @@ function Load-ScannerAssignments {
             $currentComPort = ""
             $currentLineID = ""
             $currentBlockID = ""
+            $currentSupplier = ""
             $currentBaudRate = "9600"
             $currentParity = "None"
             $currentDataBits = "8"
@@ -144,6 +145,9 @@ function Load-ScannerAssignments {
                 elseif ($trimmedLine.StartsWith("Block ID:")) {
                     $currentBlockID = $trimmedLine.Substring("Block ID:".Length).Trim()
                 }
+                elseif ($trimmedLine.StartsWith("Supplier:")) {
+                    $currentSupplier = $trimmedLine.Substring("Supplier:".Length).Trim()
+                }
                 elseif ($trimmedLine.StartsWith("Baud Rate:")) {
                     $currentBaudRate = $trimmedLine.Substring("Baud Rate:".Length).Trim()
                 }
@@ -165,6 +169,7 @@ function Load-ScannerAssignments {
                             ComPort = $currentComPort
                             LineID = $currentLineID
                             BlockID = $currentBlockID
+                            Supplier = $currentSupplier
                             BaudRate = $currentBaudRate
                             Parity = $currentParity
                             DataBits = $currentDataBits
@@ -177,6 +182,7 @@ function Load-ScannerAssignments {
                     $currentComPort = ""
                     $currentLineID = ""
                     $currentBlockID = ""
+                    $currentSupplier = ""
                     $currentBaudRate = "9600"
                     $currentParity = "None"
                     $currentDataBits = "8"
@@ -226,6 +232,7 @@ function Add-ApiUploadLog {
         [string]$siteId,
         [string]$lineNumber,
         [string]$blockNumber,
+        [string]$supplier,
         [string]$productId,
         [string]$parsedInfo,
         [string]$scanStatus,
@@ -265,6 +272,7 @@ function Add-ApiUploadLog {
             timestamp = $timestamp
             lineNumber = $lineNumber
             blockNumber = $blockNumber
+            supplier = $supplier
             productId = $productId
             scanStatus = "SCANNED"
             parsedInfo = $parsedInfo
@@ -420,7 +428,8 @@ function Add-ScanRecord {
         $isDatalogic = $false
         $lineID = ""
         $blockID = ""
-        
+        $supplier = ""
+
         if ($scannerInfo) {
             $pnpId = $scannerInfo.PNPDeviceID
             $serial = $scannerInfo.SerialNumber
@@ -441,6 +450,7 @@ function Add-ScanRecord {
                 $assignment = $scannerAssignments[$assignmentKey]
                 $lineID = $assignment.LineID
                 $blockID = $assignment.BlockID
+                $supplier = $assignment.Supplier
                 if (-not $comPort -and $assignment.ComPort) {
                     $comPort = $assignment.ComPort
                 }
@@ -462,6 +472,7 @@ function Add-ScanRecord {
             if ($deviceMeta.ContainsKey('comPort') -and $deviceMeta.comPort) { $comPort = $deviceMeta.comPort }
             if ($deviceMeta.ContainsKey('lineID') -and $deviceMeta.lineID) { $lineID = $deviceMeta.lineID }
             if ($deviceMeta.ContainsKey('blockID') -and $deviceMeta.blockID) { $blockID = $deviceMeta.blockID }
+            if ($deviceMeta.ContainsKey('supplier') -and $deviceMeta.supplier) { $supplier = $deviceMeta.supplier }
             if ($deviceMeta.ContainsKey('status') -and $deviceMeta.status) { $status = $deviceMeta.status }
         }
         
@@ -474,6 +485,7 @@ function Add-ScanRecord {
                 $assignment = $scannerAssignments[$assignmentLookupKey]
                 if (-not $lineID -and $assignment.LineID) { $lineID = $assignment.LineID }
                 if (-not $blockID -and $assignment.BlockID) { $blockID = $assignment.BlockID }
+                if (-not $supplier -and $assignment.Supplier) { $supplier = $assignment.Supplier }
                 if (-not $comPort -and $assignment.ComPort) { $comPort = $assignment.ComPort }
             }
         }
@@ -490,6 +502,7 @@ function Add-ScanRecord {
             connectionType = $resolvedConnectionType
             lineID = $lineID
             blockID = $blockID
+            supplier = $supplier
         }
         if ($usbPid) { $deviceDetails["pid"] = $usbPid }
         if ($devicePath) { $deviceDetails["devicePath"] = $devicePath }
@@ -502,6 +515,7 @@ function Add-ScanRecord {
             productId = $productId
             lineNumber = $lineID
             blockNumber = $blockID
+            supplier = $supplier
             sourceScanner = $sourceScanner
             device = [PSCustomObject]$deviceDetails
         }
@@ -522,7 +536,7 @@ function Add-ScanRecord {
         Add-Content -Path $csvFile -Value $csvLine
         
         # Create API upload log (userId and siteId will be filled by C# service from token)
-        Add-ApiUploadLog -userId "" -siteId "" -lineNumber $lineID -blockNumber $blockID -productId $productId -parsedInfo $employeeId -scanStatus $serial -cropId $cropId
+        Add-ApiUploadLog -userId "" -siteId "" -lineNumber $lineID -blockNumber $blockID -supplier $supplier -productId $productId -parsedInfo $employeeId -scanStatus $serial -cropId $cropId
         
         Write-Host "Scan recorded: $code" -ForegroundColor Green
         Write-Host "  Connection: $resolvedConnectionType" -ForegroundColor Yellow

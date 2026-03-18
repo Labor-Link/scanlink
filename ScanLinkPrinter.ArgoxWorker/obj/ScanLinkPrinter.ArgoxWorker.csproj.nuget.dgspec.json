@@ -1,31 +1,26 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj": {}
+    "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.ArgoxWorker/ScanLinkPrinter.ArgoxWorker.csproj": {}
   },
   "projects": {
-    "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj": {
+    "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.ArgoxWorker/ScanLinkPrinter.ArgoxWorker.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj",
+        "projectUniqueName": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.ArgoxWorker/ScanLinkPrinter.ArgoxWorker.csproj",
         "projectName": "ScanLinkPrinter.ArgoxWorker",
-        "projectPath": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.ArgoxWorker\\ScanLinkPrinter.ArgoxWorker.csproj",
-        "packagesPath": "C:\\Users\\dell\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\dell\\Downloads\\scanlink zip\\scanlink\\ScanLinkPrinter.ArgoxWorker\\obj\\",
+        "projectPath": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.ArgoxWorker/ScanLinkPrinter.ArgoxWorker.csproj",
+        "packagesPath": "/Users/priyanshu/.nuget/packages/",
+        "outputPath": "/Users/priyanshu/laborlink/scanlink/ScanLinkPrinter.ArgoxWorker/obj/",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\dell\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/Users/priyanshu/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net48"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "/opt/homebrew/Cellar/dotnet/10.0.105/libexec/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -44,17 +39,20 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "10.0.100"
       },
       "frameworks": {
         "net48": {
           "targetAlias": "net48",
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311\\RuntimeIdentifierGraph.json"
-        }
-      },
-      "runtimes": {
-        "win-x64": {
-          "#import": []
+          "dependencies": {
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet/10.0.105/libexec/sdk/10.0.105/RuntimeIdentifierGraph.json"
         }
       }
     }
