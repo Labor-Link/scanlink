@@ -3064,8 +3064,8 @@ namespace ScanLink
 
             Font mainFont = e.Font;
             Font subFont = new Font(e.Font.FontFamily, Math.Max(e.Font.Size - 1, 7), FontStyle.Regular);
-            Brush textBrush = new SolidBrush(e.ForeColor);
-            Brush subBrush = new SolidBrush(e.State.HasFlag(DrawItemState.Selected) ? e.ForeColor : Color.FromArgb(80, 80, 80));
+            Brush textBrush;
+            Brush subBrush;
             Brush customHighlightBrush = new SolidBrush(System.Drawing.Color.FromArgb(52, 152, 219)); // Same blue
             Brush borderBrush = new SolidBrush(Color.FromArgb(220, 220, 220));
             Pen borderPen = new Pen(borderBrush);
@@ -3076,48 +3076,53 @@ namespace ScanLink
                 textBrush = new SolidBrush(Color.White);
                 subBrush = new SolidBrush(Color.WhiteSmoke);
             }
+            else
+            {
+                textBrush = new SolidBrush(e.ForeColor);
+                subBrush = new SolidBrush(Color.FromArgb(80, 80, 80));
+            }
 
             if (item != null && !string.IsNullOrEmpty(item.ProductName))
             {
-                // Tabular Columns Layout
-                int col1Width = 140; // Product Name
-                int col2Width = 120; // Variety
-                int col3Width = 60;  // Grade
-                int col4Width = 60;  // Count
-                int col5Width = 90;  // Carton
-                int col6Width = 70;  // Weight
-                
-                int x = e.Bounds.X + 4;
+                // Tabular Columns Layout - Improved widths for better visibility
+                int col1Width = 180; // Product Name (increased from 140)
+                int col2Width = 140; // Variety (increased from 120)
+                int col3Width = 70;  // Grade (increased from 60)
+                int col4Width = 70;  // Count (increased from 60)
+                int col5Width = 100; // Carton (increased from 90)
+                int col6Width = 80;  // Weight (increased from 70)
+
+                int x = e.Bounds.X + 8; // Increased left padding from 4 to 8
 
                 // Col 1: Product Name
                 Rectangle rect1 = new Rectangle(x, e.Bounds.Y, col1Width, e.Bounds.Height);
                 e.Graphics.DrawString(item.ProductName ?? "-", mainFont, textBrush, rect1, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
                 e.Graphics.DrawLine(borderPen, x + col1Width, e.Bounds.Y, x + col1Width, e.Bounds.Bottom);
-                x += col1Width + 6;
+                x += col1Width + 8; // Increased spacing from 6 to 8
 
                 // Col 2: Variety
                 Rectangle rect2 = new Rectangle(x, e.Bounds.Y, col2Width, e.Bounds.Height);
                 e.Graphics.DrawString(item.Variety ?? "-", subFont, subBrush, rect2, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
                 e.Graphics.DrawLine(borderPen, x + col2Width, e.Bounds.Y, x + col2Width, e.Bounds.Bottom);
-                x += col2Width + 6;
+                x += col2Width + 8; // Increased spacing from 6 to 8
 
                 // Col 3: Grade
                 Rectangle rect3 = new Rectangle(x, e.Bounds.Y, col3Width, e.Bounds.Height);
                 e.Graphics.DrawString(item.Grade ?? "-", subFont, subBrush, rect3, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
                 e.Graphics.DrawLine(borderPen, x + col3Width, e.Bounds.Y, x + col3Width, e.Bounds.Bottom);
-                x += col3Width + 6;
+                x += col3Width + 8; // Increased spacing from 6 to 8
 
                 // Col 4: Count
                 Rectangle rect4 = new Rectangle(x, e.Bounds.Y, col4Width, e.Bounds.Height);
                 e.Graphics.DrawString(item.Count ?? "-", subFont, subBrush, rect4, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
                 e.Graphics.DrawLine(borderPen, x + col4Width, e.Bounds.Y, x + col4Width, e.Bounds.Bottom);
-                x += col4Width + 6;
+                x += col4Width + 8; // Increased spacing from 6 to 8
                 
                 // Col 5: Carton
                 Rectangle rect5 = new Rectangle(x, e.Bounds.Y, col5Width, e.Bounds.Height);
                 e.Graphics.DrawString(item.Carton ?? "-", subFont, subBrush, rect5, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
                 e.Graphics.DrawLine(borderPen, x + col5Width, e.Bounds.Y, x + col5Width, e.Bounds.Bottom);
-                x += col5Width + 6;
+                x += col5Width + 8; // Increased spacing from 6 to 8
 
                 // Col 6: Avg Weight
                 Rectangle rect6 = new Rectangle(x, e.Bounds.Y, col6Width, e.Bounds.Height);
@@ -3131,12 +3136,9 @@ namespace ScanLink
                 e.Graphics.DrawString(text, e.Font, textBrush, e.Bounds, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
             }
 
-            // Cleanup resources
-            if (e.State.HasFlag(DrawItemState.Selected))
-            {
-                textBrush.Dispose();
-                subBrush.Dispose();
-            }
+            // Cleanup resources - dispose all created brushes and objects
+            textBrush.Dispose();
+            subBrush.Dispose();
             customHighlightBrush.Dispose();
             borderBrush.Dispose();
             borderPen.Dispose();
