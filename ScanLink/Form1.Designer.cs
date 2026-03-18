@@ -1312,10 +1312,10 @@ namespace ScanLink
             this.comboBox_ProductID.FormattingEnabled = true;
             this.comboBox_ProductID.Location = new System.Drawing.Point(170, 70);
             this.comboBox_ProductID.Name = "comboBox_ProductID";
-            this.comboBox_ProductID.Size = new System.Drawing.Size(430, 24); 
-            this.comboBox_ProductID.DropDownWidth = 520; // Enough width for tabular columns
-            this.comboBox_ProductID.MaxDropDownItems = 20;
-            this.comboBox_ProductID.DropDownHeight = 400;
+            this.comboBox_ProductID.Size = new System.Drawing.Size(430, 24);
+            this.comboBox_ProductID.DropDownWidth = 700; // Increased width for better column visibility
+            this.comboBox_ProductID.MaxDropDownItems = 15;
+            this.comboBox_ProductID.DropDownHeight = 350;
             this.comboBox_ProductID.TabIndex = 1;
             this.comboBox_ProductID.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.comboBox_ProductID_DrawItem);
 
