@@ -23,6 +23,7 @@ namespace ScanLink
         public string count_id { get; set; }
         public string count_name { get; set; }
         public string carton_type_id { get; set; }
+        public string carton_type_name { get; set; }
         public double avg_weight_kg { get; set; }
     }
 
