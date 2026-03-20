@@ -232,6 +232,7 @@ namespace ScanLink
 
             // Initialize product combinations service
             _productCombinationsService = new ProductCombinationsService(_apiAuthService);
+            _scanLogUploadService.SetProductCombinationsService(_productCombinationsService);
 
             // Initialize raw input manager for HID scanners (keyboard and raw HID)
             try
@@ -2187,14 +2188,10 @@ namespace ScanLink
             return items;
         }
 
-        private string GetCartonNameFromId(string cartonId)
+        private string GetCartonNameFromId(string cartonId, string cartonName = null)
         {
+            if (!string.IsNullOrWhiteSpace(cartonName)) return cartonName;
             if (string.IsNullOrWhiteSpace(cartonId)) return "-";
-            if (cartonId == "001") return "D15D - 15kg";
-            if (cartonId == "002") return "E15D - 15kg";
-            if (cartonId == "003") return "J60B - 600kg";
-            if (cartonId == "004") return "Bins - 300kg";
-            if (cartonId == "005") return "Foldable Bins - 350kg";
             return $"Unknown ({cartonId})";
         }
 
@@ -2210,13 +2207,13 @@ namespace ScanLink
                 {
                     return products
                         .Select(p => new ProductComboItem {
-                            Name = $"{p.product_name}  ({p.variety_name} | {p.grade_name} | {p.count_name} | {GetCartonNameFromId(p.carton_type_id)} | {p.avg_weight_kg}kg)",
+                            Name = $"{p.product_name}  ({p.variety_name} | {p.grade_name} | {p.count_name} | {GetCartonNameFromId(p.carton_type_id, p.carton_type_name)} | {p.avg_weight_kg}kg)",
                             Value = p.product_id,
                             ProductName = p.product_name,
                             Variety = p.variety_name,
                             Grade = p.grade_name,
                             Count = p.count_name,
-                            Carton = GetCartonNameFromId(p.carton_type_id),
+                            Carton = GetCartonNameFromId(p.carton_type_id, p.carton_type_name),
                             AvgWeightKg = p.avg_weight_kg.ToString()
                         })
                         .ToList();
@@ -2906,29 +2903,20 @@ namespace ScanLink
             return string.IsNullOrWhiteSpace(value) || value.StartsWith("manual", StringComparison.OrdinalIgnoreCase);
         }
 
-        private void SetProductDetailFields(string variety, string grade, string count, string weight = null, string cartonId = null)
+        private void SetProductDetailFields(string variety, string grade, string count, string weight = null, string cartonId = null, string cartonName = null)
         {
             if (label_ProductDetail == null) return;
             if (label_ProductDetail.IsDisposed) return;
 
             if (label_ProductDetail.InvokeRequired)
             {
-                label_ProductDetail.Invoke(new Action(() => SetProductDetailFields(variety, grade, count, weight, cartonId)));
+                label_ProductDetail.Invoke(new Action(() => SetProductDetailFields(variety, grade, count, weight, cartonId, cartonName)));
                 return;
             }
 
             string weightText = string.IsNullOrWhiteSpace(weight) ? "N/A" : weight;
-            string cartonText = "N/A";
-            
-            // Map the carton type ID to its friendly name and weight
-            if (!string.IsNullOrWhiteSpace(cartonId))
-            {
-                if (cartonId == "001") cartonText = "D15D - 15kg";
-                else if (cartonId == "002") cartonText = "E15D - 15kg";
-                else if (cartonId == "003") cartonText = "J60B - 600kg";
-                else cartonText = $"Unknown ({cartonId})";
-            }
-            
+            string cartonText = GetCartonNameFromId(cartonId, cartonName);
+
             label_ProductDetail.Text = $"Variety: {(string.IsNullOrWhiteSpace(variety) ? "N/A" : variety)}      Grade: {(string.IsNullOrWhiteSpace(grade) ? "N/A" : grade)}      Count: {(string.IsNullOrWhiteSpace(count) ? "N/A" : count)}      Carton: {cartonText}      Avg Weight (kg): {weightText}";
         }
 
@@ -3014,7 +3002,7 @@ namespace ScanLink
                             return;
                         }
 
-                        SetProductDetailFields(combination.variety_name, combination.grade_name, combination.count_name, combination.avg_weight_kg.ToString(), combination.carton_type_id);
+                        SetProductDetailFields(combination.variety_name, combination.grade_name, combination.count_name, combination.avg_weight_kg.ToString(), combination.carton_type_id, combination.carton_type_name);
                     }
                 }
             }
