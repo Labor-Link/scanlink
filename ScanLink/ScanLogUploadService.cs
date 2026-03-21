@@ -16,6 +16,7 @@ namespace ScanLink
     {
         private readonly string _apiLogsFilePath;
         private readonly ApiAuthService _authService;
+        private ProductCombinationsService _productCombinationsService;
         private Timer _uploadTimer;
         private readonly int _uploadIntervalSeconds = 30; // Check every 30 seconds
         private bool _isUploading = false;
@@ -23,6 +24,11 @@ namespace ScanLink
         private readonly object _fileLock = new object();
 
         public event EventHandler<string> LogMessage;
+
+        public void SetProductCombinationsService(ProductCombinationsService service)
+        {
+            _productCombinationsService = service;
+        }
 
         public ScanLogUploadService(ApiAuthService authService)
         {
@@ -182,6 +188,23 @@ namespace ScanLink
 
                 // Ensure cropId field exists (default empty string for now)
                 if (!log.ContainsKey("cropId")) log["cropId"] = "";
+
+                // Enrich cartonTypeId from product combinations if not already set
+                if ((!log.ContainsKey("cartonTypeId") || string.IsNullOrEmpty(log["cartonTypeId"]?.ToString()))
+                    && _productCombinationsService != null && _productCombinationsService.HasCachedData())
+                {
+                    var productId = log.ContainsKey("productId") ? log["productId"]?.ToString() : null;
+                    var cropId = log.ContainsKey("cropId") ? log["cropId"]?.ToString() : null;
+                    if (!string.IsNullOrEmpty(productId) && !string.IsNullOrEmpty(cropId))
+                    {
+                        var combo = _productCombinationsService.GetAllCombinations()
+                            .FirstOrDefault(c => c.product_id == productId && c.crop_id == cropId);
+                        if (combo != null && !string.IsNullOrEmpty(combo.carton_type_id))
+                        {
+                            log["cartonTypeId"] = combo.carton_type_id;
+                        }
+                    }
+                }
 
                 // Generate a unique transaction ID for robust tracking in the queue file
                 // This prevents deleting new logs that PS1 adds during an active upload
@@ -520,7 +543,8 @@ namespace ScanLink
                 { "productId", GetString("productId") },
                 { "parsedInfo", GetString("parsedInfo") },
                 { "scanStatus", GetString("scanStatus") ?? "SCANNED" },
-                { "cropId", GetString("cropId") }
+                { "cropId", GetString("cropId") },
+                { "cartonTypeId", GetString("cartonTypeId") }
             };
 
             // Remove nulls to avoid API validation issues
