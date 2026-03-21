@@ -158,6 +158,7 @@ namespace ScanLink
             public string count_id = null;
             public string count_name = null;
             public string carton_type_id = null;
+            public string carton_type_name = null;
             public double avg_weight_kg = 0;
         }
 
