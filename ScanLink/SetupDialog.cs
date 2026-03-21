@@ -418,22 +418,16 @@ namespace ScanLink
                     $"{combo.variety_id} ({GetVarietyName(combo.variety_id)})",
                     $"{combo.grade_id} ({GetGradeName(combo.grade_id)})",
                     $"{combo.count_id} ({GetCountName(combo.count_id)})",
-                    GetCartonTypeName(combo.carton_type_id),
+                    GetCartonTypeName(combo.carton_type_id, combo.carton_type_name),
                     combo.avg_weight_kg
                 );
             }
         }
 
-        private string GetCartonTypeName(string cartonId)
+        private string GetCartonTypeName(string cartonId, string cartonName = null)
         {
+            if (!string.IsNullOrWhiteSpace(cartonName)) return cartonName;
             if (string.IsNullOrWhiteSpace(cartonId)) return "Unknown";
-            
-            if (cartonId == "001") return "D15D - 15kg";
-            if (cartonId == "002") return "E15D - 15kg";
-            if (cartonId == "003") return "J60B - 600kg";
-            if (cartonId == "004") return "Bins - 300kg";
-            if (cartonId == "005") return "Foldable Bins - 350kg";
-
             return $"Unknown ({cartonId})";
         }
 
