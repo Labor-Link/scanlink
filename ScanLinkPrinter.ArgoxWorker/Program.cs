@@ -48,7 +48,7 @@ namespace ScanLinkPrinter.ArgoxWorker
                         json = File.ReadAllText(path);
                     }
                 }
-                var serializer = new JavaScriptSerializer();
+                var serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 var request = serializer.Deserialize<PrintRequest>(json);
                 if (request == null)
                 {

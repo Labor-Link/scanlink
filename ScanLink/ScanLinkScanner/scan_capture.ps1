@@ -522,9 +522,30 @@ function Add-ScanRecord {
         
         # Add new record to array
         $scanRecords = @($scanRecords) + $newRecord
-        
-        # Convert back to JSON and save
+
+        # Bound the on-disk display log to the most recent N scans. This keeps the file
+        # small so (a) the C# app loads it instantly and (b) this writer no longer reads +
+        # rewrites an ever-growing array on every scan (which got slower over time and
+        # eventually crashed the C# grid at ~2 MB).
+        # NOTE: this is the DISPLAY buffer only. Full history is preserved in the web portal
+        # (backend, via api_upload_logs.json) and in scans_backup.csv below, so nothing is
+        # lost - the desktop grid is a recent-activity view. Do NOT apply this cap to
+        # api_upload_logs.json: that is the un-synced upload queue and trimming it would
+        # drop scans that never reached the backend.
+        # TRADE-OFF: with this JSON-array format the whole array is re-serialized on every
+        # scan, so this number also caps per-scan write cost. Keep it modest (a few thousand)
+        # so scanning stays snappy. A future release should switch to append-only JSONL,
+        # which removes this ceiling entirely.
+        $maxDisplayRecords = 2000
+        if ($scanRecords.Count -gt $maxDisplayRecords) {
+            $scanRecords = @($scanRecords | Select-Object -Last $maxDisplayRecords)
+        }
+
+        # Convert back to JSON and save. Force an array even for a single record: Windows
+        # PowerShell's ConvertTo-Json emits a bare object '{...}' for one item, which the C#
+        # reader (Deserialize<List<...>>) cannot parse and would error on.
         $jsonOutput = $scanRecords | ConvertTo-Json -Depth 6
+        if ($scanRecords.Count -eq 1) { $jsonOutput = "[" + $jsonOutput + "]" }
         Set-Content -Path $OutputFile -Value $jsonOutput -Encoding UTF8
         
         # Also create a simple CSV backup for compatibility

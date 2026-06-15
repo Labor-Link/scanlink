@@ -20,7 +20,7 @@ namespace ScanLink
         public ApiAuthService()
         {
             _httpClient = new HttpClient();
-            _jsonSerializer = new JavaScriptSerializer();
+            _jsonSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
             
             // Set default headers to match the curl request
             _httpClient.DefaultRequestHeaders.Add("accept", "application/json, text/plain, */*");

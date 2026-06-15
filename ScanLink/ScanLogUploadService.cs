@@ -92,7 +92,7 @@ namespace ScanLink
                 }
 
                 // Parse the logs (support array or single object)
-                JavaScriptSerializer serializer = new JavaScriptSerializer();
+                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 var logs = serializer.Deserialize<List<Dictionary<string, object>>>(fileContent);
                 if (logs == null)
                 {
@@ -116,7 +116,7 @@ namespace ScanLink
                 {
                     lock (_fileLock)
                     {
-                        JavaScriptSerializer writerSerializer = new JavaScriptSerializer();
+                        JavaScriptSerializer writerSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                         File.WriteAllText(_apiLogsFilePath, writerSerializer.Serialize(enrichedLogs));
                     }
                 }
@@ -229,7 +229,7 @@ namespace ScanLink
                     string content = File.ReadAllText(_apiLogsFilePath);
                     if (string.IsNullOrWhiteSpace(content)) return;
 
-                    JavaScriptSerializer serializer = new JavaScriptSerializer();
+                    JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                     var logs = serializer.Deserialize<List<Dictionary<string, object>>>(content);
                     if (logs == null) return;
 
@@ -258,7 +258,7 @@ namespace ScanLink
                 string fileContent = File.ReadAllText(_apiLogsFilePath);
                 if (string.IsNullOrWhiteSpace(fileContent)) return;
 
-                JavaScriptSerializer serializer = new JavaScriptSerializer();
+                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 var logs = serializer.Deserialize<List<Dictionary<string, object>>>(fileContent);
                 if (logs == null)
                 {
@@ -307,7 +307,7 @@ namespace ScanLink
                 var apiReadyLogs = logs.Select(MapToApiSchema).ToList();
 
                 // Serialize logs to JSON
-                JavaScriptSerializer serializer = new JavaScriptSerializer();
+                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 string jsonPayload = serializer.Serialize(apiReadyLogs);
 
                 // Create HTTP request
@@ -389,7 +389,7 @@ namespace ScanLink
                     return (0, 0, "No logs to upload");
                 }
 
-                JavaScriptSerializer serializer = new JavaScriptSerializer();
+                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 var logs = serializer.Deserialize<List<Dictionary<string, object>>>(fileContent);
                 if (logs == null)
                 {

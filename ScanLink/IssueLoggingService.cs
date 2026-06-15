@@ -34,7 +34,7 @@ namespace ScanLink
                     { "deviceInfo", deviceInfo }
                 };
 
-                var serializer = new JavaScriptSerializer();
+                var serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 string jsonPayload = serializer.Serialize(payload);
 
                 var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");

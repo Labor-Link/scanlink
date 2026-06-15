@@ -135,7 +135,7 @@ namespace ScanLink
         {
             InitializeComponent();
             _apiAuthService = apiAuthService;
-            _jsonSerializer = new JavaScriptSerializer();
+            _jsonSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
             _tokenPayload = tokenPayload;
             _siteTiles = new List<SiteTile>();
         }

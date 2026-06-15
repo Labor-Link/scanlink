@@ -73,7 +73,7 @@ namespace ScanLink
         public ProductCombinationsService(ApiAuthService apiAuthService)
         {
             _apiAuthService = apiAuthService;
-            _jsonSerializer = new JavaScriptSerializer();
+            _jsonSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
             _httpClient = new HttpClient();
 
             // Set default headers to match the ApiAuthService pattern

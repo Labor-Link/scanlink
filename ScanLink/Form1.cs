@@ -44,7 +44,7 @@ namespace ScanLink
         private ScanLogUploadService _scanLogUploadService;
         private ProductCombinationsService _productCombinationsService;
         private RawInputManager _rawInputManager;
-        private static readonly JavaScriptSerializer HidMetaSerializer = new JavaScriptSerializer();
+        private static readonly JavaScriptSerializer HidMetaSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
 
         // Popup forms
         private ConfigPopupForm _configPopupForm;
@@ -53,6 +53,11 @@ namespace ScanLink
         // Barcode generation state
         private string _generatedBarcode = "";
         private bool _barcodeGenerated = false;
+        // Employee display name captured when chosen from the employee dialog, plus the barcode
+        // employee-ID it belongs to. We only print the name when it still matches the current
+        // ID, so a manually-changed ID never prints a stale name.
+        private string _selectedEmployeeName = "";
+        private string _selectedEmployeeBarcodeId = "";
 
         // UI Controls
         private System.Windows.Forms.Button button_generateBarcode;
@@ -593,7 +598,7 @@ namespace ScanLink
             btnDebugSiteId.Click += (s, e) => {
                 string eff = _apiAuthService?.GetEffectiveSiteId();
                 var payload = _apiAuthService?.GetCurrentTokenPayload();
-                string json = payload != null ? new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(payload) : "null";
+                string json = payload != null ? new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Serialize(payload) : "null";
                 MessageBox.Show($"Effective Site ID: {eff}\n\nLast API Error:\n{_lastStatsError}\n\nToken Payload:\n{json}", "Token Debug Logs");
             };
             flowPanel.Controls.Add(btnDebugSiteId);
@@ -1360,7 +1365,12 @@ namespace ScanLink
                                 ? digitsOnly.Substring(digitsOnly.Length - 4)
                                 : digitsOnly.PadLeft(4, '0');
                             textBox_EmployeeID.Text = employeeId;
-                            
+
+                            // Remember the employee's name (and which barcode ID it maps to) so the
+                            // label can print it below the barcode.
+                            _selectedEmployeeName = $"{selectedEmployee.first_name} {selectedEmployee.last_name}".Trim();
+                            _selectedEmployeeBarcodeId = employeeId;
+
                             // Update status
                             statusLabel.Text = $"Selected employee: {selectedEmployee.first_name} {selectedEmployee.last_name} (ScanLink ID: {selectedEmployee.scanlink_id} → Barcode: {employeeId})";
                             statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
@@ -2601,7 +2611,7 @@ namespace ScanLink
                     }
 
                     var json = await response.Content.ReadAsStringAsync();
-                    var serializer = new JavaScriptSerializer();
+                    var serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                     var data = serializer.Deserialize<ProductCombinationResponse>(json);
 
                     if (data?.combinations == null || data.combinations.Count == 0)
@@ -2993,7 +3003,7 @@ namespace ScanLink
                         string json = await response.Content.ReadAsStringAsync();
                         if (ct.IsCancellationRequested) return;
 
-                        var serializer = new JavaScriptSerializer();
+                        var serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                         var data = serializer.Deserialize<ProductCombinationResponse>(json);
                         var combination = data?.combinations?.FirstOrDefault();
 
@@ -3437,8 +3447,40 @@ namespace ScanLink
             
             // Create barcode pattern with calculated dimensions
             barcodeVisual.Paint += (s, pe) => DrawBarcodePreview(pe.Graphics, new Rectangle(Point.Empty, barcodeVisual.Size), BarcodeID, comboBox_barcode.Text);
-            
+
             // Barcode number is now shown in the header line (no longer below bars)
+
+            // Detail lines below the barcode - mirror of the printed label (employee name; count | grade)
+            string previewEmpName = GetEmployeeNameForBarcode(BarcodeID);
+            var previewCombo = GetSelectedProductCombination();
+            string previewLine2 = string.Join("  |  ",
+                new[] { previewCombo?.count_name, previewCombo?.grade_name }
+                    .Where(s => !string.IsNullOrWhiteSpace(s)));
+            // Mirror the print-side height guard: only show lines that fit the label height.
+            const int previewDetailTextHeight = 14;
+            if (barcodeVisual.Bottom + 4 + previewDetailTextHeight > height) previewEmpName = "";
+            if (barcodeVisual.Bottom + 20 + previewDetailTextHeight > height) previewLine2 = "";
+
+            if (!string.IsNullOrWhiteSpace(previewEmpName))
+            {
+                Label empDetailLabel = new Label();
+                empDetailLabel.Text = previewEmpName;
+                empDetailLabel.Font = new Font("Courier New", 8, FontStyle.Bold);
+                empDetailLabel.ForeColor = Color.Black;
+                empDetailLabel.Location = new Point(xPos, barcodeVisual.Bottom + 4);
+                empDetailLabel.AutoSize = true;
+                marginIndicator.Controls.Add(empDetailLabel);
+            }
+            if (!string.IsNullOrWhiteSpace(previewLine2))
+            {
+                Label countGradeLabel = new Label();
+                countGradeLabel.Text = previewLine2;
+                countGradeLabel.Font = new Font("Courier New", 8, FontStyle.Bold);
+                countGradeLabel.ForeColor = Color.Black;
+                countGradeLabel.Location = new Point(xPos, barcodeVisual.Bottom + 20);
+                countGradeLabel.AutoSize = true;
+                marginIndicator.Controls.Add(countGradeLabel);
+            }
             
             // // 7. Show human readable label
             // Label humanLabel = new Label();
@@ -4246,7 +4288,44 @@ namespace ScanLink
                 }
         }
 
+        // Returns the captured employee name ONLY when the supplied barcode's employee segment
+        // matches the employee the name was captured for. Barcode layout is
+        // guard(1) + employee(4) + product(3) + crop(3) + check(1), so the employee digits are
+        // [1..5). Keying off the actual barcode (not the editable textbox) means a stale cached
+        // barcode, a hand-edited ID, or a non-normalized ID can never print a name that disagrees
+        // with the bars actually being produced.
+        private string GetEmployeeNameForBarcode(string barcodeId)
+        {
+            if (string.IsNullOrWhiteSpace(_selectedEmployeeName) || string.IsNullOrWhiteSpace(_selectedEmployeeBarcodeId))
+                return "";
+            if (string.IsNullOrEmpty(barcodeId) || barcodeId.Length < 5) return "";
+            string employeeSegment = barcodeId.Substring(1, 4);
+            return string.Equals(employeeSegment, _selectedEmployeeBarcodeId, StringComparison.Ordinal)
+                ? _selectedEmployeeName
+                : "";
+        }
+
         // Custom preset method that fully utilizes advanced settings
+        // Print small text with a simulated bold effect (double-strike at x and x+1). Keeps the
+        // added detail lines small while staying legible on thermal labels. No-op for empty text.
+        // When maxWidthDots > 0 the text is truncated to fit, so a long value can't overrun the
+        // label edge or (in two-up) the neighbouring column.
+        private void PrintBoldLabelText(int x, int y, PPLBFont font, string text, int maxWidthDots = 0)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            if (maxWidthDots > 0)
+            {
+                // Conservative Font_1 glyph width on a 203-dpi head; over-estimating means we
+                // truncate slightly early rather than risk an overrun.
+                const int approxCharWidthDots = 10;
+                int maxChars = Math.Max(1, maxWidthDots / approxCharWidthDots);
+                if (text.Length > maxChars) text = text.Substring(0, maxChars);
+            }
+            byte[] b = Encoding.Default.GetBytes(text);
+            PPLBEmulation.TextUtil.PrintText(x, y, PPLBOrient.Clockwise_0_Degrees, font, 1, 1, false, b);
+            PPLBEmulation.TextUtil.PrintText(x + 1, y, PPLBOrient.Clockwise_0_Degrees, font, 1, 1, false, b);
+        }
+
         private void __testPPLB_customPreset(int printcount)
         {
             byte[] buf;
@@ -4437,6 +4516,23 @@ namespace ScanLink
                 
                 int stickerHeight = (int)numericUpDown_height.Value;
 
+                // Build the small bold detail lines printed below the barcode (values only, no keys):
+                //   line 1 = employee name; line 2 = count | grade.
+                // Name is keyed off the actual barcode's employee segment, never the editable textbox.
+                string detailEmpName = GetEmployeeNameForBarcode(BarcodeID);
+                var detailCombo = GetSelectedProductCombination();
+                string detailLine2 = string.Join("  |  ",
+                    new[] { detailCombo?.count_name, detailCombo?.grade_name }
+                        .Where(s => !string.IsNullOrWhiteSpace(s)));
+                // Below the bars (bars are Y=20..130); does not affect bar height/width.
+                const int detailLine1Y = 134;
+                const int detailLine2Y = 150;
+                const int detailTextHeight = 14;
+                // Drop any line that would fall outside the configured label height.
+                int detailLabelHeight = (int)numericUpDown_height.Value;
+                if (detailLine1Y + detailTextHeight > detailLabelHeight) detailEmpName = "";
+                if (detailLine2Y + detailTextHeight > detailLabelHeight) detailLine2 = "";
+
                 bool twoUp = checkBox_twoUp != null && checkBox_twoUp.Checked;
                 int remaining = Math.Max(1, printcount);
                 int labelWidthTwoUp = (int)numericUpDown_width.Value;
@@ -4446,6 +4542,9 @@ namespace ScanLink
                 {
                     // Print barcode below compact header line (Y=20 since header is now single small line)
                     PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
+                    // Small bold detail lines below the barcode (employee name; count | grade)
+                    PrintBoldLabelText(xCoordinate, detailLine1Y, PPLBFont.Font_1, detailEmpName, Math.Max(1, labelWidthDots - xCoordinate));
+                    PrintBoldLabelText(xCoordinate, detailLine2Y, PPLBFont.Font_1, detailLine2, Math.Max(1, labelWidthDots - xCoordinate));
                     // EmployeeID and CropID/ProductID text removed per user request
                     PPLBEmulation.SetUtil.SetPrintOut(remaining, 1);
                     PPLBEmulation.IOUtil.PrintOut();
@@ -4464,6 +4563,8 @@ namespace ScanLink
                         PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
                         PPLBEmulation.TextUtil.PrintText(xCoordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                         PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
+                        PrintBoldLabelText(xCoordinate, detailLine1Y, PPLBFont.Font_1, detailEmpName, Math.Max(1, (x2Coordinate > xCoordinate ? x2Coordinate - xCoordinate - 6 : labelWidthDots - xCoordinate)));
+                        PrintBoldLabelText(xCoordinate, detailLine2Y, PPLBFont.Font_1, detailLine2, Math.Max(1, (x2Coordinate > xCoordinate ? x2Coordinate - xCoordinate - 6 : labelWidthDots - xCoordinate)));
 
                         // right (if any remaining)
                         if (remaining > 1)
@@ -4472,6 +4573,8 @@ namespace ScanLink
                             PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
                             PPLBEmulation.TextUtil.PrintText(x2Coordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                             PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
+                            PrintBoldLabelText(x2Coordinate, detailLine1Y, PPLBFont.Font_1, detailEmpName, Math.Max(1, labelWidthDots - x2Coordinate));
+                            PrintBoldLabelText(x2Coordinate, detailLine2Y, PPLBFont.Font_1, detailLine2, Math.Max(1, labelWidthDots - x2Coordinate));
                         }
 
                         PPLBEmulation.SetUtil.SetPrintOut(1, 1);
@@ -4589,7 +4692,7 @@ namespace ScanLink
                 }
 
                 // Parse JSON array using JavaScriptSerializer
-                JavaScriptSerializer serializer = new JavaScriptSerializer();
+                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 var scansArray = serializer.Deserialize<List<Dictionary<string, object>>>(jsonContent);
 
                 if (scansArray == null || scansArray.Count == 0)
@@ -6573,6 +6676,8 @@ namespace ScanLink
                     ["TestMode"] = comboBox_test?.SelectedItem?.ToString() ?? "",
                     ["BarcodeType"] = comboBox_barcode?.SelectedItem?.ToString() ?? "",
                      ["EmployeeID"] = textBox_EmployeeID?.Text ?? "123456",
+                    ["SelectedEmployeeName"] = _selectedEmployeeName ?? "",
+                    ["SelectedEmployeeBarcodeId"] = _selectedEmployeeBarcodeId ?? "",
                     ["ProductID"] = comboBox_ProductID?.SelectedValue?.ToString() ?? "000",
                     ["CropID"] = comboBox_CropID?.SelectedValue?.ToString() ?? "000",
                     ["Width"] = numericUpDown_width?.Value.ToString() ?? "400",
@@ -6708,6 +6813,13 @@ namespace ScanLink
                 {
                     textBox_EmployeeID.Text = settings["EmployeeID"];
                 }
+
+                // Selected employee name + the barcode ID it maps to, so the label can still print
+                // the name after an app restart (only the ID was restored before).
+                if (settings.ContainsKey("SelectedEmployeeName"))
+                    _selectedEmployeeName = settings["SelectedEmployeeName"];
+                if (settings.ContainsKey("SelectedEmployeeBarcodeId"))
+                    _selectedEmployeeBarcodeId = settings["SelectedEmployeeBarcodeId"];
 
                 // ProductID
                 if (settings.ContainsKey("ProductID") && comboBox_ProductID != null)
@@ -7228,6 +7340,10 @@ namespace ScanLink
                     // open USBDialog to select USB Device.
                     USBDialog USBsetdlg = new USBDialog();
                     USBsetdlg.DevicePath = this.m_USBDevicePath;
+                    // The vendor dialog's device list is multi-select and pre-selects the first
+                    // row, so choosing a different printer can leave the first one selected too
+                    // and OK returns that first one. Force single-select so the click sticks.
+                    ForceUsbDialogSingleSelect(USBsetdlg);
                     if (DialogResult.OK == USBsetdlg.ShowDialog(ownerForm))
                     {
                         // setting USB Device.
@@ -7246,6 +7362,35 @@ namespace ScanLink
                 case "Multi-LAN":
                     MessageBox.Show("Multi-LAN not included in minimal app.");
                     break;
+            }
+        }
+
+        // The ARGOX SDK's USBDialog (BarcodePrinter_API.dll) hosts a private WinForms form whose
+        // device ListView is left at the WinForms default MultiSelect = true, and the form
+        // pre-selects the first device on load. With multi-select that initial selection can stick
+        // when the user clicks a different printer, so the dialog's OK handler returns
+        // SelectedItems[0] (the first printer) instead of the one actually chosen. The vendor
+        // dialog is sealed, so reach its inner ListView via reflection and switch it to
+        // single-select; then clicking a row always replaces the selection. Fails safe (leaves the
+        // dialog unchanged) if a future SDK build renames these private members.
+        private static void ForceUsbDialogSingleSelect(USBDialog dialog)
+        {
+            try
+            {
+                var formField = typeof(USBDialog).GetField("_USBform",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (!(formField?.GetValue(dialog) is Control innerForm)) return;
+
+                var listViewField = innerForm.GetType().GetField("listView_DeviceInfo",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (listViewField?.GetValue(innerForm) is ListView deviceList)
+                {
+                    deviceList.MultiSelect = false;
+                }
+            }
+            catch
+            {
+                // Vendor field names changed - leave the dialog as-is rather than break config.
             }
         }
 

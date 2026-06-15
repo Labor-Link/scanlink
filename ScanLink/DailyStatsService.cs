@@ -17,7 +17,7 @@ namespace ScanLink
         public DailyStatsService(ApiAuthService apiAuthService)
         {
             _apiAuthService = apiAuthService;
-            _jsonSerializer = new JavaScriptSerializer();
+            _jsonSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
         }
 
         public async Task<Dictionary<string, string>> GetDailyStatsAsync(string siteId, DateTime date)

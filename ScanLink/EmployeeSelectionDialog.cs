@@ -319,7 +319,7 @@ namespace ScanLink
                 searchRequest.actionByUserType = string.IsNullOrWhiteSpace(searchRequest.actionByUserType) ? "SITE" : searchRequest.actionByUserType;
 
                 // Debug the complete search request
-                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = int.MaxValue };
                 var searchRequestJson = serializer.Serialize(searchRequest);
                 System.Diagnostics.Debug.WriteLine($"Complete search request: {searchRequestJson}");
 
