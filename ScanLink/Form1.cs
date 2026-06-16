@@ -40,6 +40,17 @@ namespace ScanLink
         private FileSystemWatcher _scansFileWatcher;
         private System.Windows.Forms.Timer _scanRefreshTimer = null;
         private System.Windows.Forms.Timer _fileChangeDebounceTimer;
+        // --- COM scanner auto-reconnect ---
+        // After a power cut the PC boots cold and USB-serial scanners enumerate slowly, so a scanner
+        // can appear a few seconds after the app has already run its one-shot detection. These cover
+        // that gap: a bounded startup retry plus a USB device-arrival watcher. Both reuse the existing
+        // idempotent OpenScanner path, so scanners that are already connected are never disturbed.
+        private System.Windows.Forms.Timer _scannerReconnectTimer;
+        private System.Windows.Forms.Timer _deviceChangeDebounceTimer;
+        private int _scannerReconnectAttemptsLeft;
+        private int _scannerScanInProgress; // 0/1 guard (Interlocked) so scans never overlap
+        private const int ScannerReconnectIntervalMs = 2500;
+        private const int ScannerReconnectMaxAttempts = 8; // ~20s window after each (re)init
         private ApiAuthService _apiAuthService;
         private ScanLogUploadService _scanLogUploadService;
         private ProductCombinationsService _productCombinationsService;
@@ -4573,8 +4584,12 @@ namespace ScanLink
                             PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
                             PPLBEmulation.TextUtil.PrintText(x2Coordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                             PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
-                            PrintBoldLabelText(x2Coordinate, detailLine1Y, PPLBFont.Font_1, detailEmpName, Math.Max(1, labelWidthDots - x2Coordinate));
-                            PrintBoldLabelText(x2Coordinate, detailLine2Y, PPLBFont.Font_1, detailLine2, Math.Max(1, labelWidthDots - x2Coordinate));
+                            // Right column gets the same width budget as the left column (the column
+                            // pitch). Using labelWidthDots - x2Coordinate would collapse to ~0 here
+                            // because x2Coordinate is already ~one label width, truncating text to 1 char.
+                            int rightColMaxWidth = x2Coordinate > xCoordinate ? x2Coordinate - xCoordinate - 6 : labelWidthDots - x2Coordinate;
+                            PrintBoldLabelText(x2Coordinate, detailLine1Y, PPLBFont.Font_1, detailEmpName, Math.Max(1, rightColMaxWidth));
+                            PrintBoldLabelText(x2Coordinate, detailLine2Y, PPLBFont.Font_1, detailLine2, Math.Max(1, rightColMaxWidth));
                         }
 
                         PPLBEmulation.SetUtil.SetPrintOut(1, 1);
@@ -5557,8 +5572,161 @@ namespace ScanLink
                     scannerOutputTextBox.AppendText($"[ERROR] Initialization failed: {ex.Message}\r\n");
                 }
             }
+
+            // Keep trying for a short window so a scanner that finishes enumerating after a cold
+            // boot still gets connected automatically, without the user reconnecting manually.
+            StartScannerAutoReconnect();
         }
-        
+
+        // Starts (or restarts) the bounded post-init retry window. Idempotent and cheap: each tick
+        // only opens scanners that are not already connected. Marshals to the UI thread because a
+        // WinForms timer must be created/started on the thread that owns the message loop.
+        private void StartScannerAutoReconnect()
+        {
+            if (InvokeRequired)
+            {
+                try { BeginInvoke(new Action(StartScannerAutoReconnect)); } catch { }
+                return;
+            }
+
+            try
+            {
+                _scannerReconnectAttemptsLeft = ScannerReconnectMaxAttempts;
+                if (_scannerReconnectTimer == null)
+                {
+                    _scannerReconnectTimer = new System.Windows.Forms.Timer();
+                    _scannerReconnectTimer.Interval = ScannerReconnectIntervalMs;
+                    _scannerReconnectTimer.Tick += ScannerReconnectTimer_Tick;
+                }
+                _scannerReconnectTimer.Start();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AUTO-RECONNECT] Failed to start retry timer: {ex.Message}");
+            }
+        }
+
+        private void ScannerReconnectTimer_Tick(object sender, EventArgs e)
+        {
+            ConnectDetectedScanners();
+            _scannerReconnectAttemptsLeft--;
+            if (_scannerReconnectAttemptsLeft <= 0)
+            {
+                _scannerReconnectTimer?.Stop();
+            }
+        }
+
+        // Called from WndProc when a USB device-change is seen. Debounces both to coalesce the burst
+        // of WM_DEVICECHANGE messages and to give Windows time to actually create the COM port before
+        // we re-scan.
+        private void OnScannerDeviceChange()
+        {
+            try
+            {
+                if (_deviceChangeDebounceTimer == null)
+                {
+                    _deviceChangeDebounceTimer = new System.Windows.Forms.Timer();
+                    _deviceChangeDebounceTimer.Interval = 1500;
+                    _deviceChangeDebounceTimer.Tick += (s, e) =>
+                    {
+                        _deviceChangeDebounceTimer.Stop();
+                        ConnectDetectedScanners();
+                    };
+                }
+                _deviceChangeDebounceTimer.Stop();
+                _deviceChangeDebounceTimer.Start();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AUTO-RECONNECT] Device-change handling error: {ex.Message}");
+            }
+        }
+
+        // Idempotent: detect COM scanners and open only those not already connected, applying any
+        // saved Line/Block/COM settings exactly like the initial init. Detection + open run on a
+        // background thread (OpenScanner briefly blocks on a WMI query and a stabilize sleep) and are
+        // guarded so overlapping triggers (retry tick + device-change) can't run two scans at once.
+        // Scanners that are already open are skipped entirely, so active scanning is never disturbed.
+        private void ConnectDetectedScanners()
+        {
+            if (_scannerComPortManager == null) return;
+            if (Interlocked.CompareExchange(ref _scannerScanInProgress, 1, 0) != 0) return;
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    var detected = ComPortScannerDetection.DetectComPortScanners();
+                    if (detected == null || detected.Count == 0) return;
+
+                    string assignmentsPath = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                        "ScanLink", "scanner_assignments.txt");
+                    var assignments = LoadScannerAssignmentsFromFile(assignmentsPath);
+
+                    foreach (var scanner in detected)
+                    {
+                        if (scanner == null || string.IsNullOrEmpty(scanner.PNPDeviceID))
+                            continue;
+
+                        // Already connected — leave it completely alone.
+                        if (_scannerComPortManager.IsScannerOpen(scanner.PNPDeviceID))
+                            continue;
+
+                        if (assignments.TryGetValue(scanner.PNPDeviceID, out var assignment))
+                        {
+                            scanner.LineID = assignment.LineID;
+                            scanner.BlockID = assignment.BlockID;
+                            scanner.Supplier = assignment.Supplier;
+                            scanner.BaudRate = assignment.BaudRate;
+                            scanner.Parity = assignment.Parity;
+                            scanner.DataBits = assignment.DataBits;
+                            scanner.StopBits = assignment.StopBits;
+                        }
+
+                        if (_scannerComPortManager.OpenScanner(scanner))
+                        {
+                            var s = scanner;
+                            SafeAppendScannerOutput($"🔌 Auto-connected scanner: {s.DeviceName} ({s.ComPort}) - Line {s.LineID}, Block {s.BlockID}");
+                            if (IsHandleCreated)
+                            {
+                                try { BeginInvoke(new Action(() => { try { UpdateCountLabels(); } catch { } })); }
+                                catch { }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[AUTO-RECONNECT] Scan/open error: {ex.Message}");
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref _scannerScanInProgress, 0);
+                }
+            });
+        }
+
+        // Thread-safe append to the scanner output box (callable from the background scan task).
+        private void SafeAppendScannerOutput(string message)
+        {
+            try
+            {
+                var box = scannerOutputTextBox;
+                // Skip until the handle exists so we never create it on the background thread.
+                if (box == null || !box.IsHandleCreated) return;
+                if (box.InvokeRequired)
+                {
+                    box.BeginInvoke(new Action(() => SafeAppendScannerOutput(message)));
+                    return;
+                }
+                string ts = DateTime.Now.ToString("HH:mm:ss");
+                box.AppendText($"[{ts}] {message}\r\n");
+                box.ScrollToCaret();
+            }
+            catch { }
+        }
+
         private Dictionary<string, ScannerConfig> LoadScannerAssignmentsFromFile(string filePath)
         {
             var assignments = new Dictionary<string, ScannerConfig>();
@@ -5663,6 +5831,10 @@ namespace ScanLink
             // Stop and dispose the upload service
             _scanLogUploadService?.Dispose();
             
+            // Stop scanner auto-reconnect timers before tearing down the manager
+            try { _scannerReconnectTimer?.Stop(); _scannerReconnectTimer?.Dispose(); } catch { }
+            try { _deviceChangeDebounceTimer?.Stop(); _deviceChangeDebounceTimer?.Dispose(); } catch { }
+
             // Dispose COM port scanner manager
             _scannerComPortManager?.Dispose();
             _rawInputManager?.Dispose();
@@ -6064,6 +6236,21 @@ namespace ScanLink
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"[HID] Raw input processing error: {ex.Message}");
+                }
+            }
+
+            // Auto-reconnect COM scanners when a USB device appears (e.g. a scanner that finished
+            // enumerating after a cold boot, or one that was re-plugged). DBT_DEVNODES_CHANGED is
+            // broadcast to top-level windows without needing RegisterDeviceNotification.
+            const int WM_DEVICECHANGE = 0x0219;
+            const int DBT_DEVNODES_CHANGED = 0x0007;
+            const int DBT_DEVICEARRIVAL = 0x8000;
+            if (m.Msg == WM_DEVICECHANGE)
+            {
+                int evt = m.WParam.ToInt32();
+                if (evt == DBT_DEVNODES_CHANGED || evt == DBT_DEVICEARRIVAL)
+                {
+                    OnScannerDeviceChange();
                 }
             }
 

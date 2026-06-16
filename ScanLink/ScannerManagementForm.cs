@@ -564,6 +564,11 @@ namespace ScanLink
             this.scannerDataGridView.Name = "scannerDataGridView";
             this.scannerDataGridView.RowHeadersVisible = false;
             this.scannerDataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            // Only one row selectable at a time. With MultiSelect (the default) clicking a second row
+            // left both it and the previously-selected/connected row highlighted (two blue rows), which
+            // made it look like two scanners were selected and confused which one's edit was saved.
+            // Same root cause as the printer USB dialog fix.
+            this.scannerDataGridView.MultiSelect = false;
             this.scannerDataGridView.TabIndex = 1;
 
             // 
@@ -1253,6 +1258,16 @@ namespace ScanLink
             deleteColumn.FillWeight = 8;
             scannerDataGridView.Columns.Add(deleteColumn);
 
+            // Keep the grid in the SAME order as detectedScanners. Save and the status colour-coding
+            // both map grid row index -> detectedScanners[index]; if the user clicked a column header
+            // to sort, that mapping would silently desync and edits (Line/Block) would be written to
+            // the wrong scanner (e.g. the COM3 row's values saved onto the COM1 entry). Disabling sort
+            // guarantees the 1:1 mapping. (Visual layout is unchanged.)
+            foreach (DataGridViewColumn col in scannerDataGridView.Columns)
+            {
+                col.SortMode = DataGridViewColumnSortMode.NotSortable;
+            }
+
             // Populate data
             scannerDataGridView.Rows.Clear();
             foreach (var scanner in detectedScanners)
@@ -1457,20 +1472,34 @@ Need more help? Contact Datalogic support or check their website.";
         {
             try
             {
-                // Update the detectedScanners list with current data from DataGridView
+                // Commit any in-progress cell edit so the latest typed value is read below. Without
+                // this, clicking Save while a Line/Block cell was still being edited would save the
+                // old value (the edit hadn't been pushed to the cell yet).
+                scannerDataGridView.EndEdit();
+
+                // Update the detectedScanners list with current data from the grid. Match each row to
+                // its scanner by PNPDeviceID (the read-only identity column) rather than by row index,
+                // so edits always land on the correct scanner even if the grid order ever differs.
                 for (int i = 0; i < scannerDataGridView.Rows.Count; i++)
                 {
-                    if (i < detectedScanners.Count)
-                    {
-                        detectedScanners[i].LineID = scannerDataGridView.Rows[i].Cells["LineID"].Value?.ToString() ?? "";
-                        detectedScanners[i].BlockID = scannerDataGridView.Rows[i].Cells["BlockID"].Value?.ToString() ?? "";
-                        detectedScanners[i].Supplier = scannerDataGridView.Rows[i].Cells["Supplier"].Value?.ToString() ?? "";
-                        detectedScanners[i].BaudRate = scannerDataGridView.Rows[i].Cells["BaudRate"].Value?.ToString() ?? "9600";
-                        detectedScanners[i].Parity = scannerDataGridView.Rows[i].Cells["Parity"].Value?.ToString() ?? "None";
-                        detectedScanners[i].DataBits = scannerDataGridView.Rows[i].Cells["DataBits"].Value?.ToString() ?? "8";
-                        detectedScanners[i].StopBits = scannerDataGridView.Rows[i].Cells["StopBits"].Value?.ToString() ?? "One";
-                        // Note: Status and ComPort are read-only and managed automatically
-                    }
+                    var row = scannerDataGridView.Rows[i];
+                    string pnp = row.Cells["PNPDeviceID"].Value?.ToString();
+                    if (string.IsNullOrWhiteSpace(pnp))
+                        continue;
+
+                    var scanner = detectedScanners.FirstOrDefault(s =>
+                        string.Equals(s.PNPDeviceID, pnp, StringComparison.OrdinalIgnoreCase));
+                    if (scanner == null)
+                        continue;
+
+                    scanner.LineID = row.Cells["LineID"].Value?.ToString() ?? "";
+                    scanner.BlockID = row.Cells["BlockID"].Value?.ToString() ?? "";
+                    scanner.Supplier = row.Cells["Supplier"].Value?.ToString() ?? "";
+                    scanner.BaudRate = row.Cells["BaudRate"].Value?.ToString() ?? "9600";
+                    scanner.Parity = row.Cells["Parity"].Value?.ToString() ?? "None";
+                    scanner.DataBits = row.Cells["DataBits"].Value?.ToString() ?? "8";
+                    scanner.StopBits = row.Cells["StopBits"].Value?.ToString() ?? "One";
+                    // Status and COM Port are read-only and managed automatically.
                 }
                 
 				SaveScannersToFile();
