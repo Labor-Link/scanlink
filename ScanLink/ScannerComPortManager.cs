@@ -40,6 +40,20 @@ namespace ScanLink
                     return true; // Already open
                 }
 
+                // Serial ports are exclusive PER COM-PORT NAME, not per PNP id. The same physical
+                // port can be re-detected under a different (sometimes synthetic) PNP id across
+                // detection passes — a real WMI id, "GENERIC_COMx", or the "BASIC_COMx" fallback when
+                // the WMI query momentarily fails. If we already hold this COM port open under ANY
+                // identity, treat it as already-open instead of opening it again: opening a port this
+                // process already owns throws UnauthorizedAccessException ("already in use"), the
+                // self-conflict that was spamming the "close winscan" dialog and freezing the app.
+                if (_activeScannners.Values.Any(s =>
+                        s.Config != null &&
+                        string.Equals(s.Config.ComPort, config.ComPort, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true; // Already open under another identity — leave it alone.
+                }
+
                 try
                 {
                     var scannerPort = new ScannerComPort(config);
@@ -120,6 +134,24 @@ namespace ScanLink
             lock (_lockObj)
             {
                 return _activeScannners.ContainsKey(pnpDeviceId);
+            }
+        }
+
+        /// <summary>
+        /// Checks whether a given COM port name is currently held open by this manager,
+        /// regardless of which PNP id it was opened under. Used to avoid re-opening a port
+        /// this process already owns (which would throw "already in use").
+        /// </summary>
+        public bool IsComPortOpen(string comPort)
+        {
+            if (string.IsNullOrEmpty(comPort))
+                return false;
+
+            lock (_lockObj)
+            {
+                return _activeScannners.Values.Any(s =>
+                    s.Config != null &&
+                    string.Equals(s.Config.ComPort, comPort, StringComparison.OrdinalIgnoreCase));
             }
         }
 

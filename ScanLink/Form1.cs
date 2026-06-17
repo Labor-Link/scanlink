@@ -49,6 +49,7 @@ namespace ScanLink
         private System.Windows.Forms.Timer _deviceChangeDebounceTimer;
         private int _scannerReconnectAttemptsLeft;
         private int _scannerScanInProgress; // 0/1 guard (Interlocked) so scans never overlap
+        private bool _scannerInUseDialogShown; // throttle: one "port in use" popup at a time; re-arms on a successful connect
         private const int ScannerReconnectIntervalMs = 2500;
         private const int ScannerReconnectMaxAttempts = 8; // ~20s window after each (re)init
         private ApiAuthService _apiAuthService;
@@ -5458,7 +5459,7 @@ namespace ScanLink
             try
             {
                 Debug.WriteLine("[INIT] Starting COM port scanner initialization...");
-                
+
                 // Detect all COM port scanners
                 var detectedScanners = ComPortScannerDetection.DetectComPortScanners();
                 
@@ -5523,6 +5524,7 @@ namespace ScanLink
                     if (opened)
                     {
                         successCount++;
+                        _scannerInUseDialogShown = false; // re-arm: a port that connects is no longer locked
                         Debug.WriteLine($"[INIT] ✓ Opened scanner: {scanner.DeviceName} on {scanner.ComPort}");
                         if (scannerOutputTextBox != null)
                         {
@@ -5669,8 +5671,12 @@ namespace ScanLink
                         if (scanner == null || string.IsNullOrEmpty(scanner.PNPDeviceID))
                             continue;
 
-                        // Already connected — leave it completely alone.
-                        if (_scannerComPortManager.IsScannerOpen(scanner.PNPDeviceID))
+                        // Already connected — leave it completely alone. Check BOTH the PNP id and the
+                        // COM-port name: the same physical port can be re-detected under a different
+                        // (sometimes synthetic) PNP id, and serial-port exclusivity is per port name,
+                        // so matching only on PNP id would let us re-open a port we already hold.
+                        if (_scannerComPortManager.IsScannerOpen(scanner.PNPDeviceID) ||
+                            _scannerComPortManager.IsComPortOpen(scanner.ComPort))
                             continue;
 
                         if (assignments.TryGetValue(scanner.PNPDeviceID, out var assignment))
@@ -5686,6 +5692,7 @@ namespace ScanLink
 
                         if (_scannerComPortManager.OpenScanner(scanner))
                         {
+                            _scannerInUseDialogShown = false; // re-arm: a port that connects is no longer locked
                             var s = scanner;
                             SafeAppendScannerOutput($"🔌 Auto-connected scanner: {s.DeviceName} ({s.ComPort}) - Line {s.LineID}, Block {s.BlockID}");
                             if (IsHandleCreated)
@@ -6181,7 +6188,17 @@ namespace ScanLink
 
                 if (e.ErrorMessage.Contains("already in use by another application"))
                 {
-                    MessageBox.Show(e.ErrorMessage, "Scanner Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    // After the self-conflict fix the app never tries to re-open a port it already
+                    // owns, so reaching here means another application (e.g. winscan) genuinely holds
+                    // the port — exactly when the user SHOULD be told to close it. We only throttle:
+                    // show one popup at a time so the retry timer / USB device-arrival watcher can't
+                    // stack dialogs and freeze the UI (the original bug). The throttle re-arms as soon
+                    // as any scanner connects successfully, so a later lock will alert again.
+                    if (!_scannerInUseDialogShown)
+                    {
+                        _scannerInUseDialogShown = true;
+                        MessageBox.Show(e.ErrorMessage, "Scanner Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
                 }
             });
         }
