@@ -21,7 +21,6 @@ namespace ScanLink
         private readonly int _uploadIntervalSeconds = 30; // Check every 30 seconds
         private bool _isUploading = false;
         private readonly object _uploadLock = new object();
-        private readonly object _fileLock = new object();
 
         public event EventHandler<string> LogMessage;
 
@@ -64,6 +63,135 @@ namespace ScanLink
             OnLogMessage("Scan log upload service stopped");
         }
 
+        // ---- Concurrency-safe queue file helpers -------------------------------------------------
+        // The scanner (PowerShell scan_capture.ps1) and this service both read/write
+        // api_upload_logs.json. They live in separate processes, so an in-process lock would not be
+        // enough — they coordinate through a named system mutex. Every write is atomic (temp file +
+        // atomic replace) and every read is self-healing (salvage + quarantine) so a single corrupt
+        // file can never again silently wedge uploads.
+        private const string QueueMutexName = "Global\\ScanLinkUploadLogs";
+        private static readonly TimeSpan QueueMutexTimeout = TimeSpan.FromSeconds(5);
+
+        // Runs <action> while holding the cross-process mutex. Returns false if the lock could not
+        // be acquired in time (caller should defer, never write unguarded).
+        private bool WithQueueLock(Action action)
+        {
+            using (var mtx = new Mutex(false, QueueMutexName))
+            {
+                bool acquired = false;
+                try
+                {
+                    try { acquired = mtx.WaitOne(QueueMutexTimeout); }
+                    catch (AbandonedMutexException) { acquired = true; } // prior owner died; we own it now
+                    if (!acquired) return false;
+                    action();
+                    return true;
+                }
+                finally
+                {
+                    if (acquired) { try { mtx.ReleaseMutex(); } catch { } }
+                }
+            }
+        }
+
+        // Writes content via a temp file then an atomic replace, so a reader can never observe a
+        // half-written file. MUST be called while holding the queue mutex.
+        private void AtomicWriteAllText(string path, string content)
+        {
+            string dir = Path.GetDirectoryName(path);
+            string tmp = Path.Combine(dir, Path.GetFileName(path) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+            File.WriteAllText(tmp, content); // UTF-8 no BOM, matches the PowerShell writer
+            try
+            {
+                if (File.Exists(path)) File.Replace(tmp, path, null); // atomic on NTFS
+                else File.Move(tmp, path);
+            }
+            catch
+            {
+                try { if (File.Exists(path)) File.Delete(path); File.Move(tmp, path); }
+                finally { if (File.Exists(tmp)) { try { File.Delete(tmp); } catch { } } }
+            }
+        }
+
+        // Reads the queue tolerantly. On a parse failure it salvages every well-formed record,
+        // quarantines the raw corrupt file for forensics, and rewrites a clean queue from the
+        // salvaged records — so the service self-heals instead of throwing every cycle forever.
+        // MUST be called while holding the queue mutex.
+        private List<Dictionary<string, object>> ReadQueueResilient()
+        {
+            if (!File.Exists(_apiLogsFilePath)) return new List<Dictionary<string, object>>();
+            string content = File.ReadAllText(_apiLogsFilePath);
+            if (string.IsNullOrWhiteSpace(content)) return new List<Dictionary<string, object>>();
+
+            JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+            try
+            {
+                var logs = serializer.Deserialize<List<Dictionary<string, object>>>(content);
+                if (logs != null) return logs;
+                var single = serializer.Deserialize<Dictionary<string, object>>(content);
+                if (single != null) return new List<Dictionary<string, object>> { single };
+                return new List<Dictionary<string, object>>();
+            }
+            catch (Exception ex)
+            {
+                var salvaged = SalvageRecords(content, serializer);
+                QuarantineCorruptFile(content, ex, salvaged.Count);
+                AtomicWriteAllText(_apiLogsFilePath, serializer.Serialize(salvaged));
+                OnLogMessage($"Recovered {salvaged.Count} record(s) from a corrupt queue file; quarantined the bad copy.");
+                return salvaged;
+            }
+        }
+
+        // Brace/string-aware extraction of every top-level {...} object that still parses.
+        private List<Dictionary<string, object>> SalvageRecords(string raw, JavaScriptSerializer serializer)
+        {
+            var result = new List<Dictionary<string, object>>();
+            int depth = 0, start = -1;
+            bool inStr = false, esc = false;
+            for (int i = 0; i < raw.Length; i++)
+            {
+                char c = raw[i];
+                if (inStr)
+                {
+                    if (esc) esc = false;
+                    else if (c == '\\') esc = true;
+                    else if (c == '"') inStr = false;
+                    continue;
+                }
+                if (c == '"') { inStr = true; continue; }
+                if (c == '{') { if (depth == 0) start = i; depth++; }
+                else if (c == '}')
+                {
+                    depth--;
+                    if (depth == 0 && start >= 0)
+                    {
+                        string obj = raw.Substring(start, i - start + 1);
+                        try { var d = serializer.Deserialize<Dictionary<string, object>>(obj); if (d != null) result.Add(d); }
+                        catch { }
+                        start = -1;
+                    }
+                    else if (depth < 0) depth = 0;
+                }
+            }
+            return result;
+        }
+
+        private void QuarantineCorruptFile(string content, Exception ex, int salvagedCount)
+        {
+            try
+            {
+                string dir = Path.GetDirectoryName(_apiLogsFilePath);
+                string stamp = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+                string qpath = Path.Combine(dir, $"api_upload_logs.corrupt-{stamp}.json");
+                File.WriteAllText(qpath, content);
+                IssueLoggingService.LogIssue("ScanLink queue auto-recovered",
+                    $"Corrupt api_upload_logs.json detected and quarantined to {Path.GetFileName(qpath)}. " +
+                    $"Salvaged {salvagedCount} record(s). Error: {ex.Message}");
+            }
+            catch { }
+        }
+        // -----------------------------------------------------------------------------------------
+
         public async Task TryUploadLogsAsync()
         {
             // Prevent concurrent uploads
@@ -79,48 +207,30 @@ namespace ScanLink
 
             try
             {
-                // Check if log file exists and has content
-                if (!File.Exists(_apiLogsFilePath))
+                // Phase 1 (under the cross-process lock): read the queue resiliently, enrich it, and
+                // persist the enriched copy atomically. The lock is held only for these fast local
+                // ops — never during the network upload below.
+                List<Dictionary<string, object>> enrichedLogs = null;
+                bool prepared = WithQueueLock(() =>
+                {
+                    var logs = ReadQueueResilient();
+                    if (logs == null || logs.Count == 0) return;
+                    enrichedLogs = EnrichLogsWithTokenData(logs);
+                    AtomicWriteAllText(_apiLogsFilePath,
+                        new JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Serialize(enrichedLogs));
+                });
+
+                if (!prepared)
+                {
+                    OnLogMessage("Skipping this cycle: could not acquire the upload-queue lock");
+                    return;
+                }
+                if (enrichedLogs == null || enrichedLogs.Count == 0)
                 {
                     return;
                 }
 
-                string fileContent = File.ReadAllText(_apiLogsFilePath);
-                if (string.IsNullOrWhiteSpace(fileContent) || fileContent.Trim() == "[]")
-                {
-                    return;
-                }
-
-                // Parse the logs (support array or single object)
-                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-                var logs = serializer.Deserialize<List<Dictionary<string, object>>>(fileContent);
-                if (logs == null)
-                {
-                    var single = serializer.Deserialize<Dictionary<string, object>>(fileContent);
-                    if (single != null)
-                    {
-                        logs = new List<Dictionary<string, object>> { single };
-                    }
-                }
-
-                if (logs == null || logs.Count == 0)
-                {
-                    return;
-                }
-
-                OnLogMessage($"Found {logs.Count} log(s) to upload");
-
-                // Enrich logs with userId, siteId (and _uploadId for tracking)
-                var enrichedLogs = EnrichLogsWithTokenData(logs);
-                try
-                {
-                    lock (_fileLock)
-                    {
-                        JavaScriptSerializer writerSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-                        File.WriteAllText(_apiLogsFilePath, writerSerializer.Serialize(enrichedLogs));
-                    }
-                }
-                catch { }
+                OnLogMessage($"Found {enrichedLogs.Count} log(s) to upload");
 
                 // Check if authenticated before attempting upload
                 if (!_authService.IsTokenValid())
@@ -129,13 +239,13 @@ namespace ScanLink
                     return;
                 }
 
-                // Upload to API
+                // Phase 2 (no lock held): upload to API.
                 bool success = await UploadLogsToApi(enrichedLogs);
 
                 if (success)
                 {
-                    // Safely remove only the logs we just uploaded, keeping any new logs that 
-                    // were added to the file by PowerShell during the API call.
+                    // Phase 3 (under the lock again): remove only the logs we just uploaded, keeping
+                    // any new logs the scanner added during the API call.
                     var uploadedIds = enrichedLogs
                         .Where(l => l.ContainsKey("_uploadId"))
                         .Select(l => l["_uploadId"].ToString())
@@ -223,25 +333,21 @@ namespace ScanLink
             
             try
             {
-                lock (_fileLock)
+                WithQueueLock(() =>
                 {
-                    if (!File.Exists(_apiLogsFilePath)) return;
-                    string content = File.ReadAllText(_apiLogsFilePath);
-                    if (string.IsNullOrWhiteSpace(content)) return;
-
-                    JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-                    var logs = serializer.Deserialize<List<Dictionary<string, object>>>(content);
-                    if (logs == null) return;
+                    var logs = ReadQueueResilient();
+                    if (logs == null || logs.Count == 0) return;
 
                     var idsToRemove = new HashSet<string>(successfulUploadIds);
                     // Keep logs that don't have an ID yet, or aren't in the successful list
-                    var remainingLogs = logs.Where(l => 
-                        !l.ContainsKey("_uploadId") || 
+                    var remainingLogs = logs.Where(l =>
+                        !l.ContainsKey("_uploadId") ||
                         !idsToRemove.Contains(l["_uploadId"]?.ToString())
                     ).ToList();
 
-                    File.WriteAllText(_apiLogsFilePath, serializer.Serialize(remainingLogs));
-                }
+                    AtomicWriteAllText(_apiLogsFilePath,
+                        new JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Serialize(remainingLogs));
+                });
             }
             catch (Exception ex)
             {
@@ -254,27 +360,40 @@ namespace ScanLink
         {
             try
             {
-                if (!File.Exists(_apiLogsFilePath)) return;
-                string fileContent = File.ReadAllText(_apiLogsFilePath);
-                if (string.IsNullOrWhiteSpace(fileContent)) return;
-
-                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-                var logs = serializer.Deserialize<List<Dictionary<string, object>>>(fileContent);
-                if (logs == null)
+                WithQueueLock(() =>
                 {
-                    var single = serializer.Deserialize<Dictionary<string, object>>(fileContent);
-                    if (single != null) logs = new List<Dictionary<string, object>> { single };
-                }
-                if (logs == null || logs.Count == 0) return;
+                    var logs = ReadQueueResilient();
+                    if (logs == null || logs.Count == 0) return;
 
-                var enriched = EnrichLogsWithTokenData(logs);
-                File.WriteAllText(_apiLogsFilePath, serializer.Serialize(enriched));
-                OnLogMessage($"Enriched and persisted {enriched.Count} log(s) to file without upload");
+                    var enriched = EnrichLogsWithTokenData(logs);
+                    AtomicWriteAllText(_apiLogsFilePath,
+                        new JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Serialize(enriched));
+                    OnLogMessage($"Enriched and persisted {enriched.Count} log(s) to file without upload");
+                });
             }
             catch (Exception ex)
             {
                 OnLogMessage($"Error enriching logs file: {ex.Message}");
             }
+        }
+
+        // Number of scans still queued for upload (i.e. NOT yet confirmed in the database).
+        // Reads under the cross-process lock with the self-healing reader so the count is accurate.
+        // Returns -1 if the queue could not be read/locked (caller should treat that as "unknown",
+        // i.e. NOT safe to assume everything is synced).
+        public int GetPendingCount()
+        {
+            int count = -1;
+            try
+            {
+                bool ok = WithQueueLock(() => { count = ReadQueueResilient().Count; });
+                if (!ok) return -1;
+            }
+            catch
+            {
+                return -1;
+            }
+            return count;
         }
 
         private string GetTokenValue(Dictionary<string, object> tokenPayload, string key)
@@ -377,41 +496,26 @@ namespace ScanLink
         {
             try
             {
-                // Always enrich and persist so file shows userId/siteId
-                if (!File.Exists(_apiLogsFilePath))
-                {
-                    return (0, 0, "Queue file not found");
-                }
-
-                string fileContent = File.ReadAllText(_apiLogsFilePath);
-                if (string.IsNullOrWhiteSpace(fileContent) || fileContent.Trim() == "[]")
-                {
-                    return (0, 0, "No logs to upload");
-                }
-
                 JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-                var logs = serializer.Deserialize<List<Dictionary<string, object>>>(fileContent);
-                if (logs == null)
+
+                // Read + enrich + persist atomically under the cross-process lock.
+                List<Dictionary<string, object>> enriched = null;
+                bool prepared = WithQueueLock(() =>
                 {
-                    var single = serializer.Deserialize<Dictionary<string, object>>(fileContent);
-                    if (single != null) logs = new List<Dictionary<string, object>> { single };
+                    var logs = ReadQueueResilient();
+                    if (logs == null || logs.Count == 0) return;
+                    enriched = EnrichLogsWithTokenData(logs);
+                    AtomicWriteAllText(_apiLogsFilePath, serializer.Serialize(enriched));
+                });
+
+                if (!prepared)
+                {
+                    return (0, 0, "Could not acquire the upload-queue lock");
                 }
-                if (logs == null) logs = new List<Dictionary<string, object>>();
-                if (logs.Count == 0)
+                if (enriched == null || enriched.Count == 0)
                 {
                     return (0, 0, "No logs to upload");
                 }
-
-                // Enrich and persist
-                var enriched = EnrichLogsWithTokenData(logs);
-                try
-                {
-                    lock (_fileLock)
-                    {
-                        File.WriteAllText(_apiLogsFilePath, serializer.Serialize(enriched));
-                    }
-                }
-                catch { }
 
                 if (!_authService.IsTokenValid())
                 {

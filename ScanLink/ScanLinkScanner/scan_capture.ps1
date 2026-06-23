@@ -226,6 +226,102 @@ try {
 }
 catch {}
 
+# ---- Concurrency-safe queue helpers ------------------------------------------------------
+# This scanner and the C# upload service both touch api_upload_logs.json from separate
+# processes. They coordinate via a named system mutex; writes are atomic (temp file + atomic
+# replace) and reads self-heal (salvage + quarantine), so a single corrupt file can never
+# silently wedge uploads again.
+$script:UploadMutexName = "Global\ScanLinkUploadLogs"
+
+function Invoke-WithUploadLock {
+    param([scriptblock]$Action, [int]$TimeoutMs = 5000)
+    $mtx = New-Object System.Threading.Mutex($false, $script:UploadMutexName)
+    $acquired = $false
+    try {
+        try { $acquired = $mtx.WaitOne($TimeoutMs) }
+        catch [System.Threading.AbandonedMutexException] { $acquired = $true } # prior owner died; we own it now
+        if (-not $acquired) { return $false }
+        $null = & $Action
+        return $true
+    }
+    finally {
+        if ($acquired) { try { $mtx.ReleaseMutex() } catch {} }
+        $mtx.Dispose()
+    }
+}
+
+function Write-FileAtomic {
+    param([string]$Path, [string]$Content)
+    $dir = Split-Path -Parent $Path
+    $tmp = Join-Path $dir ([System.IO.Path]::GetFileName($Path) + "." + ([System.Guid]::NewGuid().ToString("N")) + ".tmp")
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)   # no BOM, matches the C# writer
+    [System.IO.File]::WriteAllText($tmp, $Content, $utf8NoBom)
+    try {
+        if (Test-Path $Path) { [System.IO.File]::Replace($tmp, $Path, $null) } # atomic on NTFS
+        else { [System.IO.File]::Move($tmp, $Path) }
+    }
+    catch {
+        try {
+            if (Test-Path $Path) { Remove-Item -Force -Path $Path }
+            [System.IO.File]::Move($tmp, $Path)
+        } finally {
+            if (Test-Path $tmp) { try { Remove-Item -Force -Path $tmp } catch {} }
+        }
+    }
+}
+
+function Get-SalvagedRecords {
+    param([string]$Raw)
+    $result = New-Object System.Collections.ArrayList
+    $depth = 0; $start = -1; $inStr = $false; $esc = $false
+    for ($i = 0; $i -lt $Raw.Length; $i++) {
+        $c = $Raw[$i]
+        if ($inStr) {
+            if ($esc) { $esc = $false }
+            elseif ($c -eq '\') { $esc = $true }
+            elseif ($c -eq '"') { $inStr = $false }
+            continue
+        }
+        if ($c -eq '"') { $inStr = $true; continue }
+        if ($c -eq '{') { if ($depth -eq 0) { $start = $i }; $depth++ }
+        elseif ($c -eq '}') {
+            $depth--
+            if ($depth -eq 0 -and $start -ge 0) {
+                $obj = $Raw.Substring($start, $i - $start + 1)
+                try { $o = $obj | ConvertFrom-Json -ErrorAction Stop; [void]$result.Add($o) } catch {}
+                $start = -1
+            }
+            elseif ($depth -lt 0) { $depth = 0 }
+        }
+    }
+    return ,$result.ToArray()
+}
+
+function Read-UploadQueue {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) { return @() }
+    $content = [System.IO.File]::ReadAllText($Path)
+    if ([string]::IsNullOrWhiteSpace($content)) { return @() }
+    try {
+        $parsed = $content | ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $parsed) { return @() }
+        # No protective comma: every caller wraps this in @(...). Returning a plain array lets the
+        # pipeline enumerate it so the caller re-collects it flat. A comma here would make
+        # @(Read-UploadQueue ...) nest the whole array as a single element (corruption on round-trip).
+        return @($parsed)
+    }
+    catch {
+        # Corrupt: salvage parseable records, quarantine the bad file, continue.
+        $salvaged = Get-SalvagedRecords -Raw $content
+        $stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HHmmss")
+        $qpath = Join-Path (Split-Path -Parent $Path) ("api_upload_logs.corrupt-$stamp.json")
+        try { [System.IO.File]::WriteAllText($qpath, $content) } catch {}
+        Send-IssueLog -subject "ScanLink queue auto-recovered (scanner)" -message ("Corrupt api_upload_logs.json quarantined to " + (Split-Path -Leaf $qpath) + ". Salvaged " + @($salvaged).Count + " record(s). Error: " + $_.Exception.Message)
+        return @($salvaged)
+    }
+}
+# ------------------------------------------------------------------------------------------
+
 function Add-ApiUploadLog {
     param(
         [string]$userId,
@@ -254,18 +350,10 @@ function Add-ApiUploadLog {
     }
 
     try {
-        # Read existing API logs
-        $apiLogsContent = Get-Content -Path $ApiLogsFile -Raw -ErrorAction SilentlyContinue
-        if (-not $apiLogsContent) { $apiLogsContent = "[]" }
-        
-        # Parse existing logs
-        $apiLogs = $apiLogsContent | ConvertFrom-Json -ErrorAction SilentlyContinue
-        if (-not $apiLogs) { $apiLogs = @() }
-        
         # Create timestamp in required format (UTC for API logs)
         $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
-        
-        # Create new API log entry
+
+        # Create new API log entry (userId/siteId are filled in later by the C# service from the token)
         $newApiLog = [PSCustomObject]@{
             userId = $userId
             siteId = $siteId
@@ -278,16 +366,24 @@ function Add-ApiUploadLog {
             parsedInfo = $parsedInfo
             cropId = $cropId
         }
-        
-        # Add new log to array
-        $apiLogs = @($apiLogs) + $newApiLog
-        
-        # Convert back to JSON and save
-        $jsonOutput = $apiLogs | ConvertTo-Json -Depth 4
-        Set-Content -Path $ApiLogsFile -Value $jsonOutput -Encoding UTF8
-        Write-Host "[API-LOG] Appended to api_upload_logs.json ($($apiLogs.Count) total)" -ForegroundColor DarkGreen
-        
-        Write-Host "  API upload log created (will sync when online)" -ForegroundColor DarkCyan
+
+        # Append under the cross-process lock: read the queue resiliently and write atomically.
+        $appended = Invoke-WithUploadLock -Action {
+            $apiLogs = @(Read-UploadQueue -Path $ApiLogsFile) + $newApiLog
+            $jsonOutput = $apiLogs | ConvertTo-Json -Depth 4
+            # ConvertTo-Json collapses a single-element array to a bare object; force an array so the
+            # C# reader (Deserialize<List<...>>) always parses it.
+            if (@($apiLogs).Count -eq 1) { $jsonOutput = "[" + $jsonOutput + "]" }
+            Write-FileAtomic -Path $ApiLogsFile -Content $jsonOutput
+            Write-Host "[API-LOG] Appended to api_upload_logs.json ($(@($apiLogs).Count) total)" -ForegroundColor DarkGreen
+        }
+
+        if ($appended) {
+            Write-Host "  API upload log created (will sync when online)" -ForegroundColor DarkCyan
+        } else {
+            Write-Host "  Could not acquire upload lock; scan preserved in scans_backup.csv only" -ForegroundColor Yellow
+            Send-IssueLog -subject "ScanLink queue lock timeout (scanner)" -message "Could not acquire the upload mutex to enqueue a scan within timeout; the scan is safe in scans_backup.csv. Manual re-sync may be needed if this persists."
+        }
     }
     catch {
         Write-Host "Error saving API upload log: $($_.Exception.Message)" -ForegroundColor Red

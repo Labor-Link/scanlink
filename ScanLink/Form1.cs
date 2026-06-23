@@ -5097,7 +5097,98 @@ namespace ScanLink
             }
         }
 
+        private void button_cleanupScans_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // SAFETY GATE: never wipe the local view while scans are still waiting to upload.
+                // scans.txt is a disposable display buffer, but if the upload queue isn't empty those
+                // scans exist only locally, and clearing now could lose them (the exact failure mode
+                // we just hardened against). GetPendingCount() reads the queue under the cross-process
+                // lock; it returns -1 if it could not verify (treated as "not safe").
+                int pending = _scanLogUploadService?.GetPendingCount() ?? -1;
+                if (pending != 0)
+                {
+                    string msg = pending < 0
+                        ? "Couldn't verify the upload queue right now. Please click \"Sync logs to API\", wait until it reports no remaining logs, then try again."
+                        : $"You still have {pending} scan(s) that have NOT been synced to the database.\n\n" +
+                          "Click \"Sync logs to API\" first and wait until it reports no remaining logs, then try again.";
+                    MessageBox.Show(msg, "Sync required before cleanup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    statusLabel.Text = pending < 0 ? "Cleanup blocked: queue not verified" : $"Cleanup blocked: {pending} unsynced scan(s)";
+                    statusLabel.ForeColor = Color.OrangeRed;
+                    return;
+                }
 
+                var confirm = MessageBox.Show(
+                    "Do you really want to clean up your local scans?\n\n" +
+                    "Make sure you have synced them to the database. This clears the on-screen recent-scans list only " +
+                    "— your full backup (scans_backup.csv) is NOT touched.",
+                    "Confirm cleanup of local scans",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2);
+                if (confirm != DialogResult.Yes) return;
+
+                int cleared = ClearLocalScansDisplay();
+
+                // Refresh the in-memory grids and reload from the now-empty file.
+                allScannerData?.Clear();
+                filteredScannerData?.Clear();
+                currentPageData?.Clear();
+                currentPage = 1;
+                totalPages = 1;
+                LoadScansData();
+
+                statusLabel.Text = cleared > 0
+                    ? $"Local scans display cleared ({cleared} record(s) removed)."
+                    : "Local scans display cleared.";
+                statusLabel.ForeColor = Color.Green;
+            }
+            catch (Exception ex)
+            {
+                statusLabel.Text = $"Cleanup failed: {ex.Message}";
+                statusLabel.ForeColor = Color.Red;
+            }
+        }
+
+        // Resets the local display buffer (scans.txt) to an empty array. This is the desktop
+        // recent-activity view only; full history lives in scans_backup.csv and the database, so
+        // clearing it loses nothing the system depends on. Written atomically (temp file + atomic
+        // replace) so a concurrent scanner write can never observe a half-written file.
+        private int ClearLocalScansDisplay()
+        {
+            string programDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink");
+            string scansFile = Path.Combine(programDataDir, "scans.txt");
+            int cleared = 0;
+
+            try
+            {
+                if (File.Exists(scansFile))
+                {
+                    try
+                    {
+                        string content = File.ReadAllText(scansFile);
+                        if (!string.IsNullOrWhiteSpace(content) && content.Trim() != "[]")
+                        {
+                            var list = new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = int.MaxValue }
+                                .Deserialize<List<object>>(content);
+                            cleared = list?.Count ?? 0;
+                        }
+                    }
+                    catch { /* corrupt/unparseable: count unknown, still safe to reset */ }
+                }
+
+                try { Directory.CreateDirectory(programDataDir); } catch { }
+                string tmp = Path.Combine(programDataDir, "scans.txt." + Guid.NewGuid().ToString("N") + ".tmp");
+                File.WriteAllText(tmp, "[]");
+                if (File.Exists(scansFile)) File.Replace(tmp, scansFile, null);
+                else File.Move(tmp, scansFile);
+            }
+            catch
+            {
+                try { File.WriteAllText(scansFile, "[]"); } catch { }
+            }
+
+            return cleared;
+        }
 
         private void logoutButton_Click(object sender, EventArgs e)
         {

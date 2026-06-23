@@ -45,6 +45,7 @@ namespace ScanLink
 			this.scannerContentPanel = new System.Windows.Forms.TableLayoutPanel();
 			this.scannerOutputPanel = new System.Windows.Forms.Panel();
 			this.button_manualUpload = new System.Windows.Forms.Button();
+			this.button_cleanupScans = new System.Windows.Forms.Button();
             this.scannerDataGridView = new System.Windows.Forms.DataGridView();
             this.scannerOutputTextBox = new System.Windows.Forms.TextBox();
             this.showScannerOutputCheckBox = new System.Windows.Forms.CheckBox();
@@ -475,6 +476,7 @@ namespace ScanLink
             this.scannerOutputPanel.Controls.Add(this.showScannerOutputCheckBox);
             this.scannerOutputPanel.Controls.Add(this.scannerOutputTextBox);
             this.scannerOutputPanel.Controls.Add(this.button_manualUpload);
+            this.scannerOutputPanel.Controls.Add(this.button_cleanupScans);
             this.scannerOutputPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.scannerOutputPanel.Name = "scannerOutputPanel";
 
@@ -568,6 +570,17 @@ namespace ScanLink
 			this.button_manualUpload.UseVisualStyleBackColor = true;
 			this.button_manualUpload.Click += new System.EventHandler(this.button_manualUpload_Click);
 			this.button_manualUpload.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+			//
+			// button_cleanupScans
+			//
+			this.button_cleanupScans.Location = new System.Drawing.Point(170, 58);
+			this.button_cleanupScans.Name = "button_cleanupScans";
+			this.button_cleanupScans.Size = new System.Drawing.Size(130, 32);
+			this.button_cleanupScans.TabIndex = 5;
+			this.button_cleanupScans.Text = "Cleanup local scans";
+			this.button_cleanupScans.UseVisualStyleBackColor = true;
+			this.button_cleanupScans.Click += new System.EventHandler(this.button_cleanupScans_Click);
+			this.button_cleanupScans.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
 			// 
             
             // 
@@ -2215,6 +2228,7 @@ namespace ScanLink
         // private System.Windows.Forms.Button sendBarcodeButton;
         // private System.Windows.Forms.Button manageScannersButton;
         private System.Windows.Forms.Button button_manualUpload;
+        private System.Windows.Forms.Button button_cleanupScans;
 
         // UI Styling Methods
         // Rounds the corners of a control by applying a Region built from a rounded rectangle path.
@@ -2286,6 +2300,20 @@ namespace ScanLink
                 button_manualUpload.Height = 32;
                 button_manualUpload.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
                 ApplyRoundedCorners(button_manualUpload, 12);
+            }
+            // Cleanup local scans button - caution (amber) styling to signal a destructive action
+            if (button_cleanupScans != null)
+            {
+                button_cleanupScans.FlatStyle = FlatStyle.Flat;
+                button_cleanupScans.FlatAppearance.BorderSize = 0;
+                button_cleanupScans.BackColor = Color.FromArgb(202, 138, 4);
+                button_cleanupScans.FlatAppearance.MouseOverBackColor = Color.FromArgb(180, 123, 3);
+                button_cleanupScans.FlatAppearance.MouseDownBackColor = Color.FromArgb(161, 110, 3);
+                button_cleanupScans.ForeColor = Color.White;
+                if (button_cleanupScans.Width < 130) button_cleanupScans.Width = 130;
+                button_cleanupScans.Height = 32;
+                button_cleanupScans.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+                ApplyRoundedCorners(button_cleanupScans, 12);
             }
 
             // Danger/Logout buttons
@@ -2441,6 +2469,12 @@ namespace ScanLink
                         {
                             button_manualUpload.Top = panelTopMargin;
                             button_manualUpload.Left = scannerOutputPanel.Width - button_manualUpload.Width - panelMarginX-20;
+                        }
+                        if (button_cleanupScans != null)
+                        {
+                            // Sit directly below "Sync logs to API", right-aligned with it.
+                            button_cleanupScans.Top = (button_manualUpload?.Bottom ?? panelTopMargin + 32) + 6;
+                            button_cleanupScans.Left = button_manualUpload?.Left ?? (scannerOutputPanel.Width - button_cleanupScans.Width - panelMarginX - 20);
                         }
                         if (scannerOutputTextBox != null)
                         {
