@@ -214,6 +214,11 @@ namespace ScanLink
             public string Count { get; set; }
             public string Carton { get; set; }
             public string AvgWeightKg { get; set; }
+            // The exact source combination this row represents. The printer/preview resolve from this
+            // so they use the precise grade the user picked. Resolving by Value (product_id) alone is
+            // wrong because product_id is shared across grades (e.g. product_id 132 = Delta/60/E15D
+            // carries both Grade A and Grade B).
+            public ScanLink.ProductCombination Combination { get; set; }
         }
 
         BarcodePrinter BarcodePrinter;
@@ -2237,7 +2242,8 @@ namespace ScanLink
                             Grade = p.grade_name,
                             Count = p.count_name,
                             Carton = GetCartonNameFromId(p.carton_type_id, p.carton_type_name),
-                            AvgWeightKg = p.avg_weight_kg.ToString()
+                            AvgWeightKg = p.avg_weight_kg.ToString(),
+                            Combination = p
                         })
                         .ToList();
                 }
@@ -2840,6 +2846,15 @@ namespace ScanLink
 
         private ScanLink.ProductCombination GetSelectedProductCombination()
         {
+            // Prefer the exact combination the user selected. The combo's Value is only product_id,
+            // which is shared across grades (e.g. product_id 132/133 = Delta/60 carry both Grade A and
+            // Grade B), so resolving by product_id picks whichever grade is stored first -> wrong grade
+            // on the preview/printed label. The selected row already carries its own combination.
+            if (comboBox_ProductID?.SelectedItem is ProductComboItem selectedItem && selectedItem.Combination != null)
+            {
+                return selectedItem.Combination;
+            }
+
             string cropCode = comboBox_CropID?.SelectedValue?.ToString() ?? "";
             string productCode = comboBox_ProductID?.SelectedValue?.ToString();
             if (string.IsNullOrEmpty(cropCode) || string.IsNullOrEmpty(productCode)) return null;
