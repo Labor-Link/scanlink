@@ -69,11 +69,16 @@ if (-not (Test-Path $OutputFile)) {
     New-Item -Path $OutputFile -ItemType File -Force | Out-Null
 }
 
-# API upload logs file (for syncing to backend when internet is available)
-$ApiLogsFile = Join-Path $ProgramDataDir "api_upload_logs.json"
+# API upload queue: append-only JSONL (one scan per line) for syncing to the backend.
+# Appending a single line per scan is O(1) - we never read, re-serialize, or rewrite the
+# whole queue here. That is what stops the per-scan cost from growing with the queue (the
+# old read-modify-rewrite of one big JSON array got slower as the queue grew and eventually
+# back-pressured the scanner). The C# ScanLogUploadService reads new lines from a checkpoint,
+# uploads them, then compacts the file. Legacy api_upload_logs.json is migrated to .jsonl by
+# the C# service on startup, before this script runs.
+$ApiLogsFile = Join-Path $ProgramDataDir "api_upload_logs.jsonl"
 if (-not (Test-Path $ApiLogsFile)) {
     New-Item -Path $ApiLogsFile -ItemType File -Force | Out-Null
-    Add-Content -Path $ApiLogsFile -Value "[]"
 }
 
 # Get all connected COM port scanners using the unified detection
@@ -250,76 +255,11 @@ function Invoke-WithUploadLock {
     }
 }
 
-function Write-FileAtomic {
-    param([string]$Path, [string]$Content)
-    $dir = Split-Path -Parent $Path
-    $tmp = Join-Path $dir ([System.IO.Path]::GetFileName($Path) + "." + ([System.Guid]::NewGuid().ToString("N")) + ".tmp")
-    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)   # no BOM, matches the C# writer
-    [System.IO.File]::WriteAllText($tmp, $Content, $utf8NoBom)
-    try {
-        if (Test-Path $Path) { [System.IO.File]::Replace($tmp, $Path, $null) } # atomic on NTFS
-        else { [System.IO.File]::Move($tmp, $Path) }
-    }
-    catch {
-        try {
-            if (Test-Path $Path) { Remove-Item -Force -Path $Path }
-            [System.IO.File]::Move($tmp, $Path)
-        } finally {
-            if (Test-Path $tmp) { try { Remove-Item -Force -Path $tmp } catch {} }
-        }
-    }
-}
-
-function Get-SalvagedRecords {
-    param([string]$Raw)
-    $result = New-Object System.Collections.ArrayList
-    $depth = 0; $start = -1; $inStr = $false; $esc = $false
-    for ($i = 0; $i -lt $Raw.Length; $i++) {
-        $c = $Raw[$i]
-        if ($inStr) {
-            if ($esc) { $esc = $false }
-            elseif ($c -eq '\') { $esc = $true }
-            elseif ($c -eq '"') { $inStr = $false }
-            continue
-        }
-        if ($c -eq '"') { $inStr = $true; continue }
-        if ($c -eq '{') { if ($depth -eq 0) { $start = $i }; $depth++ }
-        elseif ($c -eq '}') {
-            $depth--
-            if ($depth -eq 0 -and $start -ge 0) {
-                $obj = $Raw.Substring($start, $i - $start + 1)
-                try { $o = $obj | ConvertFrom-Json -ErrorAction Stop; [void]$result.Add($o) } catch {}
-                $start = -1
-            }
-            elseif ($depth -lt 0) { $depth = 0 }
-        }
-    }
-    return ,$result.ToArray()
-}
-
-function Read-UploadQueue {
-    param([string]$Path)
-    if (-not (Test-Path $Path)) { return @() }
-    $content = [System.IO.File]::ReadAllText($Path)
-    if ([string]::IsNullOrWhiteSpace($content)) { return @() }
-    try {
-        $parsed = $content | ConvertFrom-Json -ErrorAction Stop
-        if ($null -eq $parsed) { return @() }
-        # No protective comma: every caller wraps this in @(...). Returning a plain array lets the
-        # pipeline enumerate it so the caller re-collects it flat. A comma here would make
-        # @(Read-UploadQueue ...) nest the whole array as a single element (corruption on round-trip).
-        return @($parsed)
-    }
-    catch {
-        # Corrupt: salvage parseable records, quarantine the bad file, continue.
-        $salvaged = Get-SalvagedRecords -Raw $content
-        $stamp = (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HHmmss")
-        $qpath = Join-Path (Split-Path -Parent $Path) ("api_upload_logs.corrupt-$stamp.json")
-        try { [System.IO.File]::WriteAllText($qpath, $content) } catch {}
-        Send-IssueLog -subject "ScanLink queue auto-recovered (scanner)" -message ("Corrupt api_upload_logs.json quarantined to " + (Split-Path -Leaf $qpath) + ". Salvaged " + @($salvaged).Count + " record(s). Error: " + $_.Exception.Message)
-        return @($salvaged)
-    }
-}
+# NOTE: the old read-modify-rewrite queue helpers (Write-FileAtomic / Get-SalvagedRecords /
+# Read-UploadQueue) were removed when the queue became append-only JSONL. The scanner now only
+# APPENDS one line per scan (see Add-ApiUploadLog); reading, compaction, and corrupt-line
+# tolerance all live on the C# side (ScanLogUploadService.cs). Only Invoke-WithUploadLock (the
+# cross-process mutex) is still needed here, to serialise the append against C# compaction.
 # ------------------------------------------------------------------------------------------
 
 function Add-ApiUploadLog {
@@ -367,15 +307,16 @@ function Add-ApiUploadLog {
             cropId = $cropId
         }
 
-        # Append under the cross-process lock: read the queue resiliently and write atomically.
+        # Append-only: serialize THIS scan to one compact single-line JSON record and append it
+        # under the cross-process mutex. O(1) - no read/parse/re-serialize of the existing queue.
+        # -Compress keeps it on one physical line so the C# reader can split the file by line.
+        # The mutex serialises this append against the C# service's compaction (its atomic file
+        # replace), so an append can never land in a file that is mid-replace.
+        $line = ($newApiLog | ConvertTo-Json -Depth 4 -Compress)
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
         $appended = Invoke-WithUploadLock -Action {
-            $apiLogs = @(Read-UploadQueue -Path $ApiLogsFile) + $newApiLog
-            $jsonOutput = $apiLogs | ConvertTo-Json -Depth 4
-            # ConvertTo-Json collapses a single-element array to a bare object; force an array so the
-            # C# reader (Deserialize<List<...>>) always parses it.
-            if (@($apiLogs).Count -eq 1) { $jsonOutput = "[" + $jsonOutput + "]" }
-            Write-FileAtomic -Path $ApiLogsFile -Content $jsonOutput
-            Write-Host "[API-LOG] Appended to api_upload_logs.json ($(@($apiLogs).Count) total)" -ForegroundColor DarkGreen
+            [System.IO.File]::AppendAllText($ApiLogsFile, $line + "`n", $utf8NoBom)
+            Write-Host "[API-LOG] Appended 1 scan to api_upload_logs.jsonl" -ForegroundColor DarkGreen
         }
 
         if ($appended) {
@@ -624,15 +565,16 @@ function Add-ScanRecord {
         # rewrites an ever-growing array on every scan (which got slower over time and
         # eventually crashed the C# grid at ~2 MB).
         # NOTE: this is the DISPLAY buffer only. Full history is preserved in the web portal
-        # (backend, via api_upload_logs.json) and in scans_backup.csv below, so nothing is
+        # (backend, via api_upload_logs.jsonl) and in scans_backup.csv below, so nothing is
         # lost - the desktop grid is a recent-activity view. Do NOT apply this cap to
-        # api_upload_logs.json: that is the un-synced upload queue and trimming it would
+        # api_upload_logs.jsonl: that is the un-synced upload queue and trimming it would
         # drop scans that never reached the backend.
         # TRADE-OFF: with this JSON-array format the whole array is re-serialized on every
-        # scan, so this number also caps per-scan write cost. Keep it modest (a few thousand)
-        # so scanning stays snappy. A future release should switch to append-only JSONL,
-        # which removes this ceiling entirely.
-        $maxDisplayRecords = 2000
+        # scan, so this number also caps per-scan write cost. Lowered from 2000 -> 300 so the
+        # per-scan rewrite stays cheap (~6x less work) and the grid loads fast; 300 recent
+        # scans is plenty for the on-screen activity view. (The upload queue is now append-only
+        # JSONL, so the unbounded cost there is gone independently of this cap.)
+        $maxDisplayRecords = 300
         if ($scanRecords.Count -gt $maxDisplayRecords) {
             $scanRecords = @($scanRecords | Select-Object -Last $maxDisplayRecords)
         }

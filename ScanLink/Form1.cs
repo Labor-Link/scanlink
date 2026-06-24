@@ -35,7 +35,17 @@ namespace ScanLink
             public VoidFunction Function;
         }
 
-        private Process _scannerProcess;
+        private volatile Process _scannerProcess; // volatile: read by the background stdin writer thread, reassigned on the UI thread
+        // --- Non-blocking scanner stdin pipe (#5) ---
+        // Scans used to be written to the PowerShell process's StandardInput directly on the UI
+        // thread. When PowerShell fell behind (slow per-scan work as the queue grew), that write
+        // blocked on the fixed OS pipe buffer and froze the whole app - the "scanning stalls after
+        // ~2,300 scans" symptom. Scans are now handed to a dedicated background writer thread via
+        // this queue, so the UI thread never blocks on the pipe no matter how slow PowerShell is.
+        private System.Collections.Concurrent.BlockingCollection<string> _scanWriteQueue;
+        private System.Threading.Thread _scanWriterThread;
+        private volatile bool _scanWriterRunning;
+        private DateTime _lastScannerRestartRequestUtc = DateTime.MinValue;
         private ScannerComPortManager _scannerComPortManager;
         private FileSystemWatcher _scansFileWatcher;
         private System.Windows.Forms.Timer _scanRefreshTimer = null;
@@ -56,6 +66,12 @@ namespace ScanLink
         private ScanLogUploadService _scanLogUploadService;
         private ProductCombinationsService _productCombinationsService;
         private RawInputManager _rawInputManager;
+        // HID (keyboard/raw) scanners forward scans straight to PowerShell and are NOT owned by
+        // _scannerComPortManager, which only tracks COM ports. Without listing them here, an HID
+        // scanner records scans fine but the dashboard shows "0 Scanners Connected" with an empty
+        // grid. Keyed by device id. Touched only on the UI thread (the HID scan handler marshals
+        // there, and the status timer runs on the UI thread too), so no extra locking is needed.
+        private readonly Dictionary<string, ScannerConfig> _activeHidScanners = new Dictionary<string, ScannerConfig>();
         private static readonly JavaScriptSerializer HidMetaSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
 
         // Popup forms
@@ -717,6 +733,12 @@ namespace ScanLink
 
                 var activeScanners = _scannerComPortManager.GetActiveScanners();
                 var scanner = activeScanners.FirstOrDefault(s => s.PNPDeviceID == pnp);
+                // HID scanners live in _activeHidScanners, not the COM manager; update there too so
+                // the change sticks (the entry is the same reference the grid rebuilds from).
+                if (scanner == null && _activeHidScanners.TryGetValue(pnp, out var hidScanner))
+                {
+                    scanner = hidScanner;
+                }
                 if (scanner != null)
                 {
                     scanner.LineID = newLine;
@@ -779,13 +801,24 @@ namespace ScanLink
             }
         }
 
-        private void StatusRefreshTimer_Tick(object sender, EventArgs e)
+        // All scanners to show on the dashboard: COM ports owned by the manager plus any HID
+        // (keyboard/raw) scanners that have produced scans this session. Both feed the recorder
+        // identically; only COM ports were ever surfaced in the UI, which is why HID scanners read
+        // as "0 connected" even while working.
+        private List<ScannerConfig> GetAllDisplayScanners()
         {
-            int scannerCount = 0;
+            var all = new List<ScannerConfig>();
             if (_scannerComPortManager != null)
             {
-                scannerCount = _scannerComPortManager.GetActiveScanners().Count;
+                all.AddRange(_scannerComPortManager.GetActiveScanners());
             }
+            all.AddRange(_activeHidScanners.Values);
+            return all;
+        }
+
+        private void StatusRefreshTimer_Tick(object sender, EventArgs e)
+        {
+            int scannerCount = GetAllDisplayScanners().Count;
             lblDashboardScannerStatus.Text = $"{scannerCount} Scanner{(scannerCount != 1 ? "s" : "")} Connected";
             
             bool isPrinterConnected = false;
@@ -807,9 +840,9 @@ namespace ScanLink
 
         private void RefreshActiveScannersGrid()
         {
-            if (dgvActiveScanners == null || _scannerComPortManager == null) return;
-            
-            var activeScanners = _scannerComPortManager.GetActiveScanners();
+            if (dgvActiveScanners == null) return;
+
+            var activeScanners = GetAllDisplayScanners();
             bool needsRebuild = false;
             
             if (dgvActiveScanners.Rows.Count != activeScanners.Count) 
@@ -5386,8 +5419,134 @@ namespace ScanLink
             _apiAuthService.ClearToken();
         }
 
+        // ---- Non-blocking scanner stdin writer (#5) ----------------------------------------------
+        // Starts the single background thread that owns all writes to the PowerShell StandardInput.
+        // Idempotent: safe to call on every StartScanScript().
+        private void StartScannerWriter()
+        {
+            if (_scanWriterRunning && _scanWriterThread != null && _scanWriterThread.IsAlive) return;
+            if (_scanWriteQueue == null || _scanWriteQueue.IsAddingCompleted)
+                _scanWriteQueue = new System.Collections.Concurrent.BlockingCollection<string>();
+            _scanWriterRunning = true;
+            _scanWriterThread = new System.Threading.Thread(ScannerWriterLoop)
+            {
+                IsBackground = true,
+                Name = "ScannerStdinWriter"
+            };
+            _scanWriterThread.Start();
+        }
+
+        // Hand a scan to the background writer. Non-blocking: returns immediately, so the UI thread
+        // is never stuck on a full pipe even when PowerShell is busy.
+        private void EnqueueScannerLine(string formattedData)
+        {
+            if (string.IsNullOrEmpty(formattedData)) return;
+            try
+            {
+                if (_scanWriteQueue == null || _scanWriteQueue.IsAddingCompleted) StartScannerWriter();
+                _scanWriteQueue.Add(formattedData);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SCAN] Failed to enqueue scan for PowerShell: {ex.Message}");
+            }
+        }
+
+        // Drains the queue to the PowerShell pipe. Runs on a background thread, so blocking here can
+        // never freeze the UI. A scan is held (not dropped) through a transient PowerShell restart.
+        private void ScannerWriterLoop()
+        {
+            while (_scanWriterRunning)
+            {
+                string line;
+                try { line = _scanWriteQueue.Take(); }
+                catch (InvalidOperationException) { break; } // CompleteAdding() called -> shutting down
+                catch (Exception) { break; }
+
+                bool delivered = false;
+                while (_scanWriterRunning && !delivered)
+                {
+                    try
+                    {
+                        var proc = _scannerProcess;
+                        if (proc != null && !proc.HasExited)
+                        {
+                            proc.StandardInput.WriteLine(line);
+                            proc.StandardInput.Flush();
+                            delivered = true;
+                        }
+                        else
+                        {
+                            // Process down: ask the UI thread to (re)start it, then retry the same line.
+                            RequestScannerRestart();
+                            System.Threading.Thread.Sleep(200);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        // Pipe broke mid-write (process died). Request a restart and retry the line.
+                        RequestScannerRestart();
+                        System.Threading.Thread.Sleep(200);
+                    }
+                }
+            }
+        }
+
+        // Ask the UI thread to (re)start the scanner script, throttled so a backlog can't spam restarts.
+        private void RequestScannerRestart()
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastScannerRestartRequestUtc).TotalSeconds < 3) return;
+                _lastScannerRestartRequestUtc = now;
+                if (this.IsHandleCreated && !this.IsDisposed)
+                    this.BeginInvoke(new Action(() => { try { StartScanScript(); } catch { } }));
+            }
+            catch { }
+        }
+
+        // Stops the background writer (called on form close, before the pipe is torn down). Any scans
+        // still queued in memory are flushed straight to the (still-alive) PowerShell process so they
+        // reach api_upload_logs.jsonl / scans_backup.csv instead of being lost on a quick close.
+        private void StopScannerWriter()
+        {
+            _scanWriterRunning = false;
+            try { _scanWriteQueue?.CompleteAdding(); } catch { }
+            bool stopped = false;
+            try { stopped = _scanWriterThread == null || _scanWriterThread.Join(2000); } catch { }
+
+            // Only drain ourselves once the writer thread has actually exited, so we never write to
+            // the same stdin from two threads at once.
+            if (stopped && _scanWriteQueue != null)
+            {
+                try
+                {
+                    var proc = _scannerProcess;
+                    while (_scanWriteQueue.TryTake(out string line))
+                    {
+                        try
+                        {
+                            if (proc != null && !proc.HasExited)
+                            {
+                                proc.StandardInput.WriteLine(line);
+                                proc.StandardInput.Flush();
+                            }
+                            else break; // process already gone; nothing more we can do
+                        }
+                        catch { break; }
+                    }
+                }
+                catch { }
+            }
+        }
+        // ------------------------------------------------------------------------------------------
+
         private void StartScanScript()
         {
+            // Ensure the background stdin writer is running before we (re)start the scanner script.
+            StartScannerWriter();
+
             // Check if script is already running
             if (_scannerProcess != null && !_scannerProcess.HasExited)
             {
@@ -5951,6 +6110,11 @@ namespace ScanLink
             // Dispose COM port scanner manager
             _scannerComPortManager?.Dispose();
             _rawInputManager?.Dispose();
+
+            // Stop the background stdin writer before tearing down the pipe so it can't write into a
+            // closing stream.
+            StopScannerWriter();
+
             if (_scannerProcess != null && !_scannerProcess.HasExited)
             {
                 try
@@ -6044,60 +6208,17 @@ namespace ScanLink
                         scannerOutputTextBox.AppendText($"    Supplier: {e.Scanner.Supplier ?? "Not Set"}\r\n");
                     }
                     
-                    // Process scanned barcode from COM port scanner
-                if (_scannerProcess != null && !_scannerProcess.HasExited)
-                {
-                        // Send data to PowerShell script with scanner identification
-                        // Format: "PNPDeviceID|BarcodeData"
-                        string formattedData = $"{e.Scanner.PNPDeviceID}|{barcodeData}";
-                        
-                        try
-                        {
-                            _scannerProcess.StandardInput.WriteLine(formattedData);
-                            _scannerProcess.StandardInput.Flush();
-                            
-                            Debug.WriteLine($"[SCAN] Sent to PowerShell: {formattedData}");
-                            
-                            if (scannerContentPanel.Visible && scannerOutputTextBox != null)
-                            {
-                                scannerOutputTextBox.AppendText($"    ✓ Sent to PowerShell for processing\r\n\r\n");
-                                scannerOutputTextBox.ScrollToCaret();
-                            }
-                        }
-                        catch (Exception psEx)
-                        {
-                            Debug.WriteLine($"[SCAN ERROR] Failed to write to PowerShell: {psEx.Message}");
-                            if (scannerContentPanel.Visible && scannerOutputTextBox != null)
-                            {
-                                scannerOutputTextBox.AppendText($"    ✗ ERROR: Failed to send to PowerShell: {psEx.Message}\r\n\r\n");
-                            }
-                        }
-                    }
-                    else
+                    // Hand the scan to the background stdin writer. This never blocks the UI thread,
+                    // even when PowerShell is busy - which is what stops the app freezing / scanning
+                    // stalling as the on-disk files grow. The writer auto-(re)starts the script and
+                    // holds the scan if the process is momentarily down, so no scan is dropped here.
+                    string formattedData = $"{e.Scanner.PNPDeviceID}|{barcodeData}";
+                    EnqueueScannerLine(formattedData);
+                    Debug.WriteLine($"[SCAN] Queued for PowerShell: {formattedData}");
+                    if (scannerContentPanel.Visible && scannerOutputTextBox != null)
                     {
-                        Debug.WriteLine($"[SCAN ERROR] PowerShell process not running!");
-                        if (scannerContentPanel.Visible && scannerOutputTextBox != null)
-                        {
-                            scannerOutputTextBox.AppendText($"    ✗ ERROR: PowerShell process not running!\r\n");
-                            scannerOutputTextBox.AppendText($"    Action: Click Scanner Management to restart\r\n\r\n");
-                            scannerOutputTextBox.ScrollToCaret();
-                        }
-                        // Attempt auto-recovery: start the script and retry once after a short delay
-                        StartScanScript();
-                        Task.Run(async () =>
-                        {
-                            await Task.Delay(750);
-                            try
-                            {
-                                if (_scannerProcess != null && !_scannerProcess.HasExited)
-                                {
-                                    string formattedData = $"{e.Scanner.PNPDeviceID}|{barcodeData}";
-                                    _scannerProcess.StandardInput.WriteLine(formattedData);
-                                    _scannerProcess.StandardInput.Flush();
-                                }
-                            }
-                            catch { }
-                        });
+                        scannerOutputTextBox.AppendText($"    ✓ Queued for processing\r\n\r\n");
+                        scannerOutputTextBox.ScrollToCaret();
                     }
                 }
                 catch (Exception ex)
@@ -6161,7 +6282,47 @@ namespace ScanLink
                 scannerOutputTextBox.ScrollToCaret();
             }
 
+            TrackHidScanner(deviceId, friendlyName, sourceLabel);
+
             ForwardHidScanToPowerShell(connectionTypeToken, sourceLabel, e.Device, e.Data);
+        }
+
+        // Remember an HID (keyboard/raw) scanner so it appears in the dashboard count and the
+        // "Connected Scanners" grid. Line/Block/Supplier are read from scanner_assignments.txt —
+        // the same source the PowerShell recorder uses to label scans. Runs on the UI thread.
+        private void TrackHidScanner(string deviceId, string friendlyName, string sourceLabel)
+        {
+            if (string.IsNullOrWhiteSpace(deviceId)) return;
+            if (_activeHidScanners.ContainsKey(deviceId)) return; // already listed this session
+
+            string line = "", block = "", supplier = "";
+            try
+            {
+                string assignmentsPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                    "ScanLink", "scanner_assignments.txt");
+                if (File.Exists(assignmentsPath))
+                {
+                    var assignments = LoadScannerAssignmentsFromFile(assignmentsPath);
+                    if (assignments != null && assignments.TryGetValue(deviceId, out var cfg) && cfg != null)
+                    {
+                        line = cfg.LineID ?? "";
+                        block = cfg.BlockID ?? "";
+                        supplier = cfg.Supplier ?? "";
+                    }
+                }
+            }
+            catch { /* display-only; never block a scan over a label lookup */ }
+
+            _activeHidScanners[deviceId] = new ScannerConfig
+            {
+                PNPDeviceID = deviceId,
+                DeviceName = friendlyName,
+                ComPort = sourceLabel, // surfaces "USB-HID Keyboard" / "USB-HID Raw" in the Port column
+                LineID = line,
+                BlockID = block,
+                Supplier = supplier
+            };
         }
 
         private void RawInputManager_Diagnostics(object sender, string message)
@@ -6226,57 +6387,14 @@ namespace ScanLink
             }
             string formattedData = $"{metaJson}|{recoveredData}";
 
-            if (_scannerProcess != null && !_scannerProcess.HasExited)
+            // Hand off to the background stdin writer (non-blocking; auto-restarts PowerShell and
+            // holds the scan if the process is momentarily down).
+            EnqueueScannerLine(formattedData);
+            Debug.WriteLine($"[HID] Queued for PowerShell: {formattedData}");
+            if (scannerOutputTextBox != null)
             {
-                try
-                {
-                    _scannerProcess.StandardInput.WriteLine(formattedData);
-                    _scannerProcess.StandardInput.Flush();
-                    Debug.WriteLine($"[HID] Sent to PowerShell: {formattedData}");
-                    if (scannerOutputTextBox != null)
-                    {
-                        scannerOutputTextBox.AppendText($"    ✓ Sent to PowerShell for processing\r\n\r\n");
-                        scannerOutputTextBox.ScrollToCaret();
-                    }
-                }
-                catch (Exception psEx)
-                {
-                    Debug.WriteLine($"[HID ERROR] Failed to write to PowerShell: {psEx.Message}");
-                    if (scannerOutputTextBox != null)
-                    {
-                        scannerOutputTextBox.AppendText($"    ✗ ERROR: Failed to send to PowerShell: {psEx.Message}\r\n\r\n");
-                        scannerOutputTextBox.ScrollToCaret();
-                    }
-                }
-            }
-            else
-            {
-                Debug.WriteLine("[HID] PowerShell process not running. Attempting restart before forwarding HID scan.");
-                if (scannerOutputTextBox != null)
-                {
-                    scannerOutputTextBox.AppendText($"    ✗ PowerShell process not running. Attempting restart...\r\n");
-                    scannerOutputTextBox.ScrollToCaret();
-                }
-
-                StartScanScript();
-
-                Task.Run(async () =>
-                {
-                    await Task.Delay(750).ConfigureAwait(false);
-                    try
-                    {
-                        if (_scannerProcess != null && !_scannerProcess.HasExited)
-                        {
-                            _scannerProcess.StandardInput.WriteLine(formattedData);
-                            _scannerProcess.StandardInput.Flush();
-                            Debug.WriteLine("[HID] Retry send succeeded after restart.");
-                        }
-                    }
-                    catch (Exception retryEx)
-                    {
-                        Debug.WriteLine($"[HID ERROR] Retry failed: {retryEx.Message}");
-                    }
-                });
+                scannerOutputTextBox.AppendText($"    ✓ Queued for processing\r\n\r\n");
+                scannerOutputTextBox.ScrollToCaret();
             }
         }
 
