@@ -4571,8 +4571,13 @@ namespace ScanLink
                             break;
                     }
                 }
-                // Force non-GS1 Code 128 to prevent FNC1 (avoids ]C1 prefix in scans)
-                barcodeType = PPLBBarCodeType.Code_128_Auto_Mode;
+                // Force Code 128 subset C. The payload is always exactly 12 numeric digits
+                // (Guard1+Emp4+Prod3+Crop3+Check1), so subset C is the one correct, deterministic
+                // encoding (6 digit-pairs). Auto Mode let the printer firmware pick A/B/C per value
+                // and mis-encoded certain digit patterns, producing bars that decoded to <12 digits
+                // (label showed 12, scan reported "< 11"). Subset C removes that auto-switch step.
+                // Also non-GS1, so no FNC1 / ]C1 prefix in scans.
+                barcodeType = PPLBBarCodeType.Code_128_Mode_C;
                 
                 int stickerHeight = (int)numericUpDown_height.Value;
 

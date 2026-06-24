@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Web.Script.Serialization;
 using BarcodePrinter_API;
@@ -218,7 +219,14 @@ namespace ScanLinkPrinter.ArgoxWorker
                 }
                 else
                 {
-                    _pplb.BarcodeUtil.PrintOneDBarcode(b.X, b.Y, PPLBOrient.Clockwise_0_Degrees, PPLBBarCodeType.Code_128_Auto_Mode, 3, 0, b.Height, true, data);
+                    // Code 128. For the ScanLink payload (always an even-length, all-numeric string)
+                    // force subset C: it is the one correct, deterministic encoding (digit pairs).
+                    // Auto Mode lets the firmware pick A/B/C per value and mis-encoded some numeric
+                    // patterns -> bars decoded to fewer digits ("< 11" scan error). For any other data
+                    // (odd length or non-digit) subset C is invalid, so fall back to Auto Mode.
+                    bool numericEven = b.Data.Length % 2 == 0 && b.Data.All(char.IsDigit);
+                    var codeType = numericEven ? PPLBBarCodeType.Code_128_Mode_C : PPLBBarCodeType.Code_128_Auto_Mode;
+                    _pplb.BarcodeUtil.PrintOneDBarcode(b.X, b.Y, PPLBOrient.Clockwise_0_Degrees, codeType, 3, 0, b.Height, true, data);
                 }
             }
             else
