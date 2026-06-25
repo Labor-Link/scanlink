@@ -171,7 +171,12 @@ namespace ScanLink
         }
         // ------------------------------------------------------------------------------------------
 
-        // ---- One-time legacy migration -----------------------------------------------------------
+        // ---- Legacy-queue drain ------------------------------------------------------------------
+        // Folds the pre-upgrade api_upload_logs.json array (and any resumable claimed file) into the
+        // .jsonl queue. Called from the constructor AND at the start of every upload cycle / pending
+        // count, because a mixed-version deploy (new .exe + old scan_capture.ps1 that still writes
+        // the .json array) keeps producing legacy files after startup. Idempotent and mutex-guarded:
+        // a no-op when no legacy file exists, so it is cheap to call repeatedly.
         private void MigrateLegacyQueueIfNeeded()
         {
             try
@@ -179,10 +184,16 @@ namespace ScanLink
                 WithQueueLock(() =>
                 {
                     // Resume any migration interrupted by a previous crash (claimed temp files).
+                    // NOTE: the glob "api_upload_logs.json.migrating-*" ALSO matches already-finished
+                    // "...migrating-<guid>.migrated" backups, so skip those or we would re-append their
+                    // records (duplicates) every time this runs.
                     try
                     {
                         foreach (var tmp in Directory.GetFiles(_programDataDir, "api_upload_logs.json.migrating-*"))
+                        {
+                            if (tmp.EndsWith(".migrated", StringComparison.OrdinalIgnoreCase)) continue;
                             MigrateOneLegacyFile(tmp);
+                        }
                     }
                     catch { }
 
@@ -228,9 +239,11 @@ namespace ScanLink
                     OnLogMessage($"Migrated {records.Count} queued scan(s) from {Path.GetFileName(path)} to api_upload_logs.jsonl");
                 }
 
-                // Keep the original as a backup (do not delete) once its records are safely in the queue.
-                string done = path + ".migrated";
-                try { if (File.Exists(done)) File.Delete(done); File.Move(path, done); } catch { }
+                // Records are now durably in api_upload_logs.jsonl (and scans_backup.csv is the
+                // ultimate backstop). Because this drain runs every upload cycle, KEEPING each
+                // claimed file as a ".migrated" backup would accumulate thousands of files under a
+                // mixed-version deploy, so delete it once its data is safely appended above.
+                try { File.Delete(path); } catch { }
             }
             catch (Exception ex)
             {
@@ -251,6 +264,10 @@ namespace ScanLink
 
             try
             {
+                // Fold any legacy api_upload_logs.json the (possibly pre-upgrade) scanner is still
+                // writing into the .jsonl queue, so those scans upload regardless of scanner version.
+                MigrateLegacyQueueIfNeeded();
+
                 if (!_authService.IsTokenValid())
                 {
                     // Not logged in: skip without reading the queue (the scanner keeps appending O(1)).
@@ -344,6 +361,11 @@ namespace ScanLink
 
             try
             {
+                // Fold any legacy api_upload_logs.json into the .jsonl queue before reading it, so the
+                // manual "Sync logs to API" button never reports "No logs to upload" while the old
+                // scanner is still writing the legacy array file.
+                MigrateLegacyQueueIfNeeded();
+
                 if (!_authService.IsTokenValid())
                 {
                     int pend = GetPendingCount();
@@ -432,6 +454,11 @@ namespace ScanLink
         // i.e. NOT safe to assume everything is synced).
         public int GetPendingCount()
         {
+            // Consolidate any legacy api_upload_logs.json into the .jsonl queue first, otherwise scans
+            // written by an old scanner would be invisible here (count 0) and the cleanup safety-gate
+            // could wrongly treat them as already synced.
+            try { MigrateLegacyQueueIfNeeded(); } catch { }
+
             int count = -1;
             try
             {

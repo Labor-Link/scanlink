@@ -4600,7 +4600,6 @@ namespace ScanLink
 
                 bool twoUp = checkBox_twoUp != null && checkBox_twoUp.Checked;
                 int remaining = Math.Max(1, printcount);
-                int labelWidthTwoUp = (int)numericUpDown_width.Value;
                 List<string> warnings = new List<string>();
 
                 if (!twoUp)
@@ -4616,8 +4615,40 @@ namespace ScanLink
                 }
                 else
                 {
-                    if (xCoordinate < 0 || xCoordinate > labelWidthTwoUp) warnings.Add($"Left X ({xCoordinate}) out of bounds");
-                    if (x2Coordinate < 0 || x2Coordinate > labelWidthTwoUp) warnings.Add($"Right X ({x2Coordinate}) out of bounds");
+                    // ---- Two-up geometry fix -------------------------------------------------
+                    // Bug: SetPrintWidth(labelWidthDots) earlier sized the image buffer to ONE
+                    // label width, and narrowBarWidth was sized to the full label width. In two-up
+                    // the right barcode is drawn at x2Coordinate (~one label width across), and a
+                    // full 12-digit Code 128 is ~0.77x the label width, so the right barcode's stop
+                    // pattern + trailing digit-pairs fell OUTSIDE the buffer and were clipped: the
+                    // label showed bars but the scan decoded a short/invalid value ("Scanned value
+                    // must be at least 11 digits"). The left and right barcodes are otherwise
+                    // byte-identical (same data, type, bar width, height), so the failure was purely
+                    // positional — which is why it always hit the right column. Verified by a
+                    // render+decode simulation: right column NO-READ before, both columns read after.
+                    // Fix: size the bars so a full barcode (101 modules) + a 10-module quiet zone fit
+                    // inside the column pitch (x2 - x), and widen the print buffer to cover the right
+                    // column's bars + quiet zone. This self-corrects whether the operator set Width as
+                    // a single-column width or as the full 2-up media width.
+                    const int BARCODE_MODULES = 101; // 12-digit subset-C: start + 6 pairs + checksum + stop
+                    const int QUIET_MODULES = 10;    // Code 128 minimum quiet zone (each side)
+                    int columnPitch = x2Coordinate - xCoordinate;
+                    int twoUpNarrow = narrowBarWidth;
+                    if (columnPitch > 0)
+                        twoUpNarrow = Math.Max(1, Math.Min(narrowBarWidth, columnPitch / (BARCODE_MODULES + QUIET_MODULES)));
+                    int twoUpBarDots = BARCODE_MODULES * twoUpNarrow;
+                    int twoUpQuietDots = QUIET_MODULES * twoUpNarrow;
+                    int twoUpPrintWidth = Math.Max(labelWidthDots, x2Coordinate + twoUpBarDots + twoUpQuietDots + 5);
+                    narrowBarWidth = twoUpNarrow; // both columns draw with this so they stay identical
+                    PPLBEmulation.SetUtil.SetPrintWidth(twoUpPrintWidth);
+
+                    // Fit warnings, checked against the real two-up geometry
+                    if (xCoordinate < 0) warnings.Add($"Left X ({xCoordinate}) out of bounds");
+                    if (x2Coordinate <= xCoordinate) warnings.Add($"Right X ({x2Coordinate}) must be greater than Left X ({xCoordinate})");
+                    if (columnPitch > 0 && twoUpBarDots + twoUpQuietDots > columnPitch)
+                        warnings.Add($"Right barcode ({twoUpBarDots}+{twoUpQuietDots} dots) wider than column gap ({columnPitch}); increase X2 spacing or Width");
+                    if (twoUpNarrow < 2)
+                        warnings.Add($"Two-up bars are 1 dot wide (pitch {columnPitch}); may not scan — increase Width or X2 spacing");
 
                     while (remaining > 0)
                     {
