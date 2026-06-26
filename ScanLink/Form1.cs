@@ -198,6 +198,16 @@ namespace ScanLink
             public int total_count = 0;
         }
 
+        // --- Searchable / grouped product-combination dropdown -----------------------------------
+        // The barcode product picker (comboBox_ProductID) is now an editable combo: the user types
+        // in the field to filter (matched across variety/grade/count/carton), and the list is shown
+        // group-wise (grouped by variety, with non-selectable header rows). These hold the full,
+        // unfiltered set for the current crop plus reentrancy guards so our own item-rebuilds don't
+        // re-trigger the search handler.
+        private List<ProductComboItem> _allProductComboItemsForCrop = new List<ProductComboItem>();
+        private bool _suppressProductSearch = false;
+        private string _lastValidProductName = "";
+
         private class ProductCombination
         {
             public string id = null;
@@ -256,6 +266,12 @@ namespace ScanLink
             // wrong because product_id is shared across grades (e.g. product_id 132 = Delta/60/E15D
             // carries both Grade A and Grade B).
             public ScanLink.ProductCombination Combination { get; set; }
+
+            // Group-header rows (e.g. "VARIETY · Turkey") are inserted into the list so combinations
+            // are listed group-wise. Headers are not selectable: they carry no Value and are skipped
+            // on selection / keyboard navigation.
+            public bool IsHeader { get; set; }
+            public string GroupLabel { get; set; }
         }
 
         BarcodePrinter BarcodePrinter;
@@ -2403,9 +2419,17 @@ namespace ScanLink
         private void ResetProductComboForNoSelection()
         {
             if (comboBox_ProductID == null) return;
-            comboBox_ProductID.DataSource = null;
+            _suppressProductSearch = true;
+            try
+            {
+                comboBox_ProductID.DataSource = null;
                 comboBox_ProductID.Items.Clear();
+                comboBox_ProductID.Text = "";
+            }
+            finally { _suppressProductSearch = false; }
             comboBox_ProductID.Enabled = false;
+            _allProductComboItemsForCrop = new List<ProductComboItem>(); // no crop -> nothing to search
+            _lastValidProductName = "";
             _pendingPrinterProductSelection = null;
             SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
         }
@@ -2417,29 +2441,35 @@ namespace ScanLink
             string previousValue = null;
             try { previousValue = comboBox_ProductID.SelectedValue?.ToString(); } catch { previousValue = null; }
 
-            comboBox_ProductID.DataSource = null;
-            comboBox_ProductID.Items.Clear();
+            // Cache the full, unfiltered set for this crop so live search can always filter from the
+            // complete list (and reset to it when the query is cleared).
+            _allProductComboItemsForCrop = (items ?? new List<ProductComboItem>())
+                .Where(i => i != null && !i.IsHeader)
+                .ToList();
 
-            if (items == null || items.Count == 0)
+            if (_allProductComboItemsForCrop.Count == 0)
             {
+                _suppressProductSearch = true;
+                try
+                {
+                    comboBox_ProductID.DataSource = null;
+                    comboBox_ProductID.Items.Clear();
+                    comboBox_ProductID.Text = "";
+                }
+                finally { _suppressProductSearch = false; }
                 comboBox_ProductID.Enabled = false;
+                _lastValidProductName = "";
                 return;
             }
 
-            comboBox_ProductID.DisplayMember = nameof(ProductComboItem.Name);
-            comboBox_ProductID.ValueMember = nameof(ProductComboItem.Value);
-            comboBox_ProductID.DataSource = items;
             comboBox_ProductID.Enabled = true;
 
+            // Render the full list grouped (no active query) ...
+            ApplyProductSearchAndGrouping("");
+
+            // ... then restore the intended selection (skipping header rows).
             string targetValue = !string.IsNullOrEmpty(preferredValue) ? preferredValue : previousValue;
-            if (!string.IsNullOrEmpty(targetValue) && items.Any(i => string.Equals(i.Value, targetValue, StringComparison.OrdinalIgnoreCase)))
-            {
-                comboBox_ProductID.SelectedValue = targetValue;
-            }
-            else
-            {
-                comboBox_ProductID.SelectedIndex = 0;
-            }
+            SelectProductByValue(targetValue);
 
             try
             {
@@ -2449,6 +2479,182 @@ namespace ScanLink
             {
                 _pendingPrinterProductSelection = null;
             }
+        }
+
+        // Rebuilds the dropdown items = current crop's combinations, filtered by `query` (matched
+        // across all fields) and listed group-wise by variety with non-selectable header rows.
+        private void ApplyProductSearchAndGrouping(string query)
+        {
+            if (comboBox_ProductID == null) return;
+
+            string[] terms = (query ?? "")
+                .ToLowerInvariant()
+                .Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            var filtered = _allProductComboItemsForCrop.Where(p => MatchesProductQuery(p, terms));
+            var grouped = BuildGroupedProductItems(filtered);
+
+            _suppressProductSearch = true;
+            try
+            {
+                comboBox_ProductID.DataSource = null;
+                comboBox_ProductID.Items.Clear();
+                comboBox_ProductID.DisplayMember = nameof(ProductComboItem.Name);
+                comboBox_ProductID.ValueMember = nameof(ProductComboItem.Value);
+                comboBox_ProductID.DataSource = grouped;
+                comboBox_ProductID.SelectedIndex = -1; // don't auto-snap to a row while filtering
+            }
+            finally { _suppressProductSearch = false; }
+        }
+
+        // Groups by variety (what the client asked for), sorting groups alphabetically and the rows
+        // inside each by Grade -> Count (natural numeric) -> Carton. A header row is inserted before
+        // each group.
+        private List<ProductComboItem> BuildGroupedProductItems(IEnumerable<ProductComboItem> source)
+        {
+            var result = new List<ProductComboItem>();
+            var groups = source
+                .GroupBy(p => string.IsNullOrWhiteSpace(p.Variety) ? "—" : p.Variety.Trim(), StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var g in groups)
+            {
+                result.Add(new ProductComboItem
+                {
+                    IsHeader = true,
+                    GroupLabel = $"VARIETY · {g.Key}  ({g.Count()})",
+                    Name = $"— {g.Key} —",
+                    Value = null
+                });
+
+                foreach (var item in g
+                    .OrderBy(i => i.Grade ?? "", StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(i => CountSortKey(i.Count))
+                    .ThenBy(i => i.Carton ?? "", StringComparer.OrdinalIgnoreCase))
+                {
+                    result.Add(item);
+                }
+            }
+            return result;
+        }
+
+        // Sort counts/sizes numerically when possible (40, 65, 100) instead of lexically (100, 40, 65).
+        private int CountSortKey(string count)
+        {
+            string digits = new string((count ?? "").Where(char.IsDigit).ToArray());
+            return int.TryParse(digits, out int n) ? n : int.MaxValue;
+        }
+
+        // True if every search term is contained somewhere in the row's fields (AND semantics), so
+        // "tur 60" matches a Turkey / count-60 combination regardless of column order.
+        private bool MatchesProductQuery(ProductComboItem p, string[] terms)
+        {
+            if (terms == null || terms.Length == 0) return true;
+            if (p == null) return false;
+            string hay = $"{p.ProductName} {p.Variety} {p.Grade} {p.Count} {p.Carton} {p.AvgWeightKg}".ToLowerInvariant();
+            foreach (var t in terms)
+                if (hay.IndexOf(t, StringComparison.Ordinal) < 0) return false;
+            return true;
+        }
+
+        // Selects the row whose Value matches (skips headers). Falls back to the first real row.
+        private void SelectProductByValue(string targetValue)
+        {
+            if (comboBox_ProductID == null) return;
+
+            int firstReal = -1;
+            for (int i = 0; i < comboBox_ProductID.Items.Count; i++)
+            {
+                var it = comboBox_ProductID.Items[i] as ProductComboItem;
+                if (it == null || it.IsHeader) continue;
+                if (firstReal < 0) firstReal = i;
+                if (!string.IsNullOrEmpty(targetValue) &&
+                    string.Equals(it.Value, targetValue, StringComparison.OrdinalIgnoreCase))
+                {
+                    comboBox_ProductID.SelectedIndex = i;
+                    _lastValidProductName = it.Name;
+                    return;
+                }
+            }
+            if (firstReal >= 0)
+            {
+                comboBox_ProductID.SelectedIndex = firstReal;
+                _lastValidProductName = (comboBox_ProductID.Items[firstReal] as ProductComboItem)?.Name ?? "";
+            }
+        }
+
+        // User typed in the combo's edit field -> filter the list live and keep it open. Uses
+        // TextUpdate (fires only on real keystrokes, not on programmatic selection) to avoid loops.
+        private void comboBox_ProductID_TextUpdate(object sender, EventArgs e)
+        {
+            if (_suppressProductSearch || comboBox_ProductID == null || !comboBox_ProductID.Enabled) return;
+
+            string query = comboBox_ProductID.Text ?? "";
+            ApplyProductSearchAndGrouping(query);
+
+            // Setting DataSource wipes the edit text; restore the user's query + caret and keep the
+            // list dropped so they see results update as they type. Open the list BEFORE restoring
+            // the caret, because toggling DroppedDown resets the text selection.
+            _suppressProductSearch = true;
+            try
+            {
+                if (comboBox_ProductID.Items.Count > 0 && !comboBox_ProductID.DroppedDown)
+                    comboBox_ProductID.DroppedDown = true;
+                comboBox_ProductID.Text = query;
+                comboBox_ProductID.SelectionStart = query.Length;
+                comboBox_ProductID.SelectionLength = 0;
+            }
+            finally { _suppressProductSearch = false; }
+        }
+
+        // After the list closes on a committed pick, reset it to the full grouped set (keeping the
+        // selection). Done while closed so there's no rebinding glitch on an open list; the next time
+        // the user opens the dropdown they can browse everything, and typing re-filters. If they
+        // closed mid-query without picking, we leave it for Leave to restore.
+        private void comboBox_ProductID_DropDownClosed(object sender, EventArgs e)
+        {
+            if (comboBox_ProductID == null || !comboBox_ProductID.Enabled) return;
+
+            var sel = comboBox_ProductID.SelectedItem as ProductComboItem;
+            if (sel == null || sel.IsHeader) return; // mid-query / no pick -> Leave handles it
+
+            string keepValue = sel.Value;
+            ApplyProductSearchAndGrouping("");
+            SelectProductByValue(keepValue);
+        }
+
+        // When the user leaves the combo with a half-typed/invalid query, snap back to the last valid
+        // selection so we never carry a non-combination string into barcode generation.
+        private void comboBox_ProductID_Leave(object sender, EventArgs e)
+        {
+            if (comboBox_ProductID == null || !comboBox_ProductID.Enabled) return;
+
+            var sel = comboBox_ProductID.SelectedItem as ProductComboItem;
+            if (sel != null && !sel.IsHeader)
+            {
+                _lastValidProductName = sel.Name;
+                return;
+            }
+
+            // No valid row selected (query matched nothing or only a header) -> restore.
+            _suppressProductSearch = true;
+            try
+            {
+                ApplyProductSearchAndGrouping("");
+                if (!string.IsNullOrEmpty(_lastValidProductName))
+                {
+                    int idx = -1;
+                    for (int i = 0; i < comboBox_ProductID.Items.Count; i++)
+                    {
+                        var it = comboBox_ProductID.Items[i] as ProductComboItem;
+                        if (it != null && !it.IsHeader && string.Equals(it.Name, _lastValidProductName, StringComparison.Ordinal))
+                        { idx = i; break; }
+                    }
+                    comboBox_ProductID.SelectedIndex = idx;
+                    if (idx < 0) comboBox_ProductID.Text = "";
+                }
+            }
+            finally { _suppressProductSearch = false; }
         }
 
         private void UpdateProductOptionsForSelectedCrop()
@@ -3118,12 +3324,41 @@ namespace ScanLink
             statusLabel.Text = $"Employee ID updated: '{currentText}' - Click Preview to see visual representation";
             statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
         }
+        // Finds the next non-header row from `start` moving in `dir` (+1 down / -1 up). -1 if none.
+        private int NextSelectableProductIndex(int start, int dir)
+        {
+            if (comboBox_ProductID == null) return -1;
+            for (int i = start + dir; i >= 0 && i < comboBox_ProductID.Items.Count; i += dir)
+            {
+                var it = comboBox_ProductID.Items[i] as ProductComboItem;
+                if (it != null && !it.IsHeader) return i;
+            }
+            return -1;
+        }
+
         private void comboBox_ProductID_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (comboBox_ProductID == null || !comboBox_ProductID.Enabled)
             {
                 return;
             }
+
+            // Ignore selection churn caused by our own item rebuilds during search.
+            if (_suppressProductSearch) return;
+
+            // Group headers aren't selectable: if the user lands on one (arrow keys), hop to the
+            // nearest real row and let that re-entry do the real work.
+            var current = comboBox_ProductID.SelectedItem as ProductComboItem;
+            if (current != null && current.IsHeader)
+            {
+                int idx = comboBox_ProductID.SelectedIndex;
+                int next = NextSelectableProductIndex(idx, +1);
+                if (next < 0) next = NextSelectableProductIndex(idx, -1);
+                if (next >= 0 && next != idx) comboBox_ProductID.SelectedIndex = next;
+                return;
+            }
+
+            if (current != null) _lastValidProductName = current.Name;
 
             string selectedValue = comboBox_ProductID.SelectedValue?.ToString() ?? "";
             string displayText = comboBox_ProductID.Text ?? "";
@@ -3160,6 +3395,24 @@ namespace ScanLink
                 using (Brush editBrush = new SolidBrush(e.ForeColor))
                 {
                     e.Graphics.DrawString(text, e.Font, editBrush, e.Bounds, new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
+                }
+                return;
+            }
+
+            // Group-header row: a tinted band with the variety label, visually distinct and not
+            // highlighted as a selectable item.
+            if (item != null && item.IsHeader)
+            {
+                using (var headerBg = new SolidBrush(Color.FromArgb(235, 240, 245)))
+                using (var headerLine = new Pen(Color.FromArgb(200, 210, 220)))
+                using (var headerText = new SolidBrush(Color.FromArgb(52, 73, 94)))
+                using (var headerFont = new Font(e.Font, FontStyle.Bold))
+                {
+                    e.Graphics.FillRectangle(headerBg, e.Bounds);
+                    e.Graphics.DrawLine(headerLine, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1);
+                    Rectangle hr = new Rectangle(e.Bounds.X + 6, e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height);
+                    e.Graphics.DrawString(item.GroupLabel ?? item.Name, headerFont, headerText, hr,
+                        new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter });
                 }
                 return;
             }

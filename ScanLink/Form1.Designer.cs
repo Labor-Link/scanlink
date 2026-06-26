@@ -1317,7 +1317,11 @@ namespace ScanLink
             // 
             // comboBox_ProductID
             // 
-            this.comboBox_ProductID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            // Editable so the user can type to search the combinations (filtered live across all
+            // fields). AutoComplete is left off because we do our own contains-match + grouping.
+            this.comboBox_ProductID.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.comboBox_ProductID.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.None;
+            this.comboBox_ProductID.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.None;
             this.comboBox_ProductID.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
             this.comboBox_ProductID.ItemHeight = 22;
             this.comboBox_ProductID.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -1331,6 +1335,9 @@ namespace ScanLink
             this.comboBox_ProductID.DropDownHeight = 350;
             this.comboBox_ProductID.TabIndex = 1;
             this.comboBox_ProductID.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.comboBox_ProductID_DrawItem);
+            this.comboBox_ProductID.TextUpdate += new System.EventHandler(this.comboBox_ProductID_TextUpdate);
+            this.comboBox_ProductID.Leave += new System.EventHandler(this.comboBox_ProductID_Leave);
+            this.comboBox_ProductID.DropDownClosed += new System.EventHandler(this.comboBox_ProductID_DropDownClosed);
 
             
             //
