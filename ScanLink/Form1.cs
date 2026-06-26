@@ -48,6 +48,27 @@ namespace ScanLink
         private DateTime _lastScannerRestartRequestUtc = DateTime.MinValue;
         private ScannerComPortManager _scannerComPortManager;
         private FileSystemWatcher _scansFileWatcher;
+
+        // --- Full-history metrics index ---------------------------------------------------------
+        // The on-disk display buffer (scans.txt) is capped at 300 rows for performance, so counting
+        // off it (Today's / Last Hour / Total filtered Scans) maxes out at 300 even when the
+        // packhouse scanned thousands. The true history lives in scans_backup.csv (append-only,
+        // uncapped). We keep a compact in-memory projection of it - just the fields the stats and
+        // filters need - so the numbers are accurate while the grid still renders only a page.
+        // Refreshed incrementally: we remember the last byte offset read and only parse what PS has
+        // appended since, so per-scan refresh stays cheap (no full re-read, no extra API calls).
+        private struct ScanMeta
+        {
+            public DateTime Ts;       // local timestamp (date + time)
+            public string Crop;
+            public string Product;
+            public string Line;
+            public string Block;
+        }
+        private readonly List<ScanMeta> _metricsIndex = new List<ScanMeta>();
+        private readonly object _metricsLock = new object();
+        private string _metricsCsvPath = null;
+        private long _metricsCsvOffset = 0;
         private System.Windows.Forms.Timer _scanRefreshTimer = null;
         private System.Windows.Forms.Timer _fileChangeDebounceTimer;
         // --- COM scanner auto-reconnect ---
@@ -4766,6 +4787,10 @@ namespace ScanLink
         {
             try
             {
+                // Keep the full-history metrics index current before we recompute the stat labels.
+                // Cheap: only the bytes appended to scans_backup.csv since last load are parsed.
+                RefreshMetricsIndex();
+
                 // Prefer ProgramData scans file; fallback to bin root then project file
                 string programDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink");
                 string programDataScansFile = Path.Combine(programDataDir, "scans.txt");
@@ -6774,7 +6799,10 @@ namespace ScanLink
 
             if (totalFilteredScansLabel != null)
             {
-                totalFilteredScansLabel.Text = $"Total filtered Scans: {totalRows}";
+                // Count over the full history index, not the 300-row display buffer, so the number
+                // reflects everything that matches the filters (e.g. a 1-26 June range shows the
+                // real total, not just what fits in the recent-activity grid).
+                totalFilteredScansLabel.Text = $"Total filtered Scans: {CountFilteredScans()}";
             }
 
             if (previousPageButton != null)
@@ -7007,23 +7035,110 @@ namespace ScanLink
             SetComboItems(cropIdComboBox, items, null, selectFirstOnMissing: true);
         }
 
+        // Path to the uncapped, append-only history written by scan_capture.ps1.
+        private string GetBackupCsvPath()
+        {
+            string programDataDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink");
+            return Path.Combine(programDataDir, "scans_backup.csv");
+        }
+
+        // Bring the in-memory metrics index up to date with scans_backup.csv. Reads only the bytes
+        // appended since the last call (tracked by _metricsCsvOffset), so the cost per refresh is
+        // proportional to new scans, not total history. Re-seeds from scratch if the file was
+        // truncated/rotated (length shrank below our offset) or the path changed.
+        private void RefreshMetricsIndex()
+        {
+            try
+            {
+                string path = GetBackupCsvPath();
+                lock (_metricsLock)
+                {
+                    if (!File.Exists(path))
+                    {
+                        _metricsIndex.Clear();
+                        _metricsCsvOffset = 0;
+                        _metricsCsvPath = path;
+                        return;
+                    }
+
+                    long len = new FileInfo(path).Length;
+                    if (!string.Equals(_metricsCsvPath, path, StringComparison.OrdinalIgnoreCase) || len < _metricsCsvOffset)
+                    {
+                        // New file or it shrank -> rebuild from the top.
+                        _metricsIndex.Clear();
+                        _metricsCsvOffset = 0;
+                        _metricsCsvPath = path;
+                    }
+
+                    if (len <= _metricsCsvOffset)
+                        return; // nothing new appended
+
+                    using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    {
+                        fs.Seek(_metricsCsvOffset, SeekOrigin.Begin);
+                        int toRead = (int)(len - _metricsCsvOffset);
+                        byte[] buf = new byte[toRead];
+                        int filled = 0;
+                        while (filled < toRead)
+                        {
+                            int n = fs.Read(buf, filled, toRead - filled);
+                            if (n <= 0) break;
+                            filled += n;
+                        }
+
+                        // Only consume up to the last complete line so a half-written trailing line
+                        // (PS mid-append) is picked up on the next refresh instead of being mangled.
+                        int lastNl = Array.LastIndexOf(buf, (byte)0x0A, filled - 1);
+                        if (lastNl < 0)
+                            return; // no complete new line yet
+
+                        string text = Encoding.UTF8.GetString(buf, 0, lastNl + 1);
+                        _metricsCsvOffset += (lastNl + 1); // advance by exact bytes consumed
+
+                        foreach (var raw in text.Split('\n'))
+                        {
+                            string line = raw.TrimEnd('\r');
+                            if (string.IsNullOrWhiteSpace(line)) continue;
+                            if (line.StartsWith("Timestamp,", StringComparison.OrdinalIgnoreCase)) continue; // header
+
+                            // Columns: Timestamp,EmployeeId,CropId,ProductId,LineNumber,BlockNumber,...
+                            // The fields we need are the first six; later device fields may contain
+                            // commas, so we never index past column 5.
+                            string[] parts = line.Split(',');
+                            if (parts.Length < 6) continue;
+                            if (!DateTime.TryParse(parts[0], out DateTime ts)) continue;
+
+                            _metricsIndex.Add(new ScanMeta
+                            {
+                                Ts = ts,
+                                Crop = parts[2],
+                                Product = parts[3],
+                                Line = parts[4],
+                                Block = parts[5]
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[METRICS] index refresh failed: {ex.Message}");
+            }
+        }
+
         private void UpdateCountLabels()
         {
-            if (allScannerData == null || allScannerData.Rows.Count == 0)
-            {
-                if (todayScansLabel != null)
-                    todayScansLabel.Text = "Today's Scans: 0";
-                if (lastHourScansLabel != null)
-                    lastHourScansLabel.Text = "Last Hour Scans: 0";
-                return;
-            }
+            // Make sure the index reflects the latest scans before counting. Cheap when nothing new
+            // has been appended (returns immediately once the byte offset is caught up).
+            RefreshMetricsIndex();
 
             // Count today's scans
             int todayScans = CountTodaysScans();
-            
+
             // Count last hour scans
             int lastHourScans = CountLastHourScans();
-            
+
             // Update labels
             if (todayScansLabel != null)
                 todayScansLabel.Text = $"Today's Scans: {todayScans}";
@@ -7033,45 +7148,51 @@ namespace ScanLink
 
         private int CountTodaysScans()
         {
-            if (allScannerData == null || allScannerData.Rows.Count == 0)
-                return 0;
-
             DateTime today = DateTime.Today;
             int count = 0;
-
-            foreach (DataRow row in allScannerData.Rows)
+            lock (_metricsLock)
             {
-                if (DateTime.TryParse(row["Date"]?.ToString(), out DateTime scanDate))
-                {
-                    if (scanDate.Date == today)
-                    {
-                        count++;
-                    }
-                }
+                foreach (var m in _metricsIndex)
+                    if (m.Ts.Date == today) count++;
             }
-
             return count;
         }
 
         private int CountLastHourScans()
         {
-            if (allScannerData == null || allScannerData.Rows.Count == 0)
-                return 0;
-
             DateTime oneHourAgo = DateTime.Now.AddHours(-1);
             int count = 0;
-
-            foreach (DataRow row in allScannerData.Rows)
+            lock (_metricsLock)
             {
-                if (DateTime.TryParse($"{row["Date"]} {row["Time"]}", out DateTime scanDateTime))
+                foreach (var m in _metricsIndex)
+                    if (m.Ts >= oneHourAgo) count++;
+            }
+            return count;
+        }
+
+        // Total scans matching the currently-applied filters, counted over the FULL history index
+        // (not the 300-row display buffer). Mirrors the predicate in ApplyFiltersToData so the label
+        // and the grid filter agree on which rows qualify.
+        private int CountFilteredScans()
+        {
+            int count = 0;
+            lock (_metricsLock)
+            {
+                foreach (var m in _metricsIndex)
                 {
-                    if (scanDateTime >= oneHourAgo)
-                    {
-                        count++;
-                    }
+                    if (filterDateFrom.HasValue && m.Ts.Date < filterDateFrom.Value.Date) continue;
+                    if (filterDateTo.HasValue && m.Ts.Date > filterDateTo.Value.Date) continue;
+                    if (!string.IsNullOrEmpty(filterBlockNumber) &&
+                        (m.Block ?? "").IndexOf(filterBlockNumber, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    if (!string.IsNullOrEmpty(filterLineNumber) &&
+                        (m.Line ?? "").IndexOf(filterLineNumber, StringComparison.OrdinalIgnoreCase) < 0) continue;
+                    if (!string.IsNullOrEmpty(filterProductId) &&
+                        !(m.Product ?? "").Equals(filterProductId, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!string.IsNullOrEmpty(filterCropId) &&
+                        !(m.Crop ?? "").Equals(filterCropId, StringComparison.OrdinalIgnoreCase)) continue;
+                    count++;
                 }
             }
-
             return count;
         }
 
