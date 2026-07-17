@@ -8,6 +8,17 @@ using System.Web.Script.Serialization;
 
 namespace ScanLink
 {
+    // The active (or most recent) season for a site, as configured on the web dashboard.
+    public class SeasonInfo
+    {
+        public string Id { get; set; }
+        public string SiteId { get; set; }
+        public string Name { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime? EndDate { get; set; } // null = ongoing season, no end date set yet
+        public bool IsActive { get; set; }
+    }
+
     public class DailyStatsService
     {
         private readonly ApiAuthService _apiAuthService;
@@ -56,6 +67,50 @@ namespace ScanLink
                 System.Diagnostics.Debug.WriteLine($"Failed to get daily stats: {ex.Message}");
             }
             return new Dictionary<string, string>();
+        }
+
+        // Returns the site's active season (start/end date as configured on the web dashboard),
+        // or null if none is configured or the site has no season set up yet.
+        public async Task<SeasonInfo> GetActiveSeasonAsync(string siteId)
+        {
+            try
+            {
+                string url = $"{_baseUrl}/user/v1/scan-link/season?siteId={siteId}";
+                var response = await _apiAuthService.MakeAuthenticatedRequestAsync(url, HttpMethod.Get);
+                if (!response.Success || string.IsNullOrWhiteSpace(response.Data) || response.Data == "null")
+                    return null;
+
+                var data = _jsonSerializer.Deserialize<Dictionary<string, object>>(response.Data);
+                if (data == null || !data.ContainsKey("start_date") || data["start_date"] == null)
+                    return null;
+
+                DateTime startDate;
+                if (!DateTime.TryParse(data["start_date"].ToString(), out startDate))
+                    return null;
+
+                DateTime? endDate = null;
+                if (data.ContainsKey("end_date") && data["end_date"] != null)
+                {
+                    DateTime parsedEnd;
+                    if (DateTime.TryParse(data["end_date"].ToString(), out parsedEnd))
+                        endDate = parsedEnd;
+                }
+
+                return new SeasonInfo
+                {
+                    Id = data.ContainsKey("id") ? data["id"]?.ToString() : null,
+                    SiteId = siteId,
+                    Name = data.ContainsKey("name") ? data["name"]?.ToString() : null,
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    IsActive = data.ContainsKey("is_active") && data["is_active"] is bool b && b
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to get active season: {ex.Message}");
+                return null;
+            }
         }
 
         public async Task<(bool Success, string ErrorMessage, string Payload)> SaveDailyStatsAsync(string siteId, DateTime date, Dictionary<string, string> stats)

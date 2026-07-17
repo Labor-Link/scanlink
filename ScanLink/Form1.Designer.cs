@@ -66,9 +66,12 @@ namespace ScanLink
             this.productIdLabel = new System.Windows.Forms.Label();
             this.cropIdLabel = new System.Windows.Forms.Label();
             this.cropIdComboBox = new System.Windows.Forms.ComboBox();
+            this.todayScansCaptionLabel = new System.Windows.Forms.Label();
             this.todayScansLabel = new System.Windows.Forms.Label();
+            this.lastHourScansCaptionLabel = new System.Windows.Forms.Label();
             this.lastHourScansLabel = new System.Windows.Forms.Label();
-            this.totalFilteredScansLabel = new System.Windows.Forms.Label();
+            this.totalFilteredScansCaptionLabel = new System.Windows.Forms.Label();
+            this.seasonScansLabel = new System.Windows.Forms.Label();
             this.statsPanel = new System.Windows.Forms.TableLayoutPanel();
             this.paginationPanel = new System.Windows.Forms.TableLayoutPanel();
             this.filtersPanel = new System.Windows.Forms.TableLayoutPanel();
@@ -142,6 +145,7 @@ namespace ScanLink
             this.toolTip = new System.Windows.Forms.ToolTip(this.components);
             this.label_CropID = new System.Windows.Forms.Label();
             this.comboBox_CropID = new System.Windows.Forms.ComboBox();
+            this.button_AddCombination = new System.Windows.Forms.Button();
             this.cropIdLabel = new System.Windows.Forms.Label();
             this.cropIdComboBox = new System.Windows.Forms.ComboBox();
             this.label_ProductDetail = new System.Windows.Forms.Label();
@@ -492,7 +496,7 @@ namespace ScanLink
             this.statsPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33333F));
             this.statsPanel.Controls.Add(this.todayScansLabel, 0, 0);
             this.statsPanel.Controls.Add(this.lastHourScansLabel, 1, 0);
-            this.statsPanel.Controls.Add(this.totalFilteredScansLabel, 2, 0);
+            this.statsPanel.Controls.Add(this.seasonScansLabel, 2, 0);
             this.statsPanel.Location = new System.Drawing.Point(20, 350);
             this.statsPanel.Name = "statsPanel";
             this.statsPanel.RowCount = 1;
@@ -912,17 +916,17 @@ namespace ScanLink
             this.lastHourScansLabel.Visible = true;
 
             //
-            // totalFilteredScansLabel
+            // seasonScansLabel
             //
-            this.totalFilteredScansLabel.AutoSize = true;
-            this.totalFilteredScansLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-            this.totalFilteredScansLabel.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215);
-            this.totalFilteredScansLabel.Location = new System.Drawing.Point(560, 350);
-            this.totalFilteredScansLabel.Name = "totalFilteredScansLabel";
-            this.totalFilteredScansLabel.Size = new System.Drawing.Size(140, 19);
-            this.totalFilteredScansLabel.TabIndex = 23;
-            this.totalFilteredScansLabel.Text = "Total filtered Scans: 0";
-            this.totalFilteredScansLabel.Visible = true;
+            this.seasonScansLabel.AutoSize = true;
+            this.seasonScansLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
+            this.seasonScansLabel.ForeColor = System.Drawing.Color.FromArgb(0, 120, 215);
+            this.seasonScansLabel.Location = new System.Drawing.Point(560, 350);
+            this.seasonScansLabel.Name = "seasonScansLabel";
+            this.seasonScansLabel.Size = new System.Drawing.Size(140, 19);
+            this.seasonScansLabel.TabIndex = 23;
+            this.seasonScansLabel.Text = "Season Scans: —";
+            this.seasonScansLabel.Visible = true;
 
             //
             // runScannerScriptButton
@@ -1230,6 +1234,7 @@ namespace ScanLink
             this.barcodeTextPanel.Controls.Add(this.comboBox_ProductID);
             this.barcodeTextPanel.Controls.Add(this.label_CropID);
             this.barcodeTextPanel.Controls.Add(this.comboBox_CropID);
+            this.barcodeTextPanel.Controls.Add(this.button_AddCombination);
             this.barcodeTextPanel.Dock = System.Windows.Forms.DockStyle.Top;
             this.barcodeTextPanel.Location = new System.Drawing.Point(20, 20);
             this.barcodeTextPanel.Name = "barcodeTextPanel";
@@ -1332,6 +1337,22 @@ namespace ScanLink
             this.comboBox_ProductID.Size = new System.Drawing.Size(430, 24);
             this.comboBox_ProductID.DropDownWidth = 700; // Increased width for better column visibility
             this.comboBox_ProductID.MaxDropDownItems = 15;
+            //
+            // button_AddCombination
+            //
+            this.button_AddCombination.BackColor = System.Drawing.Color.FromArgb(13, 110, 253);
+            this.button_AddCombination.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.button_AddCombination.FlatAppearance.BorderSize = 0;
+            this.button_AddCombination.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.button_AddCombination.ForeColor = System.Drawing.Color.White;
+            this.button_AddCombination.Location = new System.Drawing.Point(610, 70);
+            this.button_AddCombination.Name = "button_AddCombination";
+            this.button_AddCombination.Size = new System.Drawing.Size(90, 24);
+            this.button_AddCombination.TabIndex = 9;
+            this.button_AddCombination.Text = "+ New Combo";
+            this.button_AddCombination.UseVisualStyleBackColor = false;
+            this.toolTip.SetToolTip(this.button_AddCombination, "Create a new product combination from existing crop/variety/grade/count/carton values");
+            this.button_AddCombination.Click += new System.EventHandler(this.button_AddCombination_Click);
             this.comboBox_ProductID.DropDownHeight = 350;
             this.comboBox_ProductID.TabIndex = 1;
             this.comboBox_ProductID.DrawItem += new System.Windows.Forms.DrawItemEventHandler(this.comboBox_ProductID_DrawItem);
@@ -2151,6 +2172,7 @@ namespace ScanLink
         private System.Windows.Forms.ComboBox comboBox_ProductID;
         private System.Windows.Forms.Label label_CropID;
         private System.Windows.Forms.ComboBox comboBox_CropID;
+        private System.Windows.Forms.Button button_AddCombination;
         private System.Windows.Forms.Label label_ProductDetail;
         private System.Windows.Forms.Label label_count;
         private System.Windows.Forms.NumericUpDown numericUpDown_count;
@@ -2224,7 +2246,7 @@ namespace ScanLink
         private System.Windows.Forms.Label productIdLabel;
         private System.Windows.Forms.Label todayScansLabel;
         private System.Windows.Forms.Label lastHourScansLabel;
-        private System.Windows.Forms.Label totalFilteredScansLabel;
+        private System.Windows.Forms.Label seasonScansLabel;
         private System.Windows.Forms.TableLayoutPanel statsPanel;
         private System.Windows.Forms.TableLayoutPanel paginationPanel;
         private System.Windows.Forms.TableLayoutPanel filtersPanel;

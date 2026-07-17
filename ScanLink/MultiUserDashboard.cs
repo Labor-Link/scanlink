@@ -134,6 +134,11 @@ namespace ScanLink
         public MultiUserDashboard(ApiAuthService apiAuthService, Dictionary<string, object> tokenPayload)
         {
             InitializeComponent();
+            try
+            {
+                this.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            }
+            catch { /* icon is cosmetic; fall back to default if extraction fails */ }
             _apiAuthService = apiAuthService;
             _jsonSerializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
             _tokenPayload = tokenPayload;

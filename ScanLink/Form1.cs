@@ -176,6 +176,7 @@ namespace ScanLink
         private Panel activeScannersPanel;
 
         private DailyStatsService _dailyStatsService;
+        private SeasonInfo _activeSeason; // fetched once at login; null if the site has no season configured
         private Panel dailyStatsPanel;
         private DateTimePicker dtpDailyStats;
         private TextBox txtStatHours, txtStatWage, txtStatActiveEmps, txtStatPackers, txtStatBoxes;
@@ -299,6 +300,11 @@ namespace ScanLink
         public Form1()
         {
             InitializeComponent();
+            try
+            {
+                this.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            }
+            catch { /* icon is cosmetic; fall back to default if extraction fails */ }
             _apiAuthService = new ApiAuthService();
             _dailyStatsService = new DailyStatsService(_apiAuthService);
             
@@ -1192,6 +1198,14 @@ namespace ScanLink
                             // Continue anyway - fallback logic will be used
                         }
 
+                        // Fetch the site's active season so the "Season Scans" stat can filter
+                        // scans_backup.csv by the same season boundaries the web dashboard uses.
+                        string activeSeasonSiteId = _apiAuthService?.GetEffectiveSiteId();
+                        if (!string.IsNullOrEmpty(activeSeasonSiteId))
+                        {
+                            _activeSeason = await _dailyStatsService.GetActiveSeasonAsync(activeSeasonSiteId);
+                        }
+
                         // Hide loading UI and switch to scanner panel
                         loadingProgressBar.Visible = false;
                         loadingStatusLabel.Visible = false;
@@ -1411,6 +1425,28 @@ namespace ScanLink
             if (_apiAuthService == null) return "No auth service";
             if (!_apiAuthService.IsTokenValid()) return "Token invalid or expired";
             return "Token valid";
+        }
+
+        private void button_AddCombination_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new AddCombinationDialog(_productCombinationsService))
+            {
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Cache was already refreshed by CreateProductCombinationAsync; just
+                    // rebuild the on-screen dropdowns from it (same pattern used after login).
+                    _scannerProductItems = null;
+                    _cropOptionsCache = null;
+                    PopulateProductIdComboBox();
+                    PopulateCropIdComboBox();
+
+                    if (statusLabel != null)
+                    {
+                        statusLabel.Text = $"✅ Combination created (id {dialog.CreatedCombination?.id})";
+                        statusLabel.ForeColor = Color.FromArgb(39, 174, 96);
+                    }
+                }
+            }
         }
 
         private void button_FetchEmployees_Click(object sender, EventArgs e)
@@ -3784,11 +3820,11 @@ namespace ScanLink
 
             // Barcode number is now shown in the header line (no longer below bars)
 
-            // Detail lines below the barcode - mirror of the printed label (employee name; count | grade)
+            // Detail lines below the barcode - mirror of the printed label (employee name; variety | count | grade)
             string previewEmpName = GetEmployeeNameForBarcode(BarcodeID);
             var previewCombo = GetSelectedProductCombination();
             string previewLine2 = string.Join("  |  ",
-                new[] { previewCombo?.count_name, previewCombo?.grade_name }
+                new[] { previewCombo?.variety_name, previewCombo?.count_name, previewCombo?.grade_name }
                     .Where(s => !string.IsNullOrWhiteSpace(s)));
             // Mirror the print-side height guard: only show lines that fit the label height.
             const int previewDetailTextHeight = 14;
@@ -4856,12 +4892,12 @@ namespace ScanLink
                 int stickerHeight = (int)numericUpDown_height.Value;
 
                 // Build the small bold detail lines printed below the barcode (values only, no keys):
-                //   line 1 = employee name; line 2 = count | grade.
+                //   line 1 = employee name; line 2 = variety | count | grade.
                 // Name is keyed off the actual barcode's employee segment, never the editable textbox.
                 string detailEmpName = GetEmployeeNameForBarcode(BarcodeID);
                 var detailCombo = GetSelectedProductCombination();
                 string detailLine2 = string.Join("  |  ",
-                    new[] { detailCombo?.count_name, detailCombo?.grade_name }
+                    new[] { detailCombo?.variety_name, detailCombo?.count_name, detailCombo?.grade_name }
                         .Where(s => !string.IsNullOrWhiteSpace(s)));
                 // Below the bars (bars are Y=20..130); does not affect bar height/width.
                 const int detailLine1Y = 134;
@@ -7050,14 +7086,6 @@ namespace ScanLink
                 pageInfoLabel.Text = $"Page {currentPage} of {totalPages}";
             }
 
-            if (totalFilteredScansLabel != null)
-            {
-                // Count over the full history index, not the 300-row display buffer, so the number
-                // reflects everything that matches the filters (e.g. a 1-26 June range shows the
-                // real total, not just what fits in the recent-activity grid).
-                totalFilteredScansLabel.Text = $"Total filtered Scans: {CountFilteredScans()}";
-            }
-
             if (previousPageButton != null)
             {
                 previousPageButton.Enabled = currentPage > 1;
@@ -7397,16 +7425,28 @@ namespace ScanLink
                 todayScansLabel.Text = $"Today's Scans: {todayScans}";
             if (lastHourScansLabel != null)
                 lastHourScansLabel.Text = $"Last Hour Scans: {lastHourScans}";
+            if (seasonScansLabel != null)
+            {
+                seasonScansLabel.Text = _activeSeason != null
+                    ? $"Season Scans: {CountSeasonScans()}"
+                    : "Season Scans: N/A";
+            }
         }
 
         private int CountTodaysScans()
         {
-            DateTime today = DateTime.Today;
+            // The web dashboard's "Today" KPI windows scans by UTC calendar day (00:00-23:59:59
+            // UTC), not the local (SAST) calendar day. scans_backup.csv timestamps are local, so
+            // convert the UTC day boundary to local time before comparing - that way both UIs
+            // agree on which scans count as "today" instead of disagreeing near midnight SAST.
+            DateTime utcTodayStart = DateTime.UtcNow.Date;
+            DateTime windowStart = utcTodayStart.ToLocalTime();
+            DateTime windowEnd = utcTodayStart.AddDays(1).ToLocalTime();
             int count = 0;
             lock (_metricsLock)
             {
                 foreach (var m in _metricsIndex)
-                    if (m.Ts.Date == today) count++;
+                    if (m.Ts >= windowStart && m.Ts < windowEnd) count++;
             }
             return count;
         }
@@ -7423,28 +7463,20 @@ namespace ScanLink
             return count;
         }
 
-        // Total scans matching the currently-applied filters, counted over the FULL history index
-        // (not the 300-row display buffer). Mirrors the predicate in ApplyFiltersToData so the label
-        // and the grid filter agree on which rows qualify.
-        private int CountFilteredScans()
+        // Total scans within the site's active season (start_date..end_date, or today if the
+        // season is still ongoing/has no end_date yet), counted over the full history index -
+        // i.e. the same season boundary the web dashboard would use, filtered from the local CSV.
+        private int CountSeasonScans()
         {
+            if (_activeSeason == null) return 0;
+
+            DateTime start = _activeSeason.StartDate.Date;
+            DateTime end = (_activeSeason.EndDate ?? DateTime.Today).Date;
             int count = 0;
             lock (_metricsLock)
             {
                 foreach (var m in _metricsIndex)
-                {
-                    if (filterDateFrom.HasValue && m.Ts.Date < filterDateFrom.Value.Date) continue;
-                    if (filterDateTo.HasValue && m.Ts.Date > filterDateTo.Value.Date) continue;
-                    if (!string.IsNullOrEmpty(filterBlockNumber) &&
-                        (m.Block ?? "").IndexOf(filterBlockNumber, StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    if (!string.IsNullOrEmpty(filterLineNumber) &&
-                        (m.Line ?? "").IndexOf(filterLineNumber, StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    if (!string.IsNullOrEmpty(filterProductId) &&
-                        !(m.Product ?? "").Equals(filterProductId, StringComparison.OrdinalIgnoreCase)) continue;
-                    if (!string.IsNullOrEmpty(filterCropId) &&
-                        !(m.Crop ?? "").Equals(filterCropId, StringComparison.OrdinalIgnoreCase)) continue;
-                    count++;
-                }
+                    if (m.Ts.Date >= start && m.Ts.Date <= end) count++;
             }
             return count;
         }

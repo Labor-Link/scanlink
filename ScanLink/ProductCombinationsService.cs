@@ -63,6 +63,17 @@ namespace ScanLink
         public int total_count { get; set; }
     }
 
+    // Request body for POST /product-combinations - combines existing master values into a new row.
+    public class CreateProductCombinationRequest
+    {
+        public string crop_id { get; set; }
+        public string variety_id { get; set; }
+        public string grade_id { get; set; }
+        public string count_id { get; set; }
+        public string carton_type_id { get; set; }
+        public double avg_weight_kg { get; set; }
+    }
+
     public class ProductCombinationsService
     {
         private readonly ApiAuthService _apiAuthService;
@@ -202,6 +213,128 @@ namespace ScanLink
                 })
                 .OrderBy(v => v.variety_name)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Gets unique grades from cached combinations
+        /// </summary>
+        public List<GradeItem> GetUniqueGrades()
+        {
+            if (_cachedCombinations == null || _cachedCombinations.Count == 0)
+                return new List<GradeItem>();
+
+            return _cachedCombinations
+                .GroupBy(c => c.grade_id)
+                .Select(g => new GradeItem
+                {
+                    grade_id = g.Key,
+                    grade_name = g.First().grade_name
+                })
+                .OrderBy(g => g.grade_name)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Gets unique counts from cached combinations
+        /// </summary>
+        public List<CountItem> GetUniqueCounts()
+        {
+            if (_cachedCombinations == null || _cachedCombinations.Count == 0)
+                return new List<CountItem>();
+
+            return _cachedCombinations
+                .GroupBy(c => c.count_id)
+                .Select(g => new CountItem
+                {
+                    count_id = g.Key,
+                    count_name = g.First().count_name
+                })
+                .OrderBy(c => c.count_name)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Gets unique carton types from cached combinations
+        /// </summary>
+        public List<ProductCombination> GetUniqueCartonTypes()
+        {
+            if (_cachedCombinations == null || _cachedCombinations.Count == 0)
+                return new List<ProductCombination>();
+
+            return _cachedCombinations
+                .GroupBy(c => c.carton_type_id)
+                .Select(g => g.First())
+                .OrderBy(c => c.carton_type_name)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Creates a new product combination on the server from EXISTING crop/variety/grade/count/
+        /// carton-type values (no new master data is created). On success the local cache is
+        /// refreshed so the new combination is immediately available in the dropdowns.
+        /// </summary>
+        public async Task<ApiAuthService.ApiResponse<ProductCombination>> CreateProductCombinationAsync(
+            string cropId, string varietyId, string gradeId, string countId, string cartonTypeId, double avgWeightKg)
+        {
+            if (!_apiAuthService.IsTokenValid())
+            {
+                return new ApiAuthService.ApiResponse<ProductCombination>
+                {
+                    Success = false,
+                    ErrorMessage = "No valid authentication token available"
+                };
+            }
+
+            try
+            {
+                var url = "https://backend-stage.labourlinksoftware.co.za/user/v1/scan-link/product-combinations";
+                var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiAuthService.GetCurrentToken());
+                request.Headers.Add("Accept", "application/json");
+
+                var body = new CreateProductCombinationRequest
+                {
+                    crop_id = cropId,
+                    variety_id = varietyId,
+                    grade_id = gradeId,
+                    count_id = countId,
+                    carton_type_id = cartonTypeId,
+                    avg_weight_kg = avgWeightKg
+                };
+                request.Content = new System.Net.Http.StringContent(
+                    _jsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.SendAsync(request);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var created = _jsonSerializer.Deserialize<ProductCombination>(responseContent);
+                    // Refresh the cache so the new combination shows up in dropdowns right away.
+                    await FetchAndCacheProductCombinationsAsync();
+                    return new ApiAuthService.ApiResponse<ProductCombination>
+                    {
+                        Success = true,
+                        Data = created,
+                        StatusCode = (int)response.StatusCode
+                    };
+                }
+
+                return new ApiAuthService.ApiResponse<ProductCombination>
+                {
+                    Success = false,
+                    ErrorMessage = $"API request failed: {response.StatusCode} - {responseContent}",
+                    StatusCode = (int)response.StatusCode
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiAuthService.ApiResponse<ProductCombination>
+                {
+                    Success = false,
+                    ErrorMessage = $"Exception occurred: {ex.Message}"
+                };
+            }
         }
 
         /// <summary>

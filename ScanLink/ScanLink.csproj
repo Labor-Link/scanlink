@@ -12,7 +12,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>false</Deterministic>
     <StartupObject>ScanLink.Program</StartupObject>
-    <ApplicationIcon></ApplicationIcon>
+    <ApplicationIcon>ScanLinkLogo.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup>
     <!-- Force tasks to run in-proc to avoid x86 task host issues when using dotnet build -->
@@ -122,7 +122,8 @@
     <Compile Include="ScanLogUploadService.cs" />     
     <Compile Include="ProductCombinationsService.cs" />
     <Compile Include="DailyStatsService.cs" />
-    <Compile Include="EmployeeSelectionDialog.cs" />  
+    <Compile Include="EmployeeSelectionDialog.cs" />
+    <Compile Include="AddCombinationDialog.cs" />  
     <Compile Include="Program.cs" />
     <Compile Include="ShowException.cs" />
     <Compile Include="ErrorDialog.cs">
