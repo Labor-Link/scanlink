@@ -304,7 +304,26 @@ namespace ScanLink
                 request.Content = new System.Net.Http.StringContent(
                     _jsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
 
-                var response = await _httpClient.SendAsync(request);
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _httpClient.SendAsync(request);
+                }
+                catch (Exception netEx)
+                {
+                    // HttpClient wraps DNS/connection-refused/no-network failures as
+                    // HttpRequestException (and slow/unreachable hosts as TaskCanceledException
+                    // via the request timeout) - both mean "couldn't reach the server", not a
+                    // server-side rejection, so give the user something actionable instead of
+                    // the raw .NET exception text.
+                    System.Diagnostics.Debug.WriteLine($"CreateProductCombinationAsync network error: {netEx}");
+                    return new ApiAuthService.ApiResponse<ProductCombination>
+                    {
+                        Success = false,
+                        ErrorMessage = "No connection to the server. Check your internet connection and try again."
+                    };
+                }
+
                 var responseContent = await response.Content.ReadAsStringAsync();
 
                 if (response.IsSuccessStatusCode)
@@ -323,17 +342,51 @@ namespace ScanLink
                 return new ApiAuthService.ApiResponse<ProductCombination>
                 {
                     Success = false,
-                    ErrorMessage = $"API request failed: {response.StatusCode} - {responseContent}",
+                    ErrorMessage = DescribeCreateCombinationError(response.StatusCode, responseContent),
                     StatusCode = (int)response.StatusCode
                 };
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"CreateProductCombinationAsync failed: {ex}");
                 return new ApiAuthService.ApiResponse<ProductCombination>
                 {
                     Success = false,
-                    ErrorMessage = $"Exception occurred: {ex.Message}"
+                    ErrorMessage = "Something went wrong creating the combination. Please try again."
                 };
+            }
+        }
+
+        // The backend returns errors as {"ex": "<message>", ...} (see GlobalExceptionHandler /
+        // ErrorInfo). Pull that message out and add a plain-language prefix per status code so
+        // the dialog shows something an operator can act on instead of a raw HTTP/JSON dump.
+        private string DescribeCreateCombinationError(System.Net.HttpStatusCode statusCode, string responseContent)
+        {
+            string serverMessage = null;
+            try
+            {
+                var parsed = _jsonSerializer.Deserialize<Dictionary<string, object>>(responseContent);
+                if (parsed != null && parsed.ContainsKey("ex") && parsed["ex"] != null)
+                    serverMessage = parsed["ex"].ToString();
+            }
+            catch
+            {
+                // Not JSON (or unexpected shape) - fall through and use a generic message below.
+            }
+
+            switch (statusCode)
+            {
+                case System.Net.HttpStatusCode.BadRequest:
+                    return "Invalid selection: " + (serverMessage ?? "one of the selected values is not valid.");
+                case System.Net.HttpStatusCode.Conflict:
+                    return serverMessage ?? "That combination already exists.";
+                case System.Net.HttpStatusCode.Unauthorized:
+                case System.Net.HttpStatusCode.Forbidden:
+                    return "Your session has expired. Please log in again and retry.";
+                default:
+                    return !string.IsNullOrWhiteSpace(serverMessage)
+                        ? serverMessage
+                        : $"Server error ({(int)statusCode}). Please try again later.";
             }
         }
 

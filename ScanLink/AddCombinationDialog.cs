@@ -37,7 +37,7 @@ namespace ScanLink
         private void InitializeComponent()
         {
             this.Text = "Add Product Combination";
-            this.Size = new Size(420, 400);
+            this.Size = new Size(420, 500);
             this.StartPosition = FormStartPosition.CenterParent;
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
@@ -80,12 +80,13 @@ namespace ScanLink
             statusLabel = new Label
             {
                 Location = new Point(0, y),
-                Size = new Size(380, 40),
+                Size = new Size(380, 55),
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 ForeColor = Color.FromArgb(192, 57, 43),
                 Text = ""
             };
             panel.Controls.Add(statusLabel);
-            y += 45;
+            y += 60;
 
             createButton = new Button
             {
