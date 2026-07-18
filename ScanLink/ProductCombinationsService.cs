@@ -74,6 +74,26 @@ namespace ScanLink
         public double avg_weight_kg { get; set; }
     }
 
+    // Request/response shapes for the master-data "+ Add new" create endpoints. Crop/variety are
+    // NOT creatable - only grade/count/carton_type, per the desktop app's Add Combination dialog.
+    public class CreateNameRequest
+    {
+        public string name { get; set; }
+    }
+
+    public class CreateCartonTypeRequest
+    {
+        public string name { get; set; }
+        public double weight_kg { get; set; }
+    }
+
+    public class NamedMasterItem
+    {
+        public string id { get; set; }
+        public string name { get; set; }
+        public double? weight_kg { get; set; } // only populated for carton types
+    }
+
     public class ProductCombinationsService
     {
         private readonly ApiAuthService _apiAuthService;
@@ -342,7 +362,7 @@ namespace ScanLink
                 return new ApiAuthService.ApiResponse<ProductCombination>
                 {
                     Success = false,
-                    ErrorMessage = DescribeCreateCombinationError(response.StatusCode, responseContent),
+                    ErrorMessage = DescribeCreateError(response.StatusCode, responseContent, "Invalid selection"),
                     StatusCode = (int)response.StatusCode
                 };
             }
@@ -360,7 +380,9 @@ namespace ScanLink
         // The backend returns errors as {"ex": "<message>", ...} (see GlobalExceptionHandler /
         // ErrorInfo). Pull that message out and add a plain-language prefix per status code so
         // the dialog shows something an operator can act on instead of a raw HTTP/JSON dump.
-        private string DescribeCreateCombinationError(System.Net.HttpStatusCode statusCode, string responseContent)
+        // `invalidPrefix` lets callers phrase the 400 case for what they were creating
+        // ("Invalid selection" for a combination, "Invalid name" for a new grade/count/carton).
+        private string DescribeCreateError(System.Net.HttpStatusCode statusCode, string responseContent, string invalidPrefix)
         {
             string serverMessage = null;
             try
@@ -377,9 +399,9 @@ namespace ScanLink
             switch (statusCode)
             {
                 case System.Net.HttpStatusCode.BadRequest:
-                    return "Invalid selection: " + (serverMessage ?? "one of the selected values is not valid.");
+                    return invalidPrefix + ": " + (serverMessage ?? "the value entered is not valid.");
                 case System.Net.HttpStatusCode.Conflict:
-                    return serverMessage ?? "That combination already exists.";
+                    return serverMessage ?? "That already exists.";
                 case System.Net.HttpStatusCode.Unauthorized:
                 case System.Net.HttpStatusCode.Forbidden:
                     return "Your session has expired. Please log in again and retry.";
@@ -388,6 +410,96 @@ namespace ScanLink
                         ? serverMessage
                         : $"Server error ({(int)statusCode}). Please try again later.";
             }
+        }
+
+        // Generic POST helper for the three master-data create endpoints below. `path` is the
+        // resource segment (e.g. "grades"); `body` is serialized as-is; the parsed response is
+        // deserialized as NamedMasterItem {id, name, weight_kg?}. No cache refresh here - unlike
+        // combinations, a brand-new grade/count/carton_type has no combinations referencing it
+        // yet, so callers add the returned item straight into their own dropdown instead.
+        private async Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateNamedMasterItemAsync(string path, object body, string invalidPrefix)
+        {
+            if (!_apiAuthService.IsTokenValid())
+            {
+                return new ApiAuthService.ApiResponse<NamedMasterItem>
+                {
+                    Success = false,
+                    ErrorMessage = "No valid authentication token available"
+                };
+            }
+
+            try
+            {
+                var url = $"https://backend-stage.labourlinksoftware.co.za/user/v1/scan-link/{path}";
+                var request = new HttpRequestMessage(HttpMethod.Post, url);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiAuthService.GetCurrentToken());
+                request.Headers.Add("Accept", "application/json");
+                request.Content = new System.Net.Http.StringContent(
+                    _jsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json");
+
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _httpClient.SendAsync(request);
+                }
+                catch (Exception netEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"CreateNamedMasterItemAsync({path}) network error: {netEx}");
+                    return new ApiAuthService.ApiResponse<NamedMasterItem>
+                    {
+                        Success = false,
+                        ErrorMessage = "No connection to the server. Check your internet connection and try again."
+                    };
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var created = _jsonSerializer.Deserialize<NamedMasterItem>(responseContent);
+                    return new ApiAuthService.ApiResponse<NamedMasterItem>
+                    {
+                        Success = true,
+                        Data = created,
+                        StatusCode = (int)response.StatusCode
+                    };
+                }
+
+                return new ApiAuthService.ApiResponse<NamedMasterItem>
+                {
+                    Success = false,
+                    ErrorMessage = DescribeCreateError(response.StatusCode, responseContent, invalidPrefix),
+                    StatusCode = (int)response.StatusCode
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CreateNamedMasterItemAsync({path}) failed: {ex}");
+                return new ApiAuthService.ApiResponse<NamedMasterItem>
+                {
+                    Success = false,
+                    ErrorMessage = "Something went wrong creating that. Please try again."
+                };
+            }
+        }
+
+        /// <summary>Creates a new grade (e.g. a new "Class") on the server.</summary>
+        public Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateGradeAsync(string name)
+        {
+            return CreateNamedMasterItemAsync("grades", new CreateNameRequest { name = name }, "Invalid name");
+        }
+
+        /// <summary>Creates a new count (size) on the server.</summary>
+        public Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateCountAsync(string name)
+        {
+            return CreateNamedMasterItemAsync("counts", new CreateNameRequest { name = name }, "Invalid name");
+        }
+
+        /// <summary>Creates a new carton type on the server.</summary>
+        public Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateCartonTypeAsync(string name, double weightKg)
+        {
+            return CreateNamedMasterItemAsync("carton-types",
+                new CreateCartonTypeRequest { name = name, weight_kg = weightKg }, "Invalid name/weight");
         }
 
         /// <summary>
