@@ -176,7 +176,8 @@ namespace ScanLink
         private Panel activeScannersPanel;
 
         private DailyStatsService _dailyStatsService;
-        private SeasonInfo _activeSeason; // fetched once at login; null if the site has no season configured
+        private SeasonInfo _activeSeason; // fetched at login (both startup paths); null if the site has no season configured
+        private string _seasonLoadError;  // why _activeSeason is null, surfaced in the Season Scans tooltip
         private Panel dailyStatsPanel;
         private DateTimePicker dtpDailyStats;
         private TextBox txtStatHours, txtStatWage, txtStatActiveEmps, txtStatPackers, txtStatBoxes;
@@ -1198,13 +1199,7 @@ namespace ScanLink
                             // Continue anyway - fallback logic will be used
                         }
 
-                        // Fetch the site's active season so the "Season Scans" stat can filter
-                        // scans_backup.csv by the same season boundaries the web dashboard uses.
-                        string activeSeasonSiteId = _apiAuthService?.GetEffectiveSiteId();
-                        if (!string.IsNullOrEmpty(activeSeasonSiteId))
-                        {
-                            _activeSeason = await _dailyStatsService.GetActiveSeasonAsync(activeSeasonSiteId);
-                        }
+                        await LoadActiveSeasonAsync();
 
                         // Hide loading UI and switch to scanner panel
                         loadingProgressBar.Visible = false;
@@ -2475,7 +2470,13 @@ namespace ScanLink
             if (comboBox_ProductID == null) return;
 
             string previousValue = null;
-            try { previousValue = comboBox_ProductID.SelectedValue?.ToString(); } catch { previousValue = null; }
+            string previousKey = null;
+            try
+            {
+                previousValue = comboBox_ProductID.SelectedValue?.ToString();
+                previousKey = ProductComboKey(comboBox_ProductID.SelectedItem as ProductComboItem);
+            }
+            catch { previousValue = null; previousKey = null; }
 
             // Cache the full, unfiltered set for this crop so live search can always filter from the
             // complete list (and reset to it when the query is cleared).
@@ -2504,8 +2505,10 @@ namespace ScanLink
             ApplyProductSearchAndGrouping("");
 
             // ... then restore the intended selection (skipping header rows).
+            // Only honour the previous exact combination when no explicit preferredValue was requested.
             string targetValue = !string.IsNullOrEmpty(preferredValue) ? preferredValue : previousValue;
-            SelectProductByValue(targetValue);
+            string targetKey = !string.IsNullOrEmpty(preferredValue) ? null : previousKey;
+            SelectProductByValue(targetValue, targetKey);
 
             try
             {
@@ -2593,24 +2596,47 @@ namespace ScanLink
             return true;
         }
 
-        // Selects the row whose Value matches (skips headers). Falls back to the first real row.
-        private void SelectProductByValue(string targetValue)
+        // Identity of a single combination row. Value (product_id) is NOT unique - the same product_id
+        // carries several grades - so re-selecting by Value alone snaps to whichever grade is listed
+        // first (Grade A) and silently discards the user's Grade B pick. Use the combination's own id.
+        private string ProductComboKey(ProductComboItem item)
+        {
+            if (item == null || item.IsHeader) return null;
+            if (!string.IsNullOrWhiteSpace(item.Combination?.id)) return item.Combination.id;
+            return item.Name; // fallback rows have no source combination; Name carries grade/count/carton
+        }
+
+        // Selects the row matching targetKey (exact combination), else the row whose Value matches
+        // (skips headers). Falls back to the first real row.
+        private void SelectProductByValue(string targetValue, string targetKey = null)
         {
             if (comboBox_ProductID == null) return;
 
             int firstReal = -1;
+            int valueMatch = -1;
             for (int i = 0; i < comboBox_ProductID.Items.Count; i++)
             {
                 var it = comboBox_ProductID.Items[i] as ProductComboItem;
                 if (it == null || it.IsHeader) continue;
                 if (firstReal < 0) firstReal = i;
-                if (!string.IsNullOrEmpty(targetValue) &&
-                    string.Equals(it.Value, targetValue, StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrEmpty(targetKey) &&
+                    string.Equals(ProductComboKey(it), targetKey, StringComparison.OrdinalIgnoreCase))
                 {
                     comboBox_ProductID.SelectedIndex = i;
                     _lastValidProductName = it.Name;
                     return;
                 }
+                if (valueMatch < 0 && !string.IsNullOrEmpty(targetValue) &&
+                    string.Equals(it.Value, targetValue, StringComparison.OrdinalIgnoreCase))
+                {
+                    valueMatch = i;
+                }
+            }
+            if (valueMatch >= 0)
+            {
+                comboBox_ProductID.SelectedIndex = valueMatch;
+                _lastValidProductName = (comboBox_ProductID.Items[valueMatch] as ProductComboItem)?.Name ?? "";
+                return;
             }
             if (firstReal >= 0)
             {
@@ -2654,9 +2680,11 @@ namespace ScanLink
             var sel = comboBox_ProductID.SelectedItem as ProductComboItem;
             if (sel == null || sel.IsHeader) return; // mid-query / no pick -> Leave handles it
 
+            // Keep the exact combination (grade included), not just its product_id.
             string keepValue = sel.Value;
+            string keepKey = ProductComboKey(sel);
             ApplyProductSearchAndGrouping("");
-            SelectProductByValue(keepValue);
+            SelectProductByValue(keepValue, keepKey);
         }
 
         // When the user leaves the combo with a half-typed/invalid query, snap back to the last valid
@@ -5737,6 +5765,8 @@ namespace ScanLink
                         PopulateCropIdComboBox();
                     }
 
+                    await LoadActiveSeasonAsync();
+
                     // Switch to scanner panel
                     loadingProgressBar.Visible = false;
                     loadingStatusLabel.Visible = false;
@@ -7427,9 +7457,20 @@ namespace ScanLink
                 lastHourScansLabel.Text = $"Last Hour Scans: {lastHourScans}";
             if (seasonScansLabel != null)
             {
-                seasonScansLabel.Text = _activeSeason != null
-                    ? $"Season Scans: {CountSeasonScans()}"
-                    : "Season Scans: N/A";
+                if (_activeSeason != null)
+                {
+                    seasonScansLabel.Text = $"Season Scans: {CountSeasonScans()}";
+                    toolTip.SetToolTip(seasonScansLabel,
+                        $"Season: {_activeSeason.StartDate:yyyy-MM-dd} - " +
+                        $"{(_activeSeason.EndDate.HasValue ? _activeSeason.EndDate.Value.ToString("yyyy-MM-dd") : "ongoing")}");
+                }
+                else
+                {
+                    seasonScansLabel.Text = "Season Scans: N/A";
+                    toolTip.SetToolTip(seasonScansLabel,
+                        $"No season loaded ({_seasonLoadError ?? "not fetched yet"}). " +
+                        "Set the season on the web dashboard, then restart ScanLink.");
+                }
             }
         }
 
@@ -7461,6 +7502,33 @@ namespace ScanLink
                     if (m.Ts >= oneHourAgo) count++;
             }
             return count;
+        }
+
+        // Fetches the site's active season so the "Season Scans" stat can filter scans_backup.csv
+        // by the same season boundaries the web dashboard uses. Called from BOTH startup paths
+        // (fresh login and saved-session auto-login) - a saved session that skipped this was the
+        // reason the stat read "N/A" on every launch after the first.
+        private async Task LoadActiveSeasonAsync()
+        {
+            string siteId = _apiAuthService?.GetEffectiveSiteId();
+            if (string.IsNullOrEmpty(siteId))
+            {
+                _seasonLoadError = "no site selected";
+                return;
+            }
+
+            try
+            {
+                _activeSeason = await _dailyStatsService.GetActiveSeasonAsync(siteId);
+                _seasonLoadError = _activeSeason == null ? "none configured for this site" : null;
+            }
+            catch (Exception ex)
+            {
+                _seasonLoadError = ex.Message;
+                Debug.WriteLine($"[SEASON] load failed: {ex.Message}");
+            }
+
+            UpdateCountLabels();
         }
 
         // Total scans within the site's active season (start_date..end_date, or today if the
