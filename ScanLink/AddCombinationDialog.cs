@@ -169,7 +169,7 @@ namespace ScanLink
         private async void GradeCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_suppressSelectionEvents || gradeCombo.SelectedIndex < 0) return;
-            if ((string)gradeCombo.SelectedValue == NewItemId)
+            if (SelectedId(gradeCombo) == NewItemId)
             {
                 await HandleAddNewGrade();
                 return;
@@ -181,7 +181,7 @@ namespace ScanLink
         private async void CountCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_suppressSelectionEvents || countCombo.SelectedIndex < 0) return;
-            if ((string)countCombo.SelectedValue == NewItemId)
+            if (SelectedId(countCombo) == NewItemId)
             {
                 await HandleAddNewCount();
                 return;
@@ -193,7 +193,7 @@ namespace ScanLink
         private async void CartonTypeCombo_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (_suppressSelectionEvents || cartonTypeCombo.SelectedIndex < 0) return;
-            if ((string)cartonTypeCombo.SelectedValue == NewItemId)
+            if (SelectedId(cartonTypeCombo) == NewItemId)
             {
                 await HandleAddNewCartonType();
                 return;
@@ -337,12 +337,18 @@ namespace ScanLink
             else list.Add(newOption);
 
             _suppressSelectionEvents = true;
-            combo.DataSource = null;
-            combo.DataSource = list;
-            combo.DisplayMember = "Name";
-            combo.ValueMember = "Id";
-            combo.SelectedValue = id;
-            _suppressSelectionEvents = false;
+            try
+            {
+                combo.DataSource = null;
+                combo.DisplayMember = "Name";
+                combo.ValueMember = "Id";
+                combo.DataSource = list;
+                combo.SelectedValue = id;
+            }
+            finally
+            {
+                _suppressSelectionEvents = false;
+            }
         }
 
         private void UpdateCreateButtonEnabled()
@@ -409,7 +415,12 @@ namespace ScanLink
             avgWeightInput.Value = 0;
         }
 
-        private static void BindCombo<T>(ComboBox combo, List<T> items, Func<T, string> idSelector, Func<T, string> nameSelector, string addNewLabel = null)
+        // Binds {id, name} rows to a combo. DisplayMember/ValueMember MUST be set before the
+        // DataSource: assigning DataSource snaps SelectedIndex to 0 and raises
+        // SelectedIndexChanged synchronously, and until ValueMember is set SelectedValue returns
+        // the whole ComboOption rather than its Id. Selection events are suppressed for the same
+        // reason - the intermediate selection here is an artifact of binding, not a user choice.
+        private void BindCombo<T>(ComboBox combo, List<T> items, Func<T, string> idSelector, Func<T, string> nameSelector, string addNewLabel = null)
         {
             var rows = items
                 .Select(i => new ComboOption { Id = idSelector(i), Name = nameSelector(i) })
@@ -417,10 +428,26 @@ namespace ScanLink
             if (addNewLabel != null)
                 rows.Add(new ComboOption { Id = NewItemId, Name = addNewLabel });
 
-            combo.DataSource = rows;
-            combo.DisplayMember = "Name";
-            combo.ValueMember = "Id";
-            combo.SelectedIndex = -1;
+            _suppressSelectionEvents = true;
+            try
+            {
+                combo.DataSource = null;
+                combo.DisplayMember = "Name";
+                combo.ValueMember = "Id";
+                combo.DataSource = rows;
+                combo.SelectedIndex = -1;
+            }
+            finally
+            {
+                _suppressSelectionEvents = false;
+            }
+        }
+
+        // Selected row's id, or null when nothing (or a not-yet-bound row) is selected. Never
+        // hard-cast SelectedValue: mid-rebind it can still be the bound ComboOption itself.
+        private static string SelectedId(ComboBox combo)
+        {
+            return combo.SelectedValue as string;
         }
 
         private async void CreateButton_Click(object sender, EventArgs e)
