@@ -13,6 +13,7 @@
     <Deterministic>false</Deterministic>
     <StartupObject>ScanLink.Program</StartupObject>
     <ApplicationIcon>ScanLinkLogo.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <PropertyGroup>
     <!-- Force tasks to run in-proc to avoid x86 task host issues when using dotnet build -->
@@ -106,6 +107,18 @@
       <Link>%(Filename)%(Extension)</Link>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="app.manifest" />
+    <None Include="App.config" />
+  </ItemGroup>
+  <!-- v2 shell migration: Lucide icons, rasterised for WinForms. Embedded rather than
+       copied so there are no loose files to lose in packaging. Logical resource names are
+       resolved at runtime from GetManifestResourceNames(), because MSBuild's mangling of
+       characters invalid in an identifier is not worth predicting. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\icons\png\*.png" />
+    <EmbeddedResource Include="Assets\ScanLinkLogoWhite.png" />
+  </ItemGroup>
   <!-- Copy logo files to output directory -->
   <ItemGroup>
     <Content Include="ScanLinkLogo.png">
@@ -117,6 +130,20 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Theme.cs" />
+    <Compile Include="Themed\ThemeStyles.cs" />
+    <Compile Include="Themed\IconSet.cs" />
+    <Compile Include="Themed\CardPanel.cs" />
+    <Compile Include="Themed\StatTile.cs" />
+    <Compile Include="Themed\BadgeLabel.cs" />
+    <Compile Include="Themed\SidebarNav.cs" />
+    <Compile Include="Themed\TopBar.cs" />
+    <Compile Include="Themed\SiteTileButton.cs" />
+    <Compile Include="V2Shell.cs" />
+    <Compile Include="V2ScansPage.cs" />
+    <Compile Include="V2LoginScreen.cs" />
+    <Compile Include="V2PrintSurfaces.cs" />
+    <Compile Include="V2PrintLabels.cs" />
     <Compile Include="IssueLoggingService.cs" />
     <Compile Include="ApiAuthService.cs" />
     <Compile Include="ScanLogUploadService.cs" />     

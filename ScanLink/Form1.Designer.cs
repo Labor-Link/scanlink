@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using ScanLink.Themed;
 
 namespace ScanLink
 {
@@ -66,11 +67,13 @@ namespace ScanLink
             this.productIdLabel = new System.Windows.Forms.Label();
             this.cropIdLabel = new System.Windows.Forms.Label();
             this.cropIdComboBox = new System.Windows.Forms.ComboBox();
-            this.todayScansCaptionLabel = new System.Windows.Forms.Label();
+            // Removed: todayScansCaptionLabel / lastHourScansCaptionLabel /
+            // totalFilteredScansCaptionLabel were instantiated here but never declared as
+            // fields, never added to a container and never referenced — leftovers from an
+            // edit that dropped their declarations. They broke `dotnet build` with CS1061
+            // (Visual Studio masked it by regenerating designer state).
             this.todayScansLabel = new System.Windows.Forms.Label();
-            this.lastHourScansCaptionLabel = new System.Windows.Forms.Label();
             this.lastHourScansLabel = new System.Windows.Forms.Label();
-            this.totalFilteredScansCaptionLabel = new System.Windows.Forms.Label();
             this.seasonScansLabel = new System.Windows.Forms.Label();
             this.statsPanel = new System.Windows.Forms.TableLayoutPanel();
             this.paginationPanel = new System.Windows.Forms.TableLayoutPanel();
@@ -188,7 +191,7 @@ namespace ScanLink
             // 
             this.loginPanel.AutoScroll = true;
             this.loginPanel.AutoScrollMinSize = new System.Drawing.Size(0, 800);
-            this.loginPanel.BackColor = System.Drawing.Color.FromArgb(248, 249, 250); // Light gray enterprise bg
+            this.loginPanel.BackColor = Theme.SurfaceApp;
             this.loginPanel.Controls.Add(this.loginStatusLabel);
             this.loginPanel.Controls.Add(this.loadingProgressBar);
             this.loginPanel.Controls.Add(this.loadingStatusLabel);
@@ -594,22 +597,9 @@ namespace ScanLink
             this.scannerDataGridView.AllowUserToAddRows = false;
             this.scannerDataGridView.AllowUserToDeleteRows = false;
             this.scannerDataGridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.scannerDataGridView.BackgroundColor = System.Drawing.Color.White;
-            this.scannerDataGridView.BorderStyle = System.Windows.Forms.BorderStyle.None;
-            this.scannerDataGridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.SingleHorizontal;
-            this.scannerDataGridView.ColumnHeadersBorderStyle = System.Windows.Forms.DataGridViewHeaderBorderStyle.None;
-            this.scannerDataGridView.ColumnHeadersDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
-            this.scannerDataGridView.ColumnHeadersDefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
-            this.scannerDataGridView.ColumnHeadersDefaultCellStyle.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.scannerDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            this.scannerDataGridView.ColumnHeadersHeight = 30;
-            this.scannerDataGridView.EnableHeadersVisualStyles = false;
-            this.scannerDataGridView.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(232, 240, 254);
-            this.scannerDataGridView.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.FromArgb(33, 37, 41);
-            this.scannerDataGridView.DefaultCellStyle.Padding = new System.Windows.Forms.Padding(5, 0, 5, 0);
-            this.scannerDataGridView.RowTemplate.Height = 28;
-            this.scannerDataGridView.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(250, 250, 251);
-            this.scannerDataGridView.GridColor = System.Drawing.Color.FromArgb(233, 236, 239);
+            // v2: the whole table treatment — tokens, uppercase headers, indigo selection
+            // wash — lives in ThemeStyles.Grid so every grid in the app matches.
+            ThemeStyles.Grid(this.scannerDataGridView);
             this.scannerDataGridView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.scannerDataGridView.Location = new System.Drawing.Point(0, 220); // Removed padding offset
             this.scannerDataGridView.Name = "scannerDataGridView";
@@ -942,7 +932,7 @@ namespace ScanLink
             // 
             // headerPanel
             // 
-            this.headerPanel.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
+            this.headerPanel.BackColor = Theme.SurfaceApp;
             this.headerPanel.Controls.Add(this.headerTableLayoutPanel);
             this.headerPanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.headerPanel.Location = new System.Drawing.Point(0, 0); // Removed padding gap
@@ -1994,13 +1984,13 @@ namespace ScanLink
             // 
             // statusLabel
             // 
-            this.statusLabel.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
+            this.statusLabel.BackColor = Theme.SurfaceSunken;
             this.statusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.statusLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular); 
-            this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(108, 117, 125);
+            this.statusLabel.Font = Theme.FontSm;
+            this.statusLabel.ForeColor = Theme.TextMuted;
             this.statusLabel.Location = new System.Drawing.Point(0, 0);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0); // Slight indent
+            this.statusLabel.Padding = new System.Windows.Forms.Padding(Theme.S4, 0, Theme.S4, 0);
             this.statusLabel.Size = new System.Drawing.Size(560, 30);
             this.statusLabel.TabIndex = 0;
             this.statusLabel.Text = "Ready.";
@@ -2011,7 +2001,7 @@ namespace ScanLink
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.BackColor = System.Drawing.Color.White;
+            this.BackColor = Theme.SurfaceApp;
             this.ClientSize = new System.Drawing.Size(600, 1120);
             this.Controls.Add(this.loginPanel);
             // startPanel removed
@@ -2261,154 +2251,70 @@ namespace ScanLink
 
         // UI Styling Methods
         // Rounds the corners of a control by applying a Region built from a rounded rectangle path.
+        // v2 shell migration: the real implementations live in Themed/ThemeStyles.cs so the
+        // dialogs can share them. These wrappers keep existing call sites working, and the
+        // radius is now remembered per control (the old version re-derived it from the
+        // control type on resize, silently discarding any custom value).
         private void ApplyRoundedCorners(Control control, int radius)
         {
-            if (control == null || radius <= 0) return;
-            control.Resize -= Control_RoundedResize;
-            control.Resize += Control_RoundedResize;
-            SetRoundedRegion(control, radius);
-        }
-
-        private void Control_RoundedResize(object sender, EventArgs e)
-        {
-            if (sender is Control c)
-            {
-                // Default radius of 8 for panels/group boxes, 12 for buttons
-                int radius = (c is Button) ? 12 : 8;
-                SetRoundedRegion(c, radius);
-            }
+            ThemeStyles.RoundedCorners(control, radius);
         }
 
         private void SetRoundedRegion(Control control, int radius)
         {
-            if (control.Width < 2 || control.Height < 2) return;
-            int diameter = radius * 2;
-            using (GraphicsPath path = new GraphicsPath())
-            {
-                path.StartFigure();
-                path.AddArc(new Rectangle(0, 0, diameter, diameter), 180, 90);
-                path.AddArc(new Rectangle(control.Width - diameter, 0, diameter, diameter), 270, 90);
-                path.AddArc(new Rectangle(control.Width - diameter, control.Height - diameter, diameter, diameter), 0, 90);
-                path.AddArc(new Rectangle(0, control.Height - diameter, diameter, diameter), 90, 90);
-                path.CloseFigure();
-                control.Region = new Region(path);
-            }
+            ThemeStyles.SetRoundedRegion(control, radius);
         }
 
+        /// <summary>
+        /// v2 shell migration. Buttons come from the design-system variants: indigo primary,
+        /// white-bordered secondary, navy, quiet danger. The old palette mixed brand navy,
+        /// Bootstrap blue, flat-UI green and an amber — four families competing for the same
+        /// job. There is one primary per view now.
+        /// </summary>
         private void ApplyModernStylesToButtons()
         {
-            // Colors (2025 minimal UI palette)
-            Color primary = Color.FromArgb(50, 74, 95);           // base primary (navy)
-            Color primaryHover = Color.FromArgb(27, 42, 65);      // hover primary (navy darker)
-            Color danger = Color.FromArgb(231, 76, 60);           // base danger
-            Color dangerHover = Color.FromArgb(192, 57, 43);      // hover danger
-            Color success = Color.FromArgb(46, 204, 113);         // success green
-            Color successHover = Color.FromArgb(39, 174, 96);     // success green (darker)
-            Color textOnPrimary = Color.White;
+            // --- Primary (indigo): the single most important action on its surface ---
+            ThemeStyles.Primary(loginButton);
+            ThemeStyles.Primary(button_send);
 
-            // Primary buttons
-            StylePrimaryButton(loginButton, primary, primaryHover, textOnPrimary);
-            StylePrimaryButton(button_FetchEmployees, primary, primaryHover, textOnPrimary);
-            if (button_FetchEmployees != null)
-            {
-                // Reduce Fetch button size subtly
-                button_FetchEmployees.MinimumSize = new Size(80, 22);
-                button_FetchEmployees.Height = 22;
-                button_FetchEmployees.Width = 80;
-                button_FetchEmployees.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-                button_FetchEmployees.Padding = Padding.Empty;
-                ApplyRoundedCorners(button_FetchEmployees, 1);
-            }
-            StylePrimaryButton(button_send, primary, primaryHover, textOnPrimary);
-            // StylePrimaryButton(button_preview, primary, primaryHover, textOnPrimary);
-            // Manual upload button - success styling
-            if (button_manualUpload != null)
-            {
-                StylePrimaryButton(button_manualUpload, success, successHover, Color.White);
-                if (button_manualUpload.Width < 130) button_manualUpload.Width = 130;
-                button_manualUpload.Height = 32;
-                button_manualUpload.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-                ApplyRoundedCorners(button_manualUpload, 12);
-            }
-            // Cleanup local scans button - caution (amber) styling to signal a destructive action
-            if (button_cleanupScans != null)
-            {
-                button_cleanupScans.FlatStyle = FlatStyle.Flat;
-                button_cleanupScans.FlatAppearance.BorderSize = 0;
-                button_cleanupScans.BackColor = Color.FromArgb(202, 138, 4);
-                button_cleanupScans.FlatAppearance.MouseOverBackColor = Color.FromArgb(180, 123, 3);
-                button_cleanupScans.FlatAppearance.MouseDownBackColor = Color.FromArgb(161, 110, 3);
-                button_cleanupScans.ForeColor = Color.White;
-                if (button_cleanupScans.Width < 130) button_cleanupScans.Width = 130;
-                button_cleanupScans.Height = 32;
-                button_cleanupScans.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-                ApplyRoundedCorners(button_cleanupScans, 12);
-            }
-
-            // Danger/Logout buttons
-
-            // Contrast tweaks per-context
-            // Login (on white) - brighter blue for stronger contrast
             if (loginButton != null)
             {
-                loginButton.BackColor = Color.FromArgb(32, 101, 209);
-                loginButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(28, 92, 190);
-                loginButton.FlatAppearance.MouseDownBackColor = Color.FromArgb(24, 82, 170);
-                loginButton.ForeColor = Color.White;
                 if (loginButton.Width < 160) loginButton.Width = 160;
-                if (loginButton.Height < 40) loginButton.Height = 40;
+                loginButton.Height = Theme.HeightLg;
+                loginButton.MinimumSize = new Size(160, Theme.HeightLg);
             }
 
-
-
-
-            // // Preview button - same styling as manage scanners
-            // if (button_preview != null)
-            // {
-            //     button_preview.Padding = Padding.Empty;
-            //     if (button_preview.Width < 130) button_preview.Width = 130;
-            //     button_preview.Height = 30;
-            // }
-            
-        }
-
-        private void StylePrimaryButton(Button button, Color bg, Color hoverBg, Color fg)
-        {
-            if (button == null) return;
-            button.FlatStyle = FlatStyle.Flat;
-            button.FlatAppearance.BorderSize = 0;
-            button.FlatAppearance.MouseOverBackColor = hoverBg;
-            button.FlatAppearance.MouseDownBackColor = hoverBg;
-            button.BackColor = bg;
-            button.ForeColor = fg;
-            float desired = Math.Max(button.Font?.Size ?? 10f, 10.5f);
-            button.Font = new Font("Microsoft Sans Serif", desired, FontStyle.Bold);
-            button.Padding = new Padding(6, 3, 6, 3);
-            // Keep generous defaults, but allow small overrides for specific buttons
-            if (button != button_FetchEmployees)
+            // --- Secondary: small, inline, sits inside a field row ---
+            if (button_FetchEmployees != null)
             {
-                button.MinimumSize = new Size(Math.Max(button.MinimumSize.Width, 100), 40);
-                button.Height = Math.Max(button.Height, 40);
+                ThemeStyles.Secondary(button_FetchEmployees);
+                button_FetchEmployees.MinimumSize = new Size(80, 26);
+                button_FetchEmployees.Height = 26;
+                button_FetchEmployees.Padding = Padding.Empty;
+                ApplyRoundedCorners(button_FetchEmployees, Theme.RadiusXs);
             }
-            button.UseVisualStyleBackColor = false;
-            ApplyRoundedCorners(button, 12);
-        }
 
-        private void StyleDangerButton(Button button, Color bg, Color hoverBg)
-        {
-            if (button == null) return;
-            button.FlatStyle = FlatStyle.Flat;
-            button.FlatAppearance.BorderSize = 0;
-            button.FlatAppearance.MouseOverBackColor = hoverBg;
-            button.FlatAppearance.MouseDownBackColor = hoverBg;
-            button.BackColor = bg;
-            button.ForeColor = Color.White;
-            button.Font = new Font("Microsoft Sans Serif", 10F, FontStyle.Bold);
-            button.Padding = new Padding(6, 3, 6, 3);
-            button.MinimumSize = new Size(button.MinimumSize.Width, 36);
-            button.Height = Math.Max(button.Height, 36);
-            button.UseVisualStyleBackColor = false;
-            ApplyRoundedCorners(button, 12);
+            // --- Secondary: "Sync logs to API" is a supporting action. It sits beside
+            //     "Cleanup local scans" and neither should read as the page's primary. ---
+            if (button_manualUpload != null)
+            {
+                ThemeStyles.Secondary(button_manualUpload);
+                button_manualUpload.Height = Theme.HeightSm;
+                button_manualUpload.MinimumSize = new Size(button_manualUpload.MinimumSize.Width, Theme.HeightSm);
+            }
+
+            // --- Quiet danger: destructive, but not competing with the primary action ---
+            if (button_cleanupScans != null)
+            {
+                ThemeStyles.QuietDanger(button_cleanupScans);
+                button_cleanupScans.Height = Theme.HeightSm;
+                button_cleanupScans.MinimumSize = new Size(button_cleanupScans.MinimumSize.Width, Theme.HeightSm);
+            }
+
+            // --- Icons. Each call is a no-op when the icon was not embedded, so the button
+            //     keeps whatever text it already had. ---
+            IconSet.ApplyTo(button_send, "printer", 16, IconSet.Tint.White);
+            SetPasswordToggleIcon(revealed: false);
         }
 
         // UI Layout Methods
@@ -2534,7 +2440,12 @@ namespace ScanLink
                 //     LayoutPrinterContent(cw);
                 // }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                // v2 shell migration (P0-2): this was a bare `catch { }`, which silently
+                // swallowed every layout failure. Keep it logged until sign-off.
+                System.Diagnostics.Debug.WriteLine("[LAYOUT] LayoutRootPanels failed: " + ex);
+            }
         }
 
         // private void LayoutPrinterContent(int clientWidth)

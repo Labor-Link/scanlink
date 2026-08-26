@@ -46,7 +46,7 @@ namespace ScanLink
             // dashboardPanel
             //
             this.dashboardPanel.AutoScroll = true;
-            this.dashboardPanel.BackColor = Color.White;
+            this.dashboardPanel.BackColor = Theme.SurfaceApp;
             this.dashboardPanel.Location = new System.Drawing.Point(50, 90);
             this.dashboardPanel.Name = "dashboardPanel";
             this.dashboardPanel.Size = new System.Drawing.Size(1300, 750);
@@ -54,7 +54,8 @@ namespace ScanLink
             //
             // titleLabel
             //
-            this.titleLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.titleLabel.Font = Theme.Font3Xl;
+            this.titleLabel.ForeColor = Theme.TextHeading;
             this.titleLabel.Location = new System.Drawing.Point(50, 30);
             this.titleLabel.Name = "titleLabel";
             this.titleLabel.Size = new System.Drawing.Size(400, 40);
@@ -64,7 +65,10 @@ namespace ScanLink
             // MultiUserDashboard
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.BackColor = Color.White;
+            this.BackColor = Theme.SurfaceApp;
+            // Set directly rather than via DialogChrome: this form has no inputs and no
+            // grids, so the chrome helper would only walk an empty tree.
+            this.ForeColor = Theme.TextBody;
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1400, 900);
             this.Controls.Add(this.titleLabel);
@@ -394,9 +398,11 @@ namespace ScanLink
             var titleLabel = new Label
             {
                 Text = title,
-                Font = new Font("Microsoft Sans Serif", 14, FontStyle.Bold),
+                Font = Theme.FontXl,
+                ForeColor = Theme.TextLabel,
                 Location = new Point(20, yOffset),
-                AutoSize = true
+                AutoSize = true,
+                UseMnemonic = false
             };
             dashboardPanel.Controls.Add(titleLabel);
             yOffset += 40;
@@ -433,17 +439,19 @@ namespace ScanLink
         {
             var panel = new RoundedPanel
             {
-                BackColor = Color.FromArgb(240, 240, 240),
+                BackColor = Theme.SurfaceCard,
                 Cursor = Cursors.Hand,
-                CornerRadius = 15
+                CornerRadius = Theme.RadiusLg
             };
 
             // Icon (simplified - using text for now)
             var iconLabel = new Label
             {
-                Text = siteTile.Type == "OWNER" ? "🏭" : "🏢",
-                Font = new Font("Microsoft Sans Serif", 24), // Reduced from 32 to fit shorter tile
-                Location = new Point(15, 10),
+                // Icon dropped deliberately: the tile already carries the site name and ID.
+                Text = string.Empty,
+                Visible = false,
+                Font = new Font("Segoe UI Emoji", 22),
+                Location = new Point(18, 16),
                 AutoSize = true,
                 BackColor = Color.Transparent
             };
@@ -452,8 +460,9 @@ namespace ScanLink
             var nameLabel = new Label
             {
                 Text = siteTile.Name ?? "Unnamed Site",
-                Font = new Font("Microsoft Sans Serif", 12, FontStyle.Bold),
-                Location = new Point(90, 12),
+                Font = Theme.FontLgBold,
+                ForeColor = Theme.TextHeading,
+                Location = new Point(20, 14),
                 AutoSize = true,
                 MaximumSize = new Size(280, 0), // Increased from 180 to fit wider tile
                 BackColor = Color.Transparent
@@ -462,10 +471,11 @@ namespace ScanLink
             // Site ID
             var idLabel = new Label
             {
-                Text = $"ID: {siteTile.Id}",
-                Font = new Font("Microsoft Sans Serif", 9),
-                ForeColor = Color.Black,
-                Location = new Point(90, 35), // Moved up from 55 to fit shorter tile
+                Text = siteTile.Id,
+                // Site IDs are identifiers; the design system sets identifiers in mono.
+                Font = Theme.FontMonoSm,
+                ForeColor = Theme.TextMuted,
+                Location = new Point(20, 42),
                 AutoSize = true,
                 BackColor = Color.Transparent
             };
@@ -475,71 +485,101 @@ namespace ScanLink
             // Click event
             panel.Click += (sender, e) => SelectSite(siteTile);
 
+            // The whole tile shows a hand cursor, so the whole tile has to be clickable.
+            // Only the panel carried the handler, so clicking the site name or the ID — the
+            // two things an operator actually aims at — did nothing. The labels sit on top
+            // and swallow both click and hover, so each forwards to the tile.
+            foreach (Control child in new Control[] { iconLabel, nameLabel, idLabel })
+            {
+                child.Cursor = Cursors.Hand;
+                child.Click += (sender, e) => SelectSite(siteTile);
+                panel.TrackHover(child);
+            }
+
             return panel;
         }
 
-        // Custom panel with rounded corners
+        /// <summary>
+        /// Site tile surface. Rewritten from a Region-clipped panel to an owner-drawn one:
+        /// the old version set Region from inside OnPaint — allocating a region on every
+        /// repaint and mutating layout state during painting — and drew a 2px black border
+        /// with no antialiasing, so the corners came out stepped.
+        /// </summary>
         private class RoundedPanel : Panel
         {
-            public int CornerRadius { get; set; } = 15;
+            public int CornerRadius { get; set; }
             private bool _isHovered = false;
+
+            public RoundedPanel()
+            {
+                CornerRadius = Theme.RadiusLg;
+                SetStyle(ControlStyles.AllPaintingInWmPaint
+                         | ControlStyles.OptimizedDoubleBuffer
+                         | ControlStyles.UserPaint
+                         | ControlStyles.ResizeRedraw, true);
+            }
+
+            /// <summary>
+            /// Hover has to be driven by the child labels too. They sit on top of the panel,
+            /// so its own MouseEnter/MouseLeave never fire while the pointer is over the
+            /// text — which is most of the tile.
+            /// </summary>
+            public void TrackHover(Control child)
+            {
+                if (child == null) return;
+                child.MouseEnter += (s, e) => SetHover(true);
+                child.MouseLeave += (s, e) => SetHover(false);
+            }
+
+            private void SetHover(bool hovered)
+            {
+                if (_isHovered == hovered) return;
+                _isHovered = hovered;
+                Invalidate();
+            }
 
             protected override void OnMouseEnter(EventArgs e)
             {
                 base.OnMouseEnter(e);
-                _isHovered = true;
-                Invalidate(); // Trigger repaint
+                SetHover(true);
             }
 
             protected override void OnMouseLeave(EventArgs e)
             {
                 base.OnMouseLeave(e);
-                _isHovered = false;
-                Invalidate(); // Trigger repaint
+                // Leaving the panel for one of its own children is not leaving the tile.
+                Point cursor = PointToClient(Cursor.Position);
+                SetHover(ClientRectangle.Contains(cursor));
+            }
+
+            protected override void OnPaintBackground(PaintEventArgs e)
+            {
+                // Paint the parent's ground so the rounded corners blend instead of showing
+                // square white shoulders.
+                Color ground = (Parent != null) ? Parent.BackColor : Theme.SurfaceApp;
+                using (SolidBrush brush = new SolidBrush(ground))
+                {
+                    e.Graphics.FillRectangle(brush, ClientRectangle);
+                }
             }
 
             protected override void OnPaint(PaintEventArgs e)
             {
-                base.OnPaint(e);
+                Graphics g = e.Graphics;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-                // Determine background color based on hover state
-                Color backgroundColor = _isHovered ? Color.LightGray : BackColor; // Lighter on hover
+                Color fill = _isHovered ? Theme.Indigo50 : BackColor;
+                Color edge = _isHovered ? Theme.ActionPrimary : Theme.BorderDefault;
 
-                // Create a rounded rectangle path
-                using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+                Rectangle bounds = new Rectangle(0, 0, Width - 1, Height - 1);
+                using (var path = Theme.RoundedPath(bounds, CornerRadius))
+                using (var brush = new SolidBrush(fill))
+                using (var pen = new Pen(edge, 1f))
                 {
-                    path.AddArc(0, 0, CornerRadius, CornerRadius, 180, 90);
-                    path.AddArc(Width - CornerRadius, 0, CornerRadius, CornerRadius, 270, 90);
-                    path.AddArc(Width - CornerRadius, Height - CornerRadius, CornerRadius, CornerRadius, 0, 90);
-                    path.AddArc(0, Height - CornerRadius, CornerRadius, CornerRadius, 90, 90);
-                    path.CloseFigure();
-
-                    // Fill the background
-                    using (var brush = new SolidBrush(backgroundColor))
-                    {
-                        e.Graphics.FillPath(brush, path);
-                    }
-
-                    // Draw the border
-                    using (var pen = new Pen(Color.Black, 2))
-                    {
-                        e.Graphics.DrawPath(pen, path);
-                    }
+                    g.FillPath(brush, path);
+                    g.DrawPath(pen, path);
                 }
-
-                // Set the region to clip child controls to the rounded shape
-                Region = new Region(CreateRoundedRectanglePath(ClientRectangle, CornerRadius));
-            }
-
-            private System.Drawing.Drawing2D.GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int radius)
-            {
-                var path = new System.Drawing.Drawing2D.GraphicsPath();
-                path.AddArc(rect.X, rect.Y, radius, radius, 180, 90);
-                path.AddArc(rect.Right - radius, rect.Y, radius, radius, 270, 90);
-                path.AddArc(rect.Right - radius, rect.Bottom - radius, radius, radius, 0, 90);
-                path.AddArc(rect.X, rect.Bottom - radius, radius, radius, 90, 90);
-                path.CloseFigure();
-                return path;
+                base.OnPaint(e);
             }
         }
 

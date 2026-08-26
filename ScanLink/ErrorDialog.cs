@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using ScanLink.Themed;
 
 namespace ScanLink
 {
@@ -28,8 +29,8 @@ namespace ScanLink
             // labelTitle
             // 
             this.labelTitle.AutoSize = true;
-            this.labelTitle.Font = new Font("Microsoft Sans Serif", 12F, FontStyle.Bold, GraphicsUnit.Point, ((byte)(0)));
-            this.labelTitle.ForeColor = Color.FromArgb(231, 76, 60);
+            this.labelTitle.Font = Theme.FontLgBold;
+            this.labelTitle.ForeColor = Theme.Err700;
             this.labelTitle.Location = new Point(12, 9);
             this.labelTitle.Name = "labelTitle";
             this.labelTitle.Size = new Size(48, 20);
@@ -42,8 +43,8 @@ namespace ScanLink
             this.textBoxError.Anchor = ((AnchorStyles)((((AnchorStyles.Top | AnchorStyles.Bottom)
                         | AnchorStyles.Left)
                         | AnchorStyles.Right)));
-            this.textBoxError.BackColor = Color.White;
-            this.textBoxError.Font = new Font("Consolas", 9F, FontStyle.Regular, GraphicsUnit.Point, ((byte)(0)));
+            this.textBoxError.BackColor = Theme.SurfaceCard;
+            this.textBoxError.Font = Theme.FontMono;
             this.textBoxError.Location = new Point(12, 40);
             this.textBoxError.Multiline = true;
             this.textBoxError.Name = "textBoxError";
@@ -57,9 +58,6 @@ namespace ScanLink
             // buttonCopy
             // 
             this.buttonCopy.Anchor = ((AnchorStyles)((AnchorStyles.Bottom | AnchorStyles.Right)));
-            this.buttonCopy.BackColor = Color.FromArgb(52, 152, 219);
-            this.buttonCopy.FlatStyle = FlatStyle.Flat;
-            this.buttonCopy.ForeColor = Color.White;
             this.buttonCopy.Location = new Point(377, 350);
             this.buttonCopy.Name = "buttonCopy";
             this.buttonCopy.Size = new Size(90, 30);
@@ -72,10 +70,7 @@ namespace ScanLink
             // buttonOK
             // 
             this.buttonOK.Anchor = ((AnchorStyles)((AnchorStyles.Bottom | AnchorStyles.Right)));
-            this.buttonOK.BackColor = Color.FromArgb(95, 39, 205);
             this.buttonOK.DialogResult = DialogResult.OK;
-            this.buttonOK.FlatStyle = FlatStyle.Flat;
-            this.buttonOK.ForeColor = Color.White;
             this.buttonOK.Location = new Point(482, 350);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new Size(90, 30);
@@ -88,7 +83,7 @@ namespace ScanLink
             // 
             this.AutoScaleDimensions = new SizeF(6F, 13F);
             this.AutoScaleMode = AutoScaleMode.Font;
-            this.BackColor = Color.White;
+            this.BackColor = Theme.SurfaceApp;
             this.ClientSize = new Size(584, 391);
             this.Controls.Add(this.buttonOK);
             this.Controls.Add(this.buttonCopy);
@@ -103,6 +98,15 @@ namespace ScanLink
             this.Text = "Error Details";
             this.ResumeLayout(false);
             this.PerformLayout();
+
+            // Copy is the supporting action and OK confirms, so OK takes the single indigo
+            // primary. The action row is re-laid-out because the variants enforce a minimum
+            // height and these buttons are anchored bottom-right at hard-coded coordinates.
+            ThemeStyles.DialogChrome(this);
+            ThemeStyles.Secondary(this.buttonCopy);
+            ThemeStyles.Primary(this.buttonOK);
+            IconSet.ApplyTo(this.buttonCopy, "copy", 16, IconSet.Tint.Dark);
+            ThemeStyles.ActionRow(this, 12, this.buttonOK, this.buttonCopy);
         }
 
         private void ButtonCopy_Click(object sender, EventArgs e)
@@ -115,8 +119,13 @@ namespace ScanLink
                     
                     // Temporarily change button text to show success
                     string originalText = buttonCopy.Text;
-                    buttonCopy.Text = "✅ Copied!";
-                    buttonCopy.BackColor = Color.FromArgb(46, 204, 113);
+                    buttonCopy.Text = "Copied!";
+                    if (!IconSet.ApplyTo(buttonCopy, "check", 16, IconSet.Tint.Dark))
+                    {
+                        buttonCopy.Text = "✅ Copied!";
+                    }
+                    buttonCopy.ForeColor = Theme.Ok700;
+                    buttonCopy.FlatAppearance.BorderColor = Theme.Ok500;
                     
                     // Reset button after 1.5 seconds
                     Timer timer = new Timer();
@@ -124,7 +133,9 @@ namespace ScanLink
                     timer.Tick += (s, args) =>
                     {
                         buttonCopy.Text = originalText;
-                        buttonCopy.BackColor = Color.FromArgb(52, 152, 219);
+                        IconSet.ApplyTo(buttonCopy, "copy", 16, IconSet.Tint.Dark);
+                        buttonCopy.ForeColor = Theme.TextBody;
+                        buttonCopy.FlatAppearance.BorderColor = Theme.BorderStrong;
                         timer.Stop();
                         timer.Dispose();
                     };

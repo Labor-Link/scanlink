@@ -575,11 +575,6 @@ namespace ScanLink
             // refreshButton - Bottom left with margin
             // 
             this.refreshButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            this.refreshButton.BackColor = Color.FromArgb(50, 74, 95);
-            this.refreshButton.FlatAppearance.BorderSize = 0;
-            this.refreshButton.FlatStyle = FlatStyle.Flat;
-            this.refreshButton.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            this.refreshButton.ForeColor = Color.White;
             this.refreshButton.Name = "refreshButton";
             this.refreshButton.Size = new Size(140, 40);
             this.refreshButton.TabIndex = 2;
@@ -591,11 +586,6 @@ namespace ScanLink
             // configHelpButton - Bottom middle
             // 
             this.configHelpButton.Anchor = AnchorStyles.Bottom;
-            this.configHelpButton.BackColor = Color.FromArgb(41, 128, 185);
-            this.configHelpButton.FlatAppearance.BorderSize = 0;
-            this.configHelpButton.FlatStyle = FlatStyle.Flat;
-            this.configHelpButton.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            this.configHelpButton.ForeColor = Color.White;
             this.configHelpButton.Name = "configHelpButton";
             this.configHelpButton.Size = new Size(200, 40);
             this.configHelpButton.TabIndex = 4;
@@ -607,11 +597,6 @@ namespace ScanLink
             // saveButton - Bottom right with margin
             // 
             this.saveButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            this.saveButton.BackColor = Color.FromArgb(50, 74, 95);
-            this.saveButton.FlatAppearance.BorderSize = 0;
-            this.saveButton.FlatStyle = FlatStyle.Flat;
-            this.saveButton.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            this.saveButton.ForeColor = Color.White;
             this.saveButton.Name = "saveButton";
             this.saveButton.Size = new Size(140, 40);
             this.saveButton.TabIndex = 3;
@@ -624,8 +609,8 @@ namespace ScanLink
             // 
             this.debugLabel.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             this.debugLabel.AutoSize = true;
-            this.debugLabel.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            this.debugLabel.ForeColor = Color.FromArgb(52, 73, 94);
+            this.debugLabel.Font = Theme.FontXsBold;
+            this.debugLabel.ForeColor = Theme.TextLabel;
             this.debugLabel.Name = "debugLabel";
             this.debugLabel.Text = "🔍 Detection Log:";
             this.debugLabel.TabIndex = 4;
@@ -634,9 +619,7 @@ namespace ScanLink
             // debugOutputTextBox
             // 
             this.debugOutputTextBox.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            this.debugOutputTextBox.BackColor = Color.FromArgb(240, 240, 240);
             this.debugOutputTextBox.BorderStyle = BorderStyle.FixedSingle;
-            this.debugOutputTextBox.Font = new Font("Consolas", 8F);
             this.debugOutputTextBox.Multiline = true;
             this.debugOutputTextBox.Name = "debugOutputTextBox";
             this.debugOutputTextBox.ReadOnly = true;
@@ -648,7 +631,7 @@ namespace ScanLink
             // 
             this.AutoScaleDimensions = new SizeF(96F, 96F); // Use DPI-aware scaling
             this.AutoScaleMode = AutoScaleMode.Dpi;
-            this.BackColor = Color.FromArgb(248, 249, 250);
+            this.BackColor = Theme.SurfaceApp;
             this.ClientSize = new Size(900, 600); // Reduced height for more compact dialog
             this.Controls.Add(this.saveButton);
             this.Controls.Add(this.configHelpButton);
@@ -669,6 +652,20 @@ namespace ScanLink
             
             this.ResumeLayout(false);
             this.PerformLayout();
+
+            // Save confirms the scanner assignments, so it takes the single indigo primary;
+            // Refresh and the setup-help link are secondary. No geometry is pinned because
+            // LayoutForm positions these buttons at runtime.
+            ScanLink.Themed.ThemeStyles.DialogChrome(this);
+            ScanLink.Themed.ThemeStyles.Primary(this.saveButton);
+            ScanLink.Themed.ThemeStyles.Secondary(this.refreshButton);
+            ScanLink.Themed.ThemeStyles.Secondary(this.configHelpButton);
+            ScanLink.Themed.IconSet.ApplyTo(this.saveButton, "save", 16, ScanLink.Themed.IconSet.Tint.White);
+            ScanLink.Themed.IconSet.ApplyTo(this.refreshButton, "refresh-cw", 16, ScanLink.Themed.IconSet.Tint.Dark);
+            ScanLink.Themed.IconSet.ApplyTo(this.titleLabel, "wrench", 24, ScanLink.Themed.IconSet.Tint.Dark);
+            // Icon dropped deliberately on these two — the labels already say it.
+            this.configHelpButton.Text = ScanLink.Themed.IconSet.StripLeadingGlyph(this.configHelpButton.Text);
+            this.debugLabel.Text = ScanLink.Themed.IconSet.StripLeadingGlyph(this.debugLabel.Text);
         }
 
         private void ScannerManagementForm_Load(object sender, EventArgs e)

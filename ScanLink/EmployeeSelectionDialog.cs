@@ -199,7 +199,7 @@ namespace ScanLink
             countLabel.Text = "Total: 0 employees";
             countLabel.Location = new Point(270, 30);
             countLabel.AutoSize = true;
-            countLabel.ForeColor = Color.FromArgb(127, 140, 141);
+            countLabel.ForeColor = Theme.TextMuted;
             buttonPanel.Controls.Add(countLabel);
 
             // Cancel button
@@ -215,15 +215,27 @@ namespace ScanLink
             selectButton.Text = "Select";
             selectButton.Location = new Point(600, 25);
             selectButton.Size = new Size(75, 25);
-            selectButton.BackColor = Color.FromArgb(46, 204, 113);
-            selectButton.FlatStyle = FlatStyle.Flat;
-            selectButton.ForeColor = Color.White;
             selectButton.Enabled = false;
             selectButton.Click += SelectButton_Click;
             buttonPanel.Controls.Add(selectButton);
 
             // Initialize data grid columns
             InitializeDataGridView();
+
+            // Runs after InitializeDataGridView so the grid's columns already exist and pick
+            // up the uppercase header treatment. Select confirms, so it takes the single
+            // indigo primary; Cancel is secondary.
+            ScanLink.Themed.ThemeStyles.DialogChrome(this);
+            ScanLink.Themed.ThemeStyles.Primary(selectButton);
+            ScanLink.Themed.ThemeStyles.Secondary(cancelButton);
+            ScanLink.Themed.IconSet.ApplyTo(searchButton, "search", 16, ScanLink.Themed.IconSet.Tint.Dark);
+            // Geometry preserved deliberately: both buttons sit at hard-coded coordinates
+            // inside buttonPanel where the variant minimums would make them overlap.
+            foreach (Button b in new[] { selectButton, cancelButton })
+            {
+                b.MinimumSize = new Size(75, 28);
+                b.Size = new Size(75, 28);
+            }
 
             // Load employees on form load
             this.Load += EmployeeSelectionDialog_Load;

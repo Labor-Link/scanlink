@@ -456,6 +456,16 @@ namespace ScanLink
             
             // Apply modern minimalist styling to key buttons
             ApplyModernStylesToButtons();
+            // Inputs are styled by walking the tree, so this must run after every control
+            // exists. Buttons first — ThemeStyles.Inputs does not touch Button, so the two
+            // passes cannot fight each other.
+            ScanLink.Themed.ThemeStyles.Inputs(this);
+
+            // v2 shell migration: split-screen login, then the sidebar shell. Login first so
+            // the shell's visibility hook sees the finished login panel.
+            BuildV2LoginScreen();
+            BuildV2Shell();
+
             LayoutRootPanels();
             
             InitDashboardStatusUI();
@@ -1267,12 +1277,32 @@ namespace ScanLink
             {
                 // Show password
                 passwordTextBox.PasswordChar = '\0';
-                passwordToggleButton.Text = "👁️";
+                SetPasswordToggleIcon(revealed: true);
             }
             else
             {
                 // Hide password
                 passwordTextBox.PasswordChar = '●';
+                SetPasswordToggleIcon(revealed: false);
+            }
+        }
+
+        /// <summary>
+        /// Sets the reveal-password icon to match the field's state. Both branches of the
+        /// toggle previously set the same glyph, so the control gave no feedback at all —
+        /// you could not tell whether the password was visible. eye means "click to reveal",
+        /// eye-off means "click to hide". Falls back to the original glyph if the icons were
+        /// not embedded.
+        /// </summary>
+        private void SetPasswordToggleIcon(bool revealed)
+        {
+            if (passwordToggleButton == null) return;
+
+            string icon = revealed ? "eye-off" : "eye";
+            passwordToggleButton.Text = string.Empty;
+            if (!ScanLink.Themed.IconSet.ApplyTo(passwordToggleButton, icon, 16, ScanLink.Themed.IconSet.Tint.Dark))
+            {
+                passwordToggleButton.Image = null;
                 passwordToggleButton.Text = "👁️";
             }
         }
@@ -1438,7 +1468,7 @@ namespace ScanLink
                     if (statusLabel != null)
                     {
                         statusLabel.Text = $"✅ Combination created (id {dialog.CreatedCombination?.id})";
-                        statusLabel.ForeColor = Color.FromArgb(39, 174, 96);
+                        statusLabel.ForeColor = Theme.Ok500;
                     }
                 }
             }
@@ -1463,7 +1493,7 @@ namespace ScanLink
                     }
                     
                     statusLabel.Text = tokenInfo;
-                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
+                    statusLabel.ForeColor = Theme.Err500;
                     return;
                 }
 
@@ -1491,7 +1521,7 @@ namespace ScanLink
 
                             // Update status
                             statusLabel.Text = $"Selected employee: {selectedEmployee.first_name} {selectedEmployee.last_name} (ScanLink ID: {selectedEmployee.scanlink_id} → Barcode: {employeeId})";
-                            statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+                            statusLabel.ForeColor = Theme.Ok500;
                         }
                     }
                 }
@@ -1499,7 +1529,7 @@ namespace ScanLink
             catch (Exception ex)
             {
                 statusLabel.Text = $"Error fetching employees: {ex.Message}";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
+                statusLabel.ForeColor = Theme.Err500;
             }
         }
 
@@ -1538,7 +1568,7 @@ namespace ScanLink
             if ("🎯 Custom Preset (Advanced Settings)" == comboBox_test.Text)
             {
                 statusLabel.Text = "Custom Preset selected - Advanced settings enabled automatically for full control.";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                statusLabel.ForeColor = Theme.Info500;
             }
             
             // Enable/disable two-up controls based on custom preset selection
@@ -1557,7 +1587,7 @@ namespace ScanLink
         {
             // Advanced settings are always visible now
             statusLabel.Text = "Advanced settings enabled. Configure barcode dimensions and quality.";
-            statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+            statusLabel.ForeColor = Theme.Info500;
 
             // Set up tooltips for better user experience
             toolTip.SetToolTip(textBox_EmployeeID, "Enter the text/data to encode in the barcode");
@@ -2224,12 +2254,12 @@ namespace ScanLink
                 
                 // Update status with applied settings
                 statusLabel.Text = $"Advanced settings applied: {numericUpDown_width.Value}x{numericUpDown_height.Value}, Darkness: {trackBar_darkness.Value}";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                statusLabel.ForeColor = Theme.Info500;
             }
             catch (Exception ex)
             {
                 statusLabel.Text = $"Failed to apply advanced settings: {ex.Message}";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
+                statusLabel.ForeColor = Theme.Err500;
             }
         }
 
@@ -2846,7 +2876,7 @@ namespace ScanLink
             if (updateStatusLabel && !string.IsNullOrEmpty(message) && statusLabel != null)
             {
                 statusLabel.Text = message;
-                statusLabel.ForeColor = Color.FromArgb(231, 76, 60);
+                statusLabel.ForeColor = Theme.Err500;
             }
 
             if (!string.IsNullOrEmpty(message) && scannerContentPanel.Visible && scannerOutputTextBox != null)
@@ -3386,7 +3416,7 @@ namespace ScanLink
             // Update status to show current Employee ID
             string currentText = !string.IsNullOrWhiteSpace(textBox_EmployeeID.Text) ? textBox_EmployeeID.Text : "Default: 23456";
             statusLabel.Text = $"Employee ID updated: '{currentText}' - Click Preview to see visual representation";
-            statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+            statusLabel.ForeColor = Theme.Info500;
         }
         // Finds the next non-header row from `start` moving in `dir` (+1 down / -1 up). -1 if none.
         private int NextSelectableProductIndex(int start, int dir)
@@ -3435,7 +3465,7 @@ namespace ScanLink
                     ? "Product selection cleared."
                     : $"Product updated: '{displayText}' ({selectedValue}) - Click Preview to see visual representation";
                 statusLabel.Text = message;
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                statusLabel.ForeColor = Theme.Info500;
             }
 
             SaveAdvancedSettings();
@@ -3581,7 +3611,7 @@ namespace ScanLink
                     ? "Crop selection cleared."
                     : $"Crop updated: '{displayText}' ({selectedValue}) - Click Preview to see visual representation";
                 statusLabel.Text = message;
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                statusLabel.ForeColor = Theme.Info500;
             }
             SaveAdvancedSettings();
 
@@ -3596,7 +3626,7 @@ namespace ScanLink
                 // Use custom Employee ID from advanced settings
                 string customText = textBox_EmployeeID.Text;
                 statusLabel.Text = $"Printing barcode with custom text: '{customText}'";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                statusLabel.ForeColor = Theme.Info500;
                 
                 // Apply advanced settings
                 ApplyAdvancedSettings();
@@ -3606,7 +3636,7 @@ namespace ScanLink
                 // Use custom Product ID from advanced settings
                 string customText = comboBox_ProductID.Text ?? GetSelectedProductCode();
                 statusLabel.Text = $"Printing barcode with custom text: '{customText}'";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                statusLabel.ForeColor = Theme.Info500;
                 
                 // Apply advanced settings
                 ApplyAdvancedSettings();
@@ -3616,7 +3646,7 @@ namespace ScanLink
                 string cropCode = GetSelectedCropCode();
                 string cropDisplay = comboBox_CropID.Text ?? "";
                 statusLabel.Text = $"Printing barcode with crop: '{cropDisplay}' ({cropCode})";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                statusLabel.ForeColor = Theme.Info500;
             }
         }
 
@@ -3632,18 +3662,18 @@ namespace ScanLink
                 // Mark as generated and enable start printing button
                 _barcodeGenerated = true;
                 button_send.Enabled = true;
-                button_send.Text = "🖨️ Start Printing";
+                button_send.Text = "Start Printing";
                 button_send.BackColor = System.Drawing.Color.FromArgb(46, 125, 50); // Green color
 
                 // Update status
                 statusLabel.Text = $"Barcode generated successfully: {_generatedBarcode} (Emp:{employeeSegment} Prod:{productSegment} Crop:{cropSegment} ✓{checkDigit})";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+                statusLabel.ForeColor = Theme.Ok500;
             }
             catch (Exception ex)
             {
                 ErrorDialog.ShowError("Generation Error", $"Barcode generation failed: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}", this);
                 statusLabel.Text = "Barcode generation failed. Please check your settings.";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
+                statusLabel.ForeColor = Theme.Err500;
             }
         }
 
@@ -3657,7 +3687,7 @@ namespace ScanLink
             {
                 ErrorDialog.ShowError("Preview Error", $"Preview failed: {ex.Message}\n\nStack Trace:\n{ex.StackTrace}", this);
                 statusLabel.Text = "Preview failed. Please check your settings.";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
+                statusLabel.ForeColor = Theme.Err500;
             }
         }
         
@@ -3729,7 +3759,7 @@ namespace ScanLink
             previewForm.ShowDialog(this);
             
             statusLabel.Text = $"Visual preview shown for: '{BarcodeID}' ({textLines.Length} lines)";
-            statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+            statusLabel.ForeColor = Theme.Ok500;
         }
         
         private void CreateBarcodePreviewVisual(Panel panel, string BarcodeID, int width, int height, string[] textLines)
@@ -4334,17 +4364,17 @@ namespace ScanLink
             if (!_barcodeGenerated || string.IsNullOrEmpty(_generatedBarcode))
             {
                 statusLabel.Text = "❌ Please generate a barcode first before printing.";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
+                statusLabel.ForeColor = Theme.Err500;
                 return;
             }
 
             // Show progress and update UI
             button_send.Enabled = false;
-            button_send.Text = "🔄 Processing...";
+            button_send.Text = "Processing...";
             progressBar.Visible = true; // keep visible as a thin status strip
             progressBar.Style = ProgressBarStyle.Marquee;
             statusLabel.Text = "Preparing print job...";
-            statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+            statusLabel.ForeColor = Theme.Info500;
 
             try
             {
@@ -4370,22 +4400,22 @@ namespace ScanLink
                 // Success feedback with generated barcode summary
                 string successMessage = $"✅ Print job completed successfully!\n🎯 Barcode used: {_generatedBarcode}";
                 statusLabel.Text = successMessage;
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+                statusLabel.ForeColor = Theme.Ok500;
 
                 // Reset barcode generation state after successful print
                 _barcodeGenerated = false;
                 _generatedBarcode = "";
-                button_send.Text = "🖨️ Generate Barcode";
+                button_send.Text = "Generate Barcode";
                 button_send.BackColor = System.Drawing.Color.FromArgb(100, 100, 100); // Gray out permanently
             }
             catch (Exception ex)
             {
                 // Error feedback
                 statusLabel.Text = $"❌ Print failed: {ex.Message}";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
+                statusLabel.ForeColor = Theme.Err500;
                 // Re-enable button on failure so user can try again
                 button_send.Enabled = true;
-                button_send.Text = "🖨️ Start Printing";
+                button_send.Text = "Start Printing";
                 button_send.BackColor = System.Drawing.Color.FromArgb(46, 125, 50);
             }
             finally
@@ -4557,7 +4587,7 @@ namespace ScanLink
                         if (!string.IsNullOrEmpty(corrections))
                         {
                             statusLabel.Text = $"⚠️ Parameter corrections: {corrections}";
-                            statusLabel.ForeColor = System.Drawing.Color.FromArgb(255, 193, 7); // Warning color
+                            statusLabel.ForeColor = Theme.Warn500; // Warning color
                         }
 
                         // Set the actual label dimensions
@@ -4633,7 +4663,7 @@ namespace ScanLink
                     // Advanced settings always enabled
                     {
                         statusLabel.Text = $"Applied advanced settings - Darkness: {trackBar_darkness.Value}, Narrow Bar Width: {narrowBarWidth} (for {desiredWidth}px total width)";
-                        statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                        statusLabel.ForeColor = Theme.Info500;
                     }
                     
                     switch (comboBox_barcode.Text)
@@ -4793,7 +4823,7 @@ namespace ScanLink
                 if (!string.IsNullOrEmpty(corrections))
                 {
                     statusLabel.Text = $"⚠️ Parameter corrections: {corrections}";
-                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(255, 193, 7); // Warning color
+                    statusLabel.ForeColor = Theme.Warn500; // Warning color
                 }
 
                 // Note: If gap detection fails, try Continuous mode instead:
@@ -5024,18 +5054,18 @@ namespace ScanLink
                 if (warnings.Count > 0)
                 {
                     statusLabel.Text = "⚠️ " + string.Join("; ", warnings);
-                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(255, 193, 7);
+                    statusLabel.ForeColor = Theme.Warn500;
                 }
                 
                 // Update status
                 statusLabel.Text = $"✅ Custom preset printed with all advanced settings applied!";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+                statusLabel.ForeColor = Theme.Ok500;
             }
             catch (Exception ex)
             {
                 ShowException.Show(this.Name, "__testPPLB_customPreset", ex);
                 statusLabel.Text = $"❌ Custom preset failed: {ex.Message}";
-                statusLabel.ForeColor = System.Drawing.Color.FromArgb(231, 76, 60);
+                statusLabel.ForeColor = Theme.Err500;
             }
             finally
             {
@@ -5490,7 +5520,7 @@ namespace ScanLink
             try
             {
                 statusLabel.Text = "API: Uploading...";
-                statusLabel.ForeColor = Color.DodgerBlue;
+                statusLabel.ForeColor = Theme.Info500;
 
                 var result = await _scanLogUploadService.UploadQueuedLogsManually();
                 int ok = result.succeeded;
@@ -5500,17 +5530,17 @@ namespace ScanLink
                 if (ok > 0 && bad == 0)
                 {
                     statusLabel.Text = $"API: Uploaded {ok} log(s) successfully";
-                    statusLabel.ForeColor = Color.Green;
+                    statusLabel.ForeColor = Theme.Ok500;
                 }
                 else if (ok > 0 && bad > 0)
                 {
                     statusLabel.Text = $"API: Uploaded {ok}, failed {bad}. Remaining kept.";
-                    statusLabel.ForeColor = Color.Orange;
+                    statusLabel.ForeColor = Theme.Warn500;
                 }
                 else
                 {
                     statusLabel.Text = $"API: No uploads. {(string.IsNullOrEmpty(lastErr) ? "" : lastErr)}";
-                    statusLabel.ForeColor = Color.OrangeRed;
+                    statusLabel.ForeColor = Theme.Warn500;
                 }
 
                 // Refresh grid after possible changes
@@ -5519,7 +5549,7 @@ namespace ScanLink
             catch (Exception ex)
             {
                 statusLabel.Text = $"API: Error - {ex.Message}";
-                statusLabel.ForeColor = Color.Red;
+                statusLabel.ForeColor = Theme.Err500;
             }
         }
 
@@ -5541,7 +5571,7 @@ namespace ScanLink
                           "Click \"Sync logs to API\" first and wait until it reports no remaining logs, then try again.";
                     MessageBox.Show(msg, "Sync required before cleanup", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     statusLabel.Text = pending < 0 ? "Cleanup blocked: queue not verified" : $"Cleanup blocked: {pending} unsynced scan(s)";
-                    statusLabel.ForeColor = Color.OrangeRed;
+                    statusLabel.ForeColor = Theme.Warn500;
                     return;
                 }
 
@@ -5566,12 +5596,12 @@ namespace ScanLink
                 statusLabel.Text = cleared > 0
                     ? $"Local scans display cleared ({cleared} record(s) removed)."
                     : "Local scans display cleared.";
-                statusLabel.ForeColor = Color.Green;
+                statusLabel.ForeColor = Theme.Ok500;
             }
             catch (Exception ex)
             {
                 statusLabel.Text = $"Cleanup failed: {ex.Message}";
-                statusLabel.ForeColor = Color.Red;
+                statusLabel.ForeColor = Theme.Err500;
             }
         }
 
@@ -8205,54 +8235,54 @@ namespace ScanLink
                 case "File":
                     textBox.Text = "📁 " + strFolder;
                     statusLabel.Text = "Status: File output configured";
-                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+                    statusLabel.ForeColor = Theme.Ok500;
                     // Update main status bar with connection status
                     this.statusLabel.Text = "Status: File output configured";
-                    this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+                    this.statusLabel.ForeColor = Theme.Ok500;
                     break;
                 case "COM":
                     textBox.Text = "🔌 Serial: " + this.m_ComName + " (" + this.m_baudRate + " baud)";
                     statusLabel.Text = "Status: Serial port ready";
-                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                    statusLabel.ForeColor = Theme.Info500;
                     // Update main status bar with connection status
                     this.statusLabel.Text = "Status: Serial port ready";
-                    this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                    this.statusLabel.ForeColor = Theme.Info500;
                     break;
                 case "USB":
                     if (string.IsNullOrWhiteSpace(this.m_USBDevicePath))
                     {
                         textBox.Text = "🔌 USB: Click Configure to select device";
                         statusLabel.Text = "Status: USB device not configured";
-                        statusLabel.ForeColor = System.Drawing.Color.FromArgb(230, 126, 34);
+                        statusLabel.ForeColor = Theme.Warn500;
                         // Update main status bar with connection status
                         this.statusLabel.Text = "Status: USB device not configured";
-                        this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(230, 126, 34);
+                        this.statusLabel.ForeColor = Theme.Warn500;
                     }
                     else
                     {
                         textBox.Text = "🔌 USB: " + this.m_USBDevicePath;
                         statusLabel.Text = "Status: USB device configured";
-                        statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+                        statusLabel.ForeColor = Theme.Ok500;
                         // Update main status bar with connection status
                         this.statusLabel.Text = "Status: USB device configured";
-                        this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(46, 204, 113);
+                        this.statusLabel.ForeColor = Theme.Ok500;
                     }
                     break;
                 case "LAN":
                     textBox.Text = "🌐 Network: " + this.MergeIPAddressAndPort(this.m_TCPAddress, this.m_TCPPort);
                     statusLabel.Text = "Status: Network connection configured";
-                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                    statusLabel.ForeColor = Theme.Info500;
                     // Update main status bar with connection status
                     this.statusLabel.Text = "Status: Network connection configured";
-                    this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(52, 152, 219);
+                    this.statusLabel.ForeColor = Theme.Info500;
                     break;
                 case "Multi-LAN":
                     textBox.Text = "🌐 Multi-LAN (Not supported in this version)";
                     statusLabel.Text = "Status: Feature not available";
-                    statusLabel.ForeColor = System.Drawing.Color.FromArgb(149, 165, 166);
+                    statusLabel.ForeColor = Theme.TextMuted;
                     // Update main status bar with connection status
                     this.statusLabel.Text = "Status: Feature not available";
-                    this.statusLabel.ForeColor = System.Drawing.Color.FromArgb(149, 165, 166);
+                    this.statusLabel.ForeColor = Theme.TextMuted;
                     break;
                 default:
                     MessageBox.Show("Connection type not supported: " + connectionType, "Scan Link", MessageBoxButtons.OK, MessageBoxIcon.Warning);

@@ -46,7 +46,7 @@ namespace ScanLink
             this.connectionGroupBox.Controls.Add(this.textBox_port);
             this.connectionGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.connectionGroupBox.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-            this.connectionGroupBox.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.connectionGroupBox.ForeColor = Theme.TextHeading;
             this.connectionGroupBox.Location = new System.Drawing.Point(0, 0);
             this.connectionGroupBox.Name = "connectionGroupBox";
             this.connectionGroupBox.Padding = new System.Windows.Forms.Padding(20, 20, 20, 20);
@@ -61,7 +61,7 @@ namespace ScanLink
             //
             this.connectionStatusLabel.AutoSize = true;
             this.connectionStatusLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
-            this.connectionStatusLabel.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.connectionStatusLabel.ForeColor = Theme.TextBody;
             this.connectionStatusLabel.Location = new System.Drawing.Point(25, 100);
             this.connectionStatusLabel.Name = "connectionStatusLabel";
             this.connectionStatusLabel.Size = new System.Drawing.Size(200, 15);
@@ -72,7 +72,7 @@ namespace ScanLink
             //
             this.label_port.AutoSize = true;
             this.label_port.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
-            this.label_port.ForeColor = System.Drawing.Color.FromArgb(12, 24, 33);
+            this.label_port.ForeColor = Theme.TextLabel;
             this.label_port.Location = new System.Drawing.Point(25, 35);
             this.label_port.Name = "label_port";
             this.label_port.Size = new System.Drawing.Size(89, 15);
@@ -92,24 +92,15 @@ namespace ScanLink
             //
             // button_setting
             //
-            this.button_setting.BackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            this.button_setting.FlatAppearance.BorderSize = 0;
-            this.button_setting.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.button_setting.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Bold);
-            this.button_setting.ForeColor = System.Drawing.Color.White;
             this.button_setting.Location = new System.Drawing.Point(460, 32);
             this.button_setting.Name = "button_setting";
             this.button_setting.Size = new System.Drawing.Size(120, 32);
             this.button_setting.TabIndex = 2;
             this.button_setting.Text = "Configure";
-            this.button_setting.UseVisualStyleBackColor = false;
-            this.button_setting.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(27, 42, 65);
-            this.button_setting.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(0, 0, 0);
             this.button_setting.Click += new System.EventHandler(this.button_setting_Click);
             //
             // textBox_port
             //
-            this.textBox_port.Font = new System.Drawing.Font("Microsoft Sans Serif", 10F, System.Drawing.FontStyle.Regular);
             this.textBox_port.Location = new System.Drawing.Point(190, 70);
             this.textBox_port.Name = "textBox_port";
             this.textBox_port.ReadOnly = true;
@@ -132,6 +123,17 @@ namespace ScanLink
             this.connectionGroupBox.PerformLayout();
             this.ResumeLayout(false);
 
+            // Restyle only — this dialog writes into Form1 and hides rather than disposing
+            // on close, so its structure is left untouched.
+            ScanLink.Themed.ThemeStyles.DialogChrome(this);
+            ScanLink.Themed.ThemeStyles.Primary(this.button_setting);
+            // Pinned back to its designed box: the button sits inline at y=32 and the field
+            // below starts at y=70, so letting it grow to the 38px minimum closes that gap.
+            this.button_setting.MinimumSize = new System.Drawing.Size(120, 32);
+            this.button_setting.Size = new System.Drawing.Size(120, 32);
+            // A GroupBox legend cannot carry an Image without owner-drawing it, so the emoji
+            // is stripped rather than replaced.
+            this.connectionGroupBox.Text = ScanLink.Themed.IconSet.StripLeadingGlyph(this.connectionGroupBox.Text);
         }
 
         #endregion

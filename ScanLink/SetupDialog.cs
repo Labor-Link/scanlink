@@ -41,7 +41,10 @@ namespace ScanLink
             {
                 Dock = DockStyle.Top,
                 Height = 50,
-                BackColor = Color.LightGray
+                // This row is a tab strip, not an action row, so it takes the
+                // segmented-control treatment — sunken track, selected tab lifted to white.
+                BackColor = Theme.SurfaceSunken,
+                Padding = new Padding(Theme.S2, Theme.S2, Theme.S2, 0)
             };
 
             // Create buttons
@@ -62,7 +65,7 @@ namespace ScanLink
             {
                 Dock = DockStyle.Top,
                 Height = 40,
-                BackColor = Color.LightBlue,
+                BackColor = Theme.SurfaceCard,
                 Visible = false // Hidden by default
             };
 
@@ -88,8 +91,30 @@ namespace ScanLink
 
             // Default selection - set Combination Table as selected
             _selectedButton = combinationTableButton;
-            _selectedButton.BackColor = Color.LightBlue;
+            StyleTab(_selectedButton, true);
             ShowTable("Combination Table");
+
+            // Applied last so every grid and input built above is already in the tree.
+            ScanLink.Themed.ThemeStyles.DialogChrome(this);
+        }
+
+        /// <summary>
+        /// Segmented-control tab: the selected tab lifts to the card surface with heading
+        /// ink, the rest stay flat on the sunken track. Selection is carried by surface and
+        /// weight rather than the old LightBlue fill, which read as a disabled control
+        /// rather than a chosen one.
+        /// </summary>
+        private void StyleTab(Button button, bool selected)
+        {
+            if (button == null) return;
+
+            button.BackColor = selected ? Theme.SurfaceCard : Theme.SurfaceSunken;
+            button.ForeColor = selected ? Theme.TextHeading : Theme.TextMuted;
+            button.Font = selected ? Theme.FontSmBold : Theme.FontSm;
+            button.FlatAppearance.MouseOverBackColor = selected ? Theme.SurfaceCard : Theme.N200;
+            button.FlatAppearance.MouseDownBackColor = Theme.N200;
+            button.UseVisualStyleBackColor = false;
+            ScanLink.Themed.ThemeStyles.RoundedCorners(button, Theme.RadiusSm);
         }
 
         private Button CreateButton(string text, int index)
@@ -97,12 +122,14 @@ namespace ScanLink
             Button button = new Button
             {
                 Text = text,
-                Size = new Size(120, 40),
-                Location = new Point(index * 125 + 10, 5),
+                Size = new Size(120, 36),
+                Location = new Point(index * 125 + 10, 7),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.White,
-                Tag = text
+                Tag = text,
+                UseMnemonic = false
             };
+            button.FlatAppearance.BorderSize = 0;
+            StyleTab(button, false);
 
             button.Click += Button_Click;
             return button;
@@ -115,12 +142,12 @@ namespace ScanLink
             // Unselect previous button
             if (_selectedButton != null)
             {
-                _selectedButton.BackColor = Color.White;
+                StyleTab(_selectedButton, false);
             }
 
             // Select new button
             _selectedButton = clickedButton;
-            _selectedButton.BackColor = Color.LightBlue;
+            StyleTab(_selectedButton, true);
 
             // Show corresponding table
             ShowTable(clickedButton.Text);

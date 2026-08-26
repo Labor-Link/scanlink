@@ -76,7 +76,7 @@ namespace ScanLink
                 Text = "6. Avg Weight (kg)",
                 Location = new Point(0, y),
                 AutoSize = true,
-                ForeColor = Color.FromArgb(52, 73, 94)
+                ForeColor = Theme.TextLabel
             };
             panel.Controls.Add(weightLabel);
 
@@ -97,8 +97,8 @@ namespace ScanLink
             {
                 Location = new Point(0, y),
                 Size = new Size(380, 55),
-                Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                ForeColor = Color.FromArgb(192, 57, 43),
+                Font = Theme.FontSmBold,
+                ForeColor = Theme.Err700,
                 Text = ""
             };
             panel.Controls.Add(statusLabel);
@@ -109,12 +109,8 @@ namespace ScanLink
                 Text = "Create",
                 Location = new Point(200, y),
                 Size = new Size(90, 32),
-                BackColor = Color.FromArgb(13, 110, 253),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
                 Enabled = false
             };
-            createButton.FlatAppearance.BorderSize = 0;
             createButton.Click += CreateButton_Click;
             panel.Controls.Add(createButton);
 
@@ -134,6 +130,18 @@ namespace ScanLink
             countCombo.SelectedIndexChanged += CountCombo_SelectedIndexChanged;
             cartonTypeCombo.SelectedIndexChanged += CartonTypeCombo_SelectedIndexChanged;
             avgWeightInput.ValueChanged += (s, e) => UpdateCreateButtonEnabled();
+
+            // Create confirms, so it takes the single indigo primary; Cancel is secondary.
+            // Geometry is pinned back afterwards because both buttons sit at hard-coded
+            // coordinates 100px apart and the variant minimum width would collide them.
+            ScanLink.Themed.ThemeStyles.DialogChrome(this);
+            ScanLink.Themed.ThemeStyles.Primary(createButton);
+            ScanLink.Themed.ThemeStyles.Secondary(cancelButton);
+            foreach (Button b in new[] { createButton, cancelButton })
+            {
+                b.MinimumSize = new Size(90, 32);
+                b.Size = new Size(90, 32);
+            }
         }
 
         private void AddStepRow(Panel parent, ref int y, int rowHeight, string labelText, out ComboBox combo)
@@ -143,7 +151,7 @@ namespace ScanLink
                 Text = labelText,
                 Location = new Point(0, y),
                 AutoSize = true,
-                ForeColor = Color.FromArgb(52, 73, 94)
+                ForeColor = Theme.TextLabel
             };
             parent.Controls.Add(label);
 
@@ -303,13 +311,13 @@ namespace ScanLink
         private void SetBusyStatus(string text)
         {
             createButton.Enabled = false;
-            statusLabel.ForeColor = Color.FromArgb(52, 73, 94);
+            statusLabel.ForeColor = Theme.TextLabel;
             statusLabel.Text = text;
         }
 
         private void SetErrorStatus(string text)
         {
-            statusLabel.ForeColor = Color.FromArgb(192, 57, 43);
+            statusLabel.ForeColor = Theme.Err700;
             statusLabel.Text = text;
         }
 
@@ -453,7 +461,7 @@ namespace ScanLink
         private async void CreateButton_Click(object sender, EventArgs e)
         {
             createButton.Enabled = false;
-            statusLabel.ForeColor = Color.FromArgb(52, 73, 94);
+            statusLabel.ForeColor = Theme.TextLabel;
             statusLabel.Text = "Creating combination...";
 
             string cropId = cropCombo.SelectedValue?.ToString();
@@ -474,7 +482,7 @@ namespace ScanLink
             }
             else
             {
-                statusLabel.ForeColor = Color.FromArgb(192, 57, 43);
+                statusLabel.ForeColor = Theme.Err700;
                 statusLabel.Text = result.ErrorMessage ?? "Failed to create combination.";
                 createButton.Enabled = true;
             }
