@@ -1,0 +1,309 @@
+/* ScanLink ships no custom webfont. The client renders in Segoe UI (system),
+   with Consolas / Courier New for monospace readouts and label previews.
+
+   Font Awesome 5 binaries below were found in the repo (public/fonts) but are NOT
+   referenced by the client — kept for parity if a web surface adopts them. */
+@font-face{font-family:"Font Awesome 5 Free";font-style:normal;font-weight:900;font-display:block;src:url("fa-solid.woff2") format("woff2")}
+@font-face{font-family:"Font Awesome 5 Free";font-style:normal;font-weight:400;font-display:block;src:url("fa-regular.woff2") format("woff2")}
+
+:root{
+/* ---- Brand ---- */
+--brand-indigo:#4D4AEA;          /* checkmark inside the logo shield (rgb 77,74,234) */
+--brand-navy-900:#1B2A41;        /* hover/pressed navy, headings on login */
+--brand-navy-700:#324A5F;        /* base navy: login, save, refresh buttons */
+--brand-ink:#0C1821;             /* form field labels */
+
+/* ---- Action blue (primary) ---- */
+--blue-500:#0D6EFD;              /* primary button / nav tile fill */
+--blue-600:#0B5ED7;              /* hover */
+--blue-700:#0A58CA;              /* pressed */
+--blue-login:#2065D1;            /* login button override */
+--blue-login-hover:#1C5CBE;
+--blue-login-active:#1852AA;
+--blue-accent:#0078D7;           /* Windows accent: stat values, marquee bars */
+--blue-info:#3498DB;             /* legacy flat-ui info state text */
+--blue-selection:#E8F0FE;        /* grid row selection fill */
+
+/* ---- Semantic ---- */
+--success:#198754;               /* Generate Barcode */
+--success-hover:#157347;
+--success-flat:#2ECC71;          /* status text + sync button */
+--success-flat-dark:#27AE60;
+--warning:#FFC107;
+--warning-amber:#CA8A04;         /* destructive-ish "Cleanup local scans" */
+--warning-amber-hover:#B47B03;
+--warning-orange:#E67E22;        /* "not configured" states */
+--danger:#DC3545;                /* logout hover */
+--danger-flat:#E74C3C;           /* error text, error dialog title */
+--danger-flat-dark:#C0392B;
+--muted-slate:#95A5A6;           /* "feature unavailable" */
+
+/* ---- Neutrals ---- */
+--white:#FFFFFF;
+--gray-50:#F8F9FA;               /* app chrome / header / login canvas */
+--gray-75:#FAFAFB;               /* alternating grid rows */
+--gray-100:#F7F9F9;              /* dialog toolbars */
+--gray-150:#F5F5F5;              /* preview canvas */
+--gray-200:#F0F0F0;              /* site tiles, detection log */
+--gray-300:#E9ECEF;              /* grid lines */
+--gray-400:#CED4DA;              /* input + secondary button borders */
+--gray-500:#DCDCDC;              /* legacy grid line */
+--gray-600:#6C757D;              /* muted text */
+--gray-700:#7F8C8D;              /* legacy muted */
+--slate-700:#34495E;             /* legacy dialog headings */
+--gray-900:#212529;              /* body text */
+
+/* ---- Nav tile identity borders (1px, on blue fill) ---- */
+--tile-setup:#4CAF50;
+--tile-scanner:#42A5F5;
+--tile-printer:#FFC107;
+--tile-barcodes:#BA68C8;
+--tile-boxlabels:#4DB6AC;
+--tile-reports:#A1887F;
+--tile-logout:#F48FB1;
+--tile-barcodes-fill:#9C27B0;
+--tile-barcodes-fill-off:#7B1FA2;
+--tile-boxlabels-fill:#009688;
+--tile-boxlabels-fill-off:#00796B;
+
+/* ---- Label / print surfaces ---- */
+--label-paper:#FFFFC8;           /* barcode sticker preview fill */
+--label-header-bg:#EBF0F5;
+--label-header-line:#C8D2DC;
+
+/* ---- Semantic aliases ---- */
+--text-body:var(--gray-900);
+--text-muted:var(--gray-600);
+--text-label:var(--brand-ink);
+--text-heading:var(--brand-navy-900);
+--text-on-accent:var(--white);
+--text-link:var(--blue-500);
+--text-link-hover:var(--blue-700);
+--surface-app:var(--gray-50);
+--surface-card:var(--white);
+--surface-sunken:var(--gray-150);
+--surface-alt-row:var(--gray-75);
+--border-default:var(--gray-400);
+--border-subtle:var(--gray-300);
+--focus-ring:#1E90FF;            /* DodgerBlue, focused button border */
+--action-primary:var(--blue-500);
+--action-primary-hover:var(--blue-600);
+--action-primary-active:var(--blue-700);
+--action-secondary:var(--brand-navy-700);
+--action-secondary-hover:var(--brand-navy-900);
+}
+
+:root{
+/* Segoe UI is the client's UI face (Windows system font, not redistributable).
+   Open Sans is the closest freely-hostable fallback for non-Windows rendering. */
+--font-ui:"Segoe UI","Open Sans",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+--font-legacy:"Microsoft Sans Serif","Segoe UI",Arial,sans-serif; /* buttons + filter labels in the v1 client */
+--font-mono:Consolas,"Courier New",ui-monospace,monospace;        /* logs, serials, label previews */
+
+/* Sizes are the client's point sizes converted at 96dpi (1pt = 1.333px). */
+--text-8:11px;    /* nav tile description, sticker text */
+--text-9:12px;    /* body default, grid cells, status bar */
+--text-9-5:13px;  /* preview + generate buttons */
+--text-10:13px;   /* nav tile title, filter labels, dialog buttons */
+--text-11:15px;   /* Print Barcode CTA */
+--text-12:16px;   /* login field labels + inputs */
+--text-14:19px;   /* GroupBox legend on login */
+--text-16:21px;   /* dialog / screen titles */
+--text-24:32px;   /* site tile emoji */
+--text-28:37px;   /* "Welcome to ScanLink" */
+
+--weight-regular:400;
+--weight-bold:700;   /* the client only ever uses Regular and Bold */
+
+--leading-tight:1.15;
+--leading-normal:1.4;
+--leading-loose:1.6;
+--tracking-normal:0;
+
+/* Semantic type roles */
+--type-display:var(--weight-bold) var(--text-28)/var(--leading-tight) var(--font-ui);
+--type-title:var(--weight-bold) var(--text-16)/var(--leading-tight) var(--font-ui);
+--type-legend:var(--weight-bold) var(--text-14)/var(--leading-tight) var(--font-ui);
+--type-field-label:var(--weight-regular) var(--text-12)/var(--leading-normal) var(--font-ui);
+--type-body:var(--weight-regular) var(--text-9)/var(--leading-normal) var(--font-ui);
+--type-body-bold:var(--weight-bold) var(--text-9)/var(--leading-normal) var(--font-ui);
+--type-button:var(--weight-bold) var(--text-10)/1 var(--font-legacy);
+--type-tile-title:var(--weight-bold) var(--text-10)/1.2 var(--font-ui);
+--type-tile-desc:var(--weight-regular) var(--text-8)/1.2 var(--font-ui);
+--type-mono:var(--weight-regular) var(--text-9)/var(--leading-normal) var(--font-mono);
+}
+
+:root{
+/* The client lays out on a loose 5px rhythm with 10 / 20 / 30 / 50 as the workhorses. */
+--space-1:2px;   /* TableLayoutPanel cell margin */
+--space-2:3px;
+--space-3:5px;   /* grid cell horizontal padding, header vertical padding */
+--space-4:6px;
+--space-5:10px;  /* panel padding, status bar indent */
+--space-6:15px;
+--space-7:20px;  /* form margin, GroupBox padding, section gap */
+--space-8:30px;  /* login field inset, top margin */
+--space-9:40px;  /* section title stride */
+--space-10:50px; /* site-tile gutter */
+
+/* Control heights, straight from the source */
+--control-h-xs:22px;   /* Fetch employees */
+--control-h-sm:24px;   /* Apply / Clear filters */
+--control-h-md:26px;   /* pagination buttons */
+--control-h-lg:32px;   /* dialog + toolbar buttons */
+--control-h-xl:36px;   /* login button (designer) */
+--control-h-2xl:40px;  /* styled primary buttons, dialog actions */
+--control-h-cta:45px;  /* Print Barcode */
+--input-h:32px;
+--row-h:28px;          /* DataGridView row */
+--row-header-h:30px;   /* DataGridView column header */
+--statusbar-h:30px;
+--header-h:60px;       /* app header panel */
+
+/* Widths seen in the source */
+--field-w-sm:50px;
+--field-w-md:120px;
+--field-w-lg:200px;
+--field-w-xl:340px;    /* login inputs */
+--dialog-w:600px;
+--panel-w:560px;
+--tile-w:390px;
+--tile-h:75px;
+}
+
+:root{
+/* Corner radii are GDI+ Region radii from the client. Nothing is fully pill-shaped. */
+--radius-hairline:1px;  /* Fetch employees */
+--radius-panel:8px;     /* panels + group boxes */
+--radius-button:12px;   /* every flat button */
+--radius-tile:15px;     /* site tiles */
+--radius-none:0px;      /* inputs, grids, status bar — Windows chrome stays square */
+
+/* Borders */
+--border-width:1px;
+--border-input:1px solid var(--gray-400);
+--border-button-outline:1px solid var(--gray-400);
+--border-grid:1px solid var(--gray-300);
+--border-nav-tile:1px solid currentColor; /* @kind other */
+
+/* The client is FLAT: no drop shadows anywhere in the source.
+   These exist only so web surfaces can lift a modal off the page consistently. */
+--shadow-none:none;
+--shadow-dialog:0 2px 16px rgba(12,24,33,.18);
+--shadow-focus:0 0 0 2px rgba(30,144,255,.35);
+
+/* Motion: WinForms has no tweening. The only movement is the marquee progress bar. */
+--duration-instant:0ms; /* @kind other */
+--duration-fast:80ms; /* @kind other */
+--easing-standard:linear; /* @kind other */
+--marquee-speed:30; /* @kind other */
+
+/* Opacity */
+--opacity-disabled:.55; /* @kind other */
+--on-accent-secondary:rgba(255,255,255,.78); /* nav tile description text (alpha 200) */
+}
+
+a{color:var(--text-link);text-decoration:underline;text-underline-offset:2px}
+a:hover{color:var(--text-link-hover);text-decoration:underline}
+a:active{color:var(--blue-700)}
+a:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+
+/* ScanLink v2 — the redesign layer.
+   tokens/colors.css documents the legacy WinForms palette; this file defines the
+   product palette the redesigned client actually uses. Loaded last, so the
+   semantic aliases below win. Brand navy stays; logo indigo becomes the action colour. */
+:root{
+/* ---- Primary: logo indigo, promoted out of the shield ---- */
+--indigo-50:#EFEFFD;
+--indigo-100:#DEDDFB;
+--indigo-200:#BFBDF6;
+--indigo-500:#4D4AEA;
+--indigo-600:#3F3CD4;
+--indigo-700:#3532B8;
+--indigo-900:#22208C;
+
+/* ---- Navy: shell + headings ---- */
+--navy-600:#324A5F;
+--navy-800:#22344D;
+--navy-900:#1B2A41;
+--navy-950:#121D2E;
+
+/* ---- Neutral ramp ---- */
+--n-0:#FFFFFF;
+--n-25:#FCFCFD;
+--n-50:#F7F8FA;
+--n-100:#F1F3F7;
+--n-200:#E4E7EC;
+--n-300:#D0D5DD;
+--n-400:#98A2B3;
+--n-500:#667085;
+--n-600:#475467;
+--n-800:#1D2939;
+--n-900:#101828;
+
+/* ---- Status: kept legible, softened from the legacy flat-UI set ---- */
+--ok-50:#E9F7EF;--ok-500:#12875A;--ok-700:#0C6944;
+--warn-50:#FEF6E7;--warn-500:#B54708;--warn-700:#93370D;
+--err-50:#FDECEC;--err-500:#D32F2F;--err-700:#B42318;
+--info-50:#EAF2FE;--info-500:#175CD3;
+
+/* ---- Semantic overrides (these beat tokens/colors.css) ---- */
+--action-primary:var(--indigo-500);
+--action-primary-hover:var(--indigo-600);
+--action-primary-active:var(--indigo-700);
+--action-secondary:var(--navy-900);
+--action-secondary-hover:var(--navy-950);
+
+--surface-app:var(--n-50);
+--surface-card:var(--n-0);
+--surface-sunken:var(--n-100);
+--surface-alt-row:var(--n-25);
+--surface-shell:var(--navy-900);
+--surface-shell-hover:rgba(255,255,255,.07);
+--surface-shell-active:var(--indigo-500);
+
+--text-body:var(--n-800);
+--text-heading:var(--n-900);
+--text-muted:var(--n-500);
+--text-label:var(--n-600);
+--text-on-shell:rgba(255,255,255,.72);
+--text-on-shell-strong:#FFFFFF;
+--text-link:var(--indigo-600);
+--text-link-hover:var(--indigo-700);
+
+--border-default:var(--n-200);
+--border-subtle:var(--n-100);
+--border-strong:var(--n-300);
+--focus-ring:var(--indigo-500);
+
+/* ---- 4px spacing scale ---- */
+--s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:20px;--s-6:24px;--s-8:32px;--s-10:40px;--s-12:48px;--s-16:64px;
+
+/* ---- Radii ---- */
+--r-xs:4px;--r-sm:6px;--r-md:8px;--r-lg:12px;--r-xl:16px;--r-pill:999px;
+
+/* ---- Elevation: real but restrained ---- */
+--e-1:0 1px 2px rgba(16,24,40,.06);
+--e-2:0 1px 3px rgba(16,24,40,.10),0 1px 2px rgba(16,24,40,.06);
+--e-3:0 4px 12px rgba(16,24,40,.08);
+--e-4:0 16px 40px rgba(16,24,40,.16);
+--ring-focus:0 0 0 3px rgba(77,74,234,.22);
+
+/* ---- Type scale (px, compact-density product UI) ---- */
+--f-xs:12px;--f-sm:13px;--f-md:14px;--f-lg:16px;--f-xl:18px;--f-2xl:20px;--f-3xl:24px;--f-4xl:30px;
+--lh-tight:1.25; /* @kind other */
+--lh-normal:1.5; /* @kind other */
+
+/* ---- Control sizing (compact) ---- */
+--h-sm:32px;--h-md:38px;--h-lg:44px;
+--sidebar-w:236px;
+--topbar-h:60px;
+
+/* ---- Motion: short, functional ---- */
+--t-fast:120ms cubic-bezier(.2,0,.2,1); /* @kind other */
+--t-med:200ms cubic-bezier(.2,0,.2,1); /* @kind other */
+}
+
+
+/* page base */
+html,body{margin:0;height:100%}body{background:var(--surface-app);font-family:var(--font-ui);color:var(--text-body)}#root{height:100vh;min-height:760px}::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--n-300);border-radius:99px;border:3px solid transparent;background-clip:content-box}

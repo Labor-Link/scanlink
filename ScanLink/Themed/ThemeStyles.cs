@@ -259,41 +259,15 @@ namespace ScanLink.Themed
             }
         }
 
-        /// <summary>Applies the v2 table treatment. Safe on any grid in the app.</summary>
+        /// <summary>
+        /// Applies the mockup's DataTable treatment (37px header, 43px rows, 16px padding,
+        /// hover and indigo selection, no zebra). Safe on any grid in the app; the painting
+        /// lives in DesignSystem/SLTable.cs.
+        /// </summary>
         public static void Grid(DataGridView grid)
         {
             if (grid == null) return;
-
-            grid.BackgroundColor = Theme.SurfaceCard;
-            grid.BorderStyle = BorderStyle.None;
-            grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
-            grid.GridColor = Theme.BorderSubtle;
-            grid.EnableHeadersVisualStyles = false;
-            grid.RowHeadersVisible = false;
-            grid.BackColor = Theme.SurfaceCard;
-
-            grid.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
-            grid.ColumnHeadersDefaultCellStyle.BackColor = Theme.SurfaceSunken;
-            grid.ColumnHeadersDefaultCellStyle.ForeColor = Theme.TextLabel;
-            grid.ColumnHeadersDefaultCellStyle.Font = Theme.FontTableHeader;
-            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(Theme.S2, 0, Theme.S2, 0);
-            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = Theme.SurfaceSunken;
-            grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = Theme.TextLabel;
-            grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.ColumnHeadersHeight = Theme.GridHeaderHeight;
-
-            grid.DefaultCellStyle.BackColor = Theme.SurfaceCard;
-            grid.DefaultCellStyle.ForeColor = Theme.TextBody;
-            grid.DefaultCellStyle.Font = Theme.FontSm;
-            grid.DefaultCellStyle.SelectionBackColor = Theme.GridSelection;
-            grid.DefaultCellStyle.SelectionForeColor = Theme.TextHeading;
-            grid.DefaultCellStyle.Padding = new Padding(Theme.S2, 0, Theme.S2, 0);
-
-            grid.AlternatingRowsDefaultCellStyle.BackColor = Theme.SurfaceAltRow;
-            grid.AlternatingRowsDefaultCellStyle.SelectionBackColor = Theme.GridSelection;
-            grid.AlternatingRowsDefaultCellStyle.SelectionForeColor = Theme.TextHeading;
-
-            grid.RowTemplate.Height = Theme.GridRowHeight;
+            ScanLink.DesignSystem.SLTableStyle.Apply(grid);
 
             grid.ColumnAdded -= OnGridColumnAdded;
             grid.ColumnAdded += OnGridColumnAdded;

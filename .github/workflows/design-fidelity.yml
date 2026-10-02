@@ -1,0 +1,71 @@
+# Renders the WinForms design-system gallery on a Windows machine and scores it against the
+# UI team's HTML mockup. Results: the run's summary page (score table) and the
+# "design-fidelity-report" artifact (report.html with mockup / WinForms / diff side by side).
+# See design/README.md, "Checking fidelity".
+name: Design fidelity
+
+on:
+  push:
+    paths:
+      - 'ScanLink/**'
+      - 'design/**'
+      - '.github/workflows/design-fidelity.yml'
+  pull_request:
+    paths:
+      - 'ScanLink/**'
+      - 'design/**'
+  workflow_dispatch:
+
+# Read-only: the job builds, renders and uploads an artifact; it never writes to the repo.
+permissions:
+  contents: read
+
+jobs:
+  gallery:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: design/tools/package-lock.json
+
+      - name: Install design tools
+        working-directory: design/tools
+        run: npm ci
+
+      - name: Unpack mockup runtime
+        run: node design/tools/unpack-mockup.js
+
+      # Chrome on Windows renders the mockup in Segoe UI — the same font WinForms uses —
+      # so these references are pixel-comparable with the gallery below.
+      - name: Capture mockup references
+        run: node design/tools/capture-references.js --out out/reference
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Build ScanLink
+        run: msbuild ScanLink/ScanLink.csproj /p:Configuration=Release /p:Platform=AnyCPU /v:minimal /nologo
+
+      - name: Render WinForms gallery
+        shell: pwsh
+        run: |
+          $out = Join-Path $PWD 'out/actual'
+          $p = Start-Process -FilePath 'ScanLink/bin/Release/ScanLink.exe' -ArgumentList '--gallery', "`"$out`"" -Wait -PassThru
+          Get-ChildItem $out | Select-Object Name, Length | Format-Table -AutoSize
+          if ($p.ExitCode -ne 0) { Write-Warning "gallery exited with $($p.ExitCode); see *.error.txt" }
+
+      - name: Score against mockup
+        if: always()
+        run: node design/tools/compare.js --ref out/reference --actual out/actual --out out/report
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-fidelity-report
+          path: out/report
+          retention-days: 14

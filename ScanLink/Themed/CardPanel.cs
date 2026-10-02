@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -24,12 +24,19 @@ namespace ScanLink.Themed
         private const int TitleHeight = 24;
         private const int SubtitleHeight = 20;
 
+        /// <summary>Header height for a card with both a title and a subtitle, and the
+        /// vertical body padding. Callers that set an explicit Height have to budget for
+        /// both — a card sized without them silently clips its own body, which is how the
+        /// step cards lost their buttons.</summary>
+        public const int TitledHeaderHeight = HeaderPadTop + Theme.S3 + TitleHeight + SubtitleHeight;
+        public const int BodyPaddingV = Theme.S4 * 2;
+
         private readonly Panel _header;
         private readonly Panel _body;
         private readonly Panel _footer;
-        private readonly Label _titleLabel;
-        private readonly Label _subtitleLabel;
         private readonly FlowLayoutPanel _actions;
+        private string _title = string.Empty;
+        private string _subtitle = string.Empty;
 
         public CardPanel()
         {
@@ -47,28 +54,6 @@ namespace ScanLink.Themed
                 Padding = new Padding(Theme.S5, Theme.S4, Theme.S5, Theme.S4)
             };
 
-            _titleLabel = new Label
-            {
-                AutoSize = true,
-                Font = Theme.FontLgBold,
-                ForeColor = Theme.TextHeading,
-                Location = new Point(Theme.S5, HeaderPadTop),
-                BackColor = Color.Transparent,
-                UseMnemonic = false,
-                Visible = false
-            };
-
-            _subtitleLabel = new Label
-            {
-                AutoSize = true,
-                Font = Theme.FontSm,
-                ForeColor = Theme.TextMuted,
-                Location = new Point(Theme.S5, HeaderPadTop + TitleHeight),
-                BackColor = Color.Transparent,
-                UseMnemonic = false,
-                Visible = false
-            };
-
             _actions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Right,
@@ -80,6 +65,10 @@ namespace ScanLink.Themed
                 Padding = new Padding(0, Theme.S3, Theme.S5, 0)
             };
 
+            // The header reserves space and hosts the action buttons; the title and subtitle
+            // are painted by this control, not carried as child Labels. Transparent child
+            // labels over an owner-painted parent did not render at all here, which left
+            // every card headerless while still reserving the header's height.
             _header = new Panel
             {
                 Dock = DockStyle.Top,
@@ -88,8 +77,6 @@ namespace ScanLink.Themed
                 Visible = false
             };
             _header.Controls.Add(_actions);
-            _header.Controls.Add(_titleLabel);
-            _header.Controls.Add(_subtitleLabel);
 
             _footer = new Panel
             {
@@ -113,24 +100,14 @@ namespace ScanLink.Themed
 
         public string Title
         {
-            get { return _titleLabel.Text; }
-            set
-            {
-                _titleLabel.Text = value ?? string.Empty;
-                _titleLabel.Visible = !string.IsNullOrEmpty(value);
-                UpdateHeader();
-            }
+            get { return _title; }
+            set { _title = value ?? string.Empty; UpdateHeader(); Invalidate(); }
         }
 
         public string Subtitle
         {
-            get { return _subtitleLabel.Text; }
-            set
-            {
-                _subtitleLabel.Text = value ?? string.Empty;
-                _subtitleLabel.Visible = !string.IsNullOrEmpty(value);
-                UpdateHeader();
-            }
+            get { return _subtitle; }
+            set { _subtitle = value ?? string.Empty; UpdateHeader(); Invalidate(); }
         }
 
         /// <summary>Set false for a card holding a full-bleed table.</summary>
@@ -150,10 +127,11 @@ namespace ScanLink.Themed
         /// <summary>Header height is computed from content rather than left to AutoSize.</summary>
         private void UpdateHeader()
         {
-            bool hasText = _titleLabel.Visible || _subtitleLabel.Visible;
+            bool hasTitle = !string.IsNullOrEmpty(_title);
+            bool hasSubtitle = !string.IsNullOrEmpty(_subtitle);
             bool hasActions = _actions.Controls.Count > 0;
 
-            if (!hasText && !hasActions)
+            if (!hasTitle && !hasSubtitle && !hasActions)
             {
                 _header.Visible = false;
                 _header.Height = 0;
@@ -161,15 +139,38 @@ namespace ScanLink.Themed
             }
 
             int height = HeaderPadTop + Theme.S3;
-            if (_titleLabel.Visible) height += TitleHeight;
-            if (_subtitleLabel.Visible) height += SubtitleHeight;
-            if (!hasText) height = 52;
-
-            // A subtitle with no title sits where the title would have been.
-            _subtitleLabel.Top = HeaderPadTop + (_titleLabel.Visible ? TitleHeight : 0);
+            if (hasTitle) height += TitleHeight;
+            if (hasSubtitle) height += SubtitleHeight;
+            if (!hasTitle && !hasSubtitle) height = 52;
 
             _header.Height = height;
             _header.Visible = true;
+        }
+
+        /// <summary>Draws the header text. Called from OnPaint, after the card ground.</summary>
+        private void PaintHeaderText(Graphics g)
+        {
+            if (!_header.Visible) return;
+
+            int right = Width - Theme.S5;
+            if (_actions.Controls.Count > 0) right = Math.Min(right, _actions.Left - Theme.S3);
+            int width = Math.Max(40, right - Theme.S5);
+            int top = HeaderPadTop;
+
+            const TextFormatFlags flags =
+                TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis;
+
+            if (!string.IsNullOrEmpty(_title))
+            {
+                TextRenderer.DrawText(g, _title, Theme.FontLgBold,
+                    new Rectangle(Theme.S5, top, width, TitleHeight), Theme.TextHeading, flags);
+                top += TitleHeight;
+            }
+            if (!string.IsNullOrEmpty(_subtitle))
+            {
+                TextRenderer.DrawText(g, _subtitle, Theme.FontSm,
+                    new Rectangle(Theme.S5, top, width, SubtitleHeight), Theme.TextMuted, flags);
+            }
         }
 
         protected override void OnControlAdded(ControlEventArgs e)
@@ -178,8 +179,20 @@ namespace ScanLink.Themed
             UpdateHeader();
         }
 
+        /// <summary>Re-reserves the header when an action button is added after
+        /// construction; Actions is a grandchild, so it does not raise OnControlAdded here.</summary>
+        public void RefreshHeader()
+        {
+            UpdateHeader();
+            Invalidate();
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
+            // Collapsed cards are sized to zero rather than hidden, so there is nothing to
+            // draw and the inset below would produce a negative rectangle.
+            if (Width < 2 || Height < 2) return;
+
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
@@ -192,6 +205,8 @@ namespace ScanLink.Themed
                 g.FillPath(fill, path);
                 g.DrawPath(border, path);
             }
+
+            PaintHeaderText(g);
             base.OnPaint(e);
         }
     }

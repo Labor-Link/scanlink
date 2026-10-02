@@ -90,6 +90,24 @@ namespace ScanLink
         /// <summary>Grid row selection — the indigo wash, not the Windows highlight blue.</summary>
         public static readonly Color GridSelection = Indigo50;
 
+        /// <summary>--ring-focus: 3px of rgba(77,74,234,.22), pre-blended over white because
+        /// every focusable field sits on a white card.</summary>
+        public static readonly Color FocusRingSoft = Rgb(0xD8, 0xD7, 0xFA);
+        public const int FocusRingWidth = 3;
+
+        /// <summary>Dialog backdrop: rgba(16,24,40,.45). Applied as form opacity.</summary>
+        public static readonly Color Overlay = N900;
+        public const double OverlayOpacity = 0.45;
+
+        // Banner borders. The design system hard-codes these four outside the token ramp.
+        public static readonly Color BannerBorderInfo = Rgb(0xC9, 0xDD, 0xFB);
+        public static readonly Color BannerBorderSuccess = Rgb(0xBF, 0xE5, 0xD2);
+        public static readonly Color BannerBorderWarning = Rgb(0xF5, 0xDC, 0xB3);
+        public static readonly Color BannerBorderError = Rgb(0xF5, 0xC6, 0xC6);
+
+        /// <summary>--e-1 / --e-2 shadow ink, rgba(16,24,40,a). Drawn with real alpha.</summary>
+        public static readonly Color ShadowInk = Rgb(0x10, 0x18, 0x28);
+
         // Spacing — the strict 4px scale
         public const int S1 = 4;   public const int S2 = 8;   public const int S3 = 12;
         public const int S4 = 16;  public const int S5 = 20;  public const int S6 = 24;
@@ -105,9 +123,10 @@ namespace ScanLink
         public const int SidebarWidth = 236;
         public const int TopBarHeight = 60;
         public const int StatusBarHeight = 32;
-        // Kept tight: operators watch this grid all shift and v1 ran 28px rows.
-        public const int GridRowHeight = 36;
-        public const int GridHeaderHeight = 36;
+        // DataTable.js: 12px cell padding + 13px/1.4 text + 1px divider; header 10px padding + 12px/1.4.
+        // Painted by DesignSystem/SLTable.cs (SLTableStyle), which ThemeStyles.Grid applies.
+        public const int GridRowHeight = 43;
+        public const int GridHeaderHeight = 37;
 
         // Type. The CSS scale is px; WinForms is points. At 96dpi pt = px * 0.75.
         private const string FamilyUi = "Segoe UI";
@@ -128,6 +147,26 @@ namespace ScanLink
         public static readonly Font FontTableHeader = Ui(9.0f, FontStyle.Bold);
         public static readonly Font FontMono = Mono(9.0f);
         public static readonly Font FontMonoSm = Mono(8.25f);
+
+        // Weight mapping, matching what Chrome does with Segoe UI on Windows:
+        //   CSS 600 -> "Segoe UI Semibold"  (use these, NOT the *Bold fonts above, for v2 UI)
+        //   CSS 500 -> Segoe UI Regular     (Segoe UI has no 500; CSS falls back down to 400)
+        //   CSS 700 -> FontStyle.Bold
+        private const string FamilySemibold = "Segoe UI Semibold";
+
+        public static readonly Font FontXsSemibold = Semi(9.0f);    // 12px / 600
+        public static readonly Font FontSmSemibold = Semi(9.75f);   // 13px / 600
+        public static readonly Font FontMdSemibold = Semi(10.5f);   // 14px / 600
+        public static readonly Font FontLgSemibold = Semi(12.0f);   // 16px / 600
+        public static readonly Font FontXlSemibold = Semi(13.5f);   // 18px / 600
+        public static readonly Font Font2XlSemibold = Semi(15.0f);  // 20px / 600
+        public static readonly Font Font3XlSemibold = Semi(18.0f);  // 24px / 600
+        public static readonly Font Font4XlSemibold = Semi(22.5f);  // 30px / 600
+        public static readonly Font FontMonoMd = Mono(10.5f);       // 14px, mono text fields
+        public static readonly Font FontMonoXs = Mono(9.0f);        // 12px, serials under names
+        public static readonly Font FontMonoBody = Mono(9.75f);     // 13px, mono table cells
+
+        private static Font Semi(float pt) { return new Font(FamilySemibold, pt, FontStyle.Regular, GraphicsUnit.Point); }
 
         private static Color Rgb(int r, int g, int b) { return Color.FromArgb(255, r, g, b); }
         private static Font Ui(float pt) { return Ui(pt, FontStyle.Regular); }

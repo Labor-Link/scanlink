@@ -1,2 +1,8 @@
 .vscode/
 .gradle/
+
+# Design-system tooling (see design/README.md)
+design/mockup/vendor/
+design/tools/node_modules/
+out/
+refasm/

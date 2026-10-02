@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -118,6 +118,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Assets\icons\png\*.png" />
     <EmbeddedResource Include="Assets\ScanLinkLogoWhite.png" />
+    <EmbeddedResource Include="Assets\lucide-icons.txt" />
   </ItemGroup>
   <!-- Copy logo files to output directory -->
   <ItemGroup>
@@ -131,8 +132,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Theme.cs" />
+    <Compile Include="DesignSystem\SLCommon.cs" />
+    <Compile Include="DesignSystem\SLPaint.cs" />
+    <Compile Include="DesignSystem\SvgPath.cs" />
+    <Compile Include="DesignSystem\SLIcon.cs" />
+    <Compile Include="DesignSystem\SLButton.cs" />
+    <Compile Include="DesignSystem\SLDisplay.cs" />
+    <Compile Include="DesignSystem\SLContainers.cs" />
+    <Compile Include="DesignSystem\SLForms.cs" />
+    <Compile Include="DesignSystem\SLDialog.cs" />
+    <Compile Include="DesignSystem\SLTable.cs" />
+    <Compile Include="DesignSystem\SLGallery.cs" />
+    <Compile Include="DesignSystem\SLPrompt.cs" />
     <Compile Include="Themed\ThemeStyles.cs" />
     <Compile Include="Themed\IconSet.cs" />
+    <Compile Include="Themed\SegmentedControl.cs" />
+    <Compile Include="Themed\SearchField.cs" />
+    <Compile Include="Themed\Pill.cs" />
+    <Compile Include="Themed\EmbeddedFormHost.cs" />
     <Compile Include="Themed\CardPanel.cs" />
     <Compile Include="Themed\StatTile.cs" />
     <Compile Include="Themed\BadgeLabel.cs" />
@@ -140,10 +157,11 @@
     <Compile Include="Themed\TopBar.cs" />
     <Compile Include="Themed\SiteTileButton.cs" />
     <Compile Include="V2Shell.cs" />
+    <Compile Include="V2PageHost.cs" />
     <Compile Include="V2ScansPage.cs" />
     <Compile Include="V2LoginScreen.cs" />
     <Compile Include="V2PrintSurfaces.cs" />
-    <Compile Include="V2PrintLabels.cs" />
+    <Compile Include="V2PrintPage.cs" />
     <Compile Include="IssueLoggingService.cs" />
     <Compile Include="ApiAuthService.cs" />
     <Compile Include="ScanLogUploadService.cs" />     

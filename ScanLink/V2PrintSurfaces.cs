@@ -6,22 +6,14 @@ using ScanLink.Themed;
 namespace ScanLink
 {
     /// <summary>
-    /// Restyles the print surfaces and collapses the advanced printer settings behind a
-    /// disclosure toggle.
+    /// Colour and type for the print controls.
     ///
-    /// The reparenting contract is preserved exactly: configPanel, actionPanel and
-    /// advancedPanel stay whole, self-contained controls, because the popup forms take them
-    /// by reference and move them at runtime. Only colours, type and the visibility of one
-    /// group change.
-    ///
-    /// Not done here: the prototype's three-step print wizard. That changes when validation
-    /// runs and when the job is dispatched, which is behaviour rather than layout.
+    /// Layout is no longer done here — the three-step page in V2PrintPage owns where these
+    /// controls sit. This pass only restyles them, and it runs before the print page is
+    /// built so that controls are already themed when they are adopted into a step.
     /// </summary>
     public partial class Form1
     {
-        private Button _advancedToggle;
-        private bool _advancedExpanded;
-
         private void BuildV2PrintSurfaces()
         {
             try
@@ -34,7 +26,11 @@ namespace ScanLink
                 StyleGroupBox(configGroupBox);
                 StyleGroupBox(advancedGroupBox);
 
-                BuildAdvancedDisclosure();
+                // configGroupBox and previewPanel are emptied by the wizard, which adopts
+                // their children into the step cards. Hiding the husks keeps them in the
+                // tree — ConfigPopupForm still compiles against them — without leaving two
+                // empty framed boxes behind the page.
+                if (previewPanel != null) previewPanel.Visible = false;
             }
             catch (Exception ex)
             {
@@ -56,59 +52,6 @@ namespace ScanLink
             box.ForeColor = Theme.TextHeading;
             box.Font = Theme.FontMdBold;
             ThemeStyles.RoundedCorners(box, Theme.RadiusLg);
-        }
-
-        /// <summary>
-        /// "Most people never need to change these." The label size, quality and darkness
-        /// controls are the most intimidating part of the print screen and are wrong to
-        /// change by accident, so they start hidden behind a toggle.
-        ///
-        /// This hides existing controls; it does not remove them. Everything inside is still
-        /// constructed, still wired and still applied when a job prints.
-        /// </summary>
-        private void BuildAdvancedDisclosure()
-        {
-            if (advancedGroupBox == null) return;
-
-            Control[] collapsible = new Control[] { dimensionsPanel, qualityPanel, printerConfigPanel };
-
-            _advancedToggle = new Button
-            {
-                Text = "Show settings",
-                Width = 140,
-                Height = Theme.HeightSm,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            ThemeStyles.Secondary(_advancedToggle);
-
-            _advancedToggle.Location = new Point(
-                Math.Max(Theme.S3, advancedGroupBox.ClientSize.Width - _advancedToggle.Width - Theme.S4),
-                Theme.S2);
-
-            _advancedToggle.Click += (s, e) =>
-            {
-                _advancedExpanded = !_advancedExpanded;
-                ApplyAdvancedDisclosure(collapsible);
-            };
-
-            advancedGroupBox.Controls.Add(_advancedToggle);
-            _advancedToggle.BringToFront();
-
-            _advancedExpanded = false;
-            ApplyAdvancedDisclosure(collapsible);
-        }
-
-        private void ApplyAdvancedDisclosure(Control[] collapsible)
-        {
-            foreach (Control c in collapsible)
-            {
-                if (c != null) c.Visible = _advancedExpanded;
-            }
-            if (_advancedToggle != null)
-            {
-                _advancedToggle.Text = _advancedExpanded ? "Hide settings" : "Show settings";
-            }
-            LayoutRootPanels();
         }
     }
 }

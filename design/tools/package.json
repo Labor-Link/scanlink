@@ -1,0 +1,16 @@
+{
+  "name": "scanlink-design-tools",
+  "private": true,
+  "description": "Design-system tooling: unpack the mockup, generate icons, capture reference PNGs, diff the WinForms gallery against them.",
+  "scripts": {
+    "unpack": "node unpack-mockup.js",
+    "icons": "node build-icons.js",
+    "references": "node capture-references.js",
+    "compare": "node compare.js"
+  },
+  "dependencies": {
+    "pixelmatch": "^5.3.0",
+    "playwright-core": "^1.48.0",
+    "pngjs": "^7.0.0"
+  }
+}

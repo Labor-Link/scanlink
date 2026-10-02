@@ -1,23 +1,22 @@
-using System;
+﻿using System;
 using System.Drawing;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using ScanLink.Themed;
 
 namespace ScanLink
 {
     /// <summary>
-    /// Builds the navy sidebar + top bar around the existing content, replacing the
-    /// seven-tile header.
+    /// Builds the navy sidebar + top bar around a page host, replacing the seven-tile
+    /// header.
     ///
     /// Written as a partial of Form1 and applied AFTER InitializeComponent rather than by
     /// editing InitializeComponent itself. That file is 2,500 hand-edited lines and must
     /// never be opened in the Visual Studio designer; re-parenting a handful of controls
     /// here is far less risky than restructuring it in place.
     ///
-    /// Navigation behaviour is unchanged: every sidebar item calls PerformClick on the
-    /// original header button, so the handlers run exactly as before — including the
-    /// enable/BackColor guards that stop a second print popup being opened.
+    /// Navigation is real navigation. Every sidebar item selects a page in the content area
+    /// — see V2PageHost — instead of opening a window over the scans grid, which is what the
+    /// first pass did and what made the app feel like a launcher rather than a product.
     /// </summary>
     public partial class Form1
     {
@@ -26,7 +25,6 @@ namespace ScanLink
         private TopBar _topBar;
         private Panel _contentColumn;
         private SiteTileButton _siteTile;
-        private PrintLabelsPopupForm _printLabelsPopup;
 
         private const string NavScans = "scans";
         private const string NavPrint = "print";
@@ -50,6 +48,7 @@ namespace ScanLink
             _topBar = new TopBar();
 
             _contentColumn = new Panel { Dock = DockStyle.Fill, BackColor = Theme.SurfaceApp };
+            _pageHost = new Panel { Dock = DockStyle.Fill, BackColor = Theme.SurfaceApp };
 
             // The old header row is retired. It stays in the tree with all seven buttons
             // intact but hidden, because their Click handlers mutate the buttons themselves
@@ -59,7 +58,8 @@ namespace ScanLink
             if (headerPanel != null) headerPanel.Visible = false;
             HideLegacyNavButtons();
 
-            // Status strip belongs to the shell now, not to the scans grid.
+            // Status strip belongs to the shell now, not to the scans grid — it reports on
+            // whatever page is showing.
             if (statusPanel != null)
             {
                 if (scannerContentPanel != null) scannerContentPanel.Controls.Remove(statusPanel);
@@ -77,7 +77,7 @@ namespace ScanLink
 
             // Fill first, then Top, then Bottom: WinForms resolves docking from the last
             // added control backwards, so the Fill added first claims what the edges leave.
-            if (scannerContentPanel != null) _contentColumn.Controls.Add(scannerContentPanel);
+            _contentColumn.Controls.Add(_pageHost);
             _contentColumn.Controls.Add(_topBar);
             if (statusPanel != null) _contentColumn.Controls.Add(statusPanel);
 
@@ -86,9 +86,15 @@ namespace ScanLink
             this.Controls.Add(_shellRoot);
 
             BuildSidebarContents();
-            _topBar.SetPage("Scans", "Everything scanned on this site. Newest first.");
-            _sidebar.SetActive(NavScans);
             _sidebar.ItemSelected += Sidebar_ItemSelected;
+
+            // Pages are registered before the scans page is restyled: registering re-parents
+            // scannerContentPanel into the host, and the restyle then works inside it.
+            BuildPages();
+            BuildV2ScansPage();
+            BuildV2PrintSurfaces();
+
+            NavigateTo(NavScans);
 
             // The shell is the inverse of the login screen. Driving it from loginPanel means
             // none of the existing show/hide call sites have to change: they always toggle
@@ -99,13 +105,14 @@ namespace ScanLink
                 loginPanel.VisibleChanged += (s, e) =>
                 {
                     _shellRoot.Visible = !loginPanel.Visible;
-                    if (_shellRoot.Visible) RefreshSidebarSite();
+                    if (!_shellRoot.Visible) return;
+                    RefreshSidebarSite();
+                    // A new session always starts on Scans, never on whichever tab the
+                    // previous operator left open.
+                    NavigateTo(NavScans);
                 };
                 _shellRoot.Visible = !loginPanel.Visible;
             }
-
-            BuildV2ScansPage();
-            BuildV2PrintSurfaces();
 
             // Any button nobody re-themed (Daily Stats Logger's Save/Debug, and anything
             // buried in the print panels) picks up the secondary variant here.
@@ -128,20 +135,22 @@ namespace ScanLink
         {
             // Items are added top-down; each AddItem docks to the top and is brought to the
             // front, so the visual order matches the call order.
-            _sidebar.AddItem(NavScans, "scan-line", "🔍", "Scans");
-
             _sidebar.AddGroupTitle("Daily work");
+            _sidebar.AddItem(NavScans, "scan-line", "🔍", "Scans");
             _sidebar.AddItem(NavPrint, "printer", "🖨️", "Print labels");
 
             _sidebar.AddGroupTitle("Setup");
             _sidebar.AddItem(NavScanners, "usb", "🔧", "Scanners");
             _sidebar.AddItem(NavPrinter, "plug", "🔌", "Printer");
-            _sidebar.AddItem(NavProducts, "database", "📋", "Crops && products");
+            // Single ampersand: the nav labels set UseMnemonic = false, so an escaped "&&"
+            // is rendered literally rather than collapsed.
+            _sidebar.AddItem(NavProducts, "database", "📋", "Crops & products");
             // Reports has no counterpart in the prototype — the design system says it had no
             // design source, not that it was dropped. Omitting it would lose a feature.
             _sidebar.AddItem(NavReports, "bar-chart-3", "🌐", "Reports");
 
             _sidebar.AddBrand(TryLoadSidebarLogo(), "ScanLink");
+
 
             _siteTile = new SiteTileButton();
             _siteTile.Activated += (s, e) => SwitchSiteFromSidebar();
@@ -168,29 +177,19 @@ namespace ScanLink
         }
 
         /// <summary>
-        /// The knockout logo for dark surfaces. The standard ScanLinkLogo.png is dark ink on
-        /// transparent, so on the navy rail it renders as an unreadable smudge.
+        /// The brand mark on the navy rail — currently the wordmark as text.
+        ///
+        /// Neither shipped asset works here. ScanLinkLogo.png is opaque with no alpha, and
+        /// Assets/ScanLinkLogoWhite.png is a white wordmark knocked out onto an opaque white
+        /// ground, so on the navy rail it rendered as a plain white block with the tick
+        /// floating in it. A knockout cannot be derived from either one automatically.
+        ///
+        /// Returning null makes SidebarNav fall back to the text wordmark, which is legible
+        /// and correct. Drop a real transparent-background white PNG in as
+        /// Assets/ScanLinkLogoWhite.png and load it here to restore the image mark.
         /// </summary>
         private Image TryLoadSidebarLogo()
         {
-            Image white = ScanLink.Themed.IconSet.GetImage("ScanLinkLogoWhite.png");
-            if (white != null) return white;
-
-            try
-            {
-                string path = System.IO.Path.Combine(Application.StartupPath, "ScanLinkLogo.png");
-                if (System.IO.File.Exists(path))
-                {
-                    using (var stream = new System.IO.FileStream(path, System.IO.FileMode.Open, System.IO.FileAccess.Read))
-                    {
-                        return Image.FromStream(stream);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("[SHELL] sidebar logo unavailable: " + ex.Message);
-            }
             return null;
         }
 
@@ -253,71 +252,9 @@ namespace ScanLink
             }
         }
 
-        /// <summary>
-        /// Opens the merged Print labels surface. Replaces barCodesButton_Click and
-        /// boxLabelsButton_Click as the entry point; both handlers and both original popup
-        /// forms are left intact so reverting to two entries is a one-line change here.
-        /// </summary>
-        private async void OpenPrintLabels()
-        {
-            try
-            {
-                if (_printLabelsPopup == null || _printLabelsPopup.IsDisposed)
-                {
-                    _printLabelsPopup = new PrintLabelsPopupForm(configPanel, actionPanel, advancedPanel, this);
-
-                    // The same combo wiring barCodesButton_Click performed.
-                    if (comboBox_CropID != null)
-                    {
-                        comboBox_CropID.SelectedIndexChanged -= comboBox_CropID_SelectedIndexChanged;
-                        comboBox_CropID.SelectedIndexChanged += comboBox_CropID_SelectedIndexChanged;
-                    }
-                    if (comboBox_ProductID != null)
-                    {
-                        comboBox_ProductID.SelectedIndexChanged -= comboBox_ProductID_SelectedIndexChanged;
-                        comboBox_ProductID.SelectedIndexChanged += comboBox_ProductID_SelectedIndexChanged;
-                    }
-                }
-
-                _printLabelsPopup.ShowTab(PrintLabelsPopupForm.TabBarcodes);
-                await EnsureCropOptionsLoadedAsync(updateStatusLabel: false);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine("[PRINT] could not open Print labels: " + ex);
-                statusLabel.Text = "Error: Could not open Print labels - " + ex.Message;
-                statusLabel.ForeColor = Theme.Err500;
-            }
-        }
-
         private void Sidebar_ItemSelected(object sender, string key)
         {
-            switch (key)
-            {
-                case NavScans:
-                    _sidebar.SetActive(NavScans);
-                    _topBar.SetPage("Scans", "Everything scanned on this site. Newest first.");
-                    break;
-
-                // The rest open the surfaces the header buttons already opened. PerformClick
-                // keeps every guard inside those handlers intact. Active state is not moved,
-                // because these open a dialog over the scans page rather than navigating.
-                case NavPrint:
-                    OpenPrintLabels();
-                    break;
-                case NavScanners:
-                    if (scannerSetupButton != null) scannerSetupButton.PerformClick();
-                    break;
-                case NavPrinter:
-                    if (printerConnectionButton != null) printerConnectionButton.PerformClick();
-                    break;
-                case NavProducts:
-                    if (setupButton != null) setupButton.PerformClick();
-                    break;
-                case NavReports:
-                    if (reportsButton != null) reportsButton.PerformClick();
-                    break;
-            }
+            NavigateTo(key);
         }
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
@@ -2807,6 +2807,32 @@ namespace ScanLink
             SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
         }
 
+        /// <summary>
+        /// Selects the first row, tolerating a combo whose bound items have not materialised.
+        ///
+        /// A data-bound ComboBox fills its Items collection only once its binding is live,
+        /// and a combo sitting in a container that has never been created reports zero items
+        /// however many rows its DataSource holds. Assigning SelectedIndex = 0 there throws
+        /// "InvalidArgument=Value of '0' is not valid for 'SelectedIndex'", which surfaced
+        /// out of LoadScansData as "Error loading scans data" on the login screen.
+        ///
+        /// Leaving it unselected is safe for both callers: index 0 of each of these combos
+        /// is the "all" row whose value is empty, which is exactly what an unset
+        /// SelectedValue already means to the filter. The binding settles on row 0 by itself
+        /// once the control is created.
+        /// </summary>
+        private static void SelectFirstItemSafely(ComboBox combo)
+        {
+            if (combo == null) return;
+            if (combo.Items.Count > 0)
+            {
+                combo.SelectedIndex = 0;
+                return;
+            }
+            System.Diagnostics.Debug.WriteLine(
+                "[COMBO] '" + combo.Name + "' has no materialised items yet; leaving it unselected.");
+        }
+
         private void SetComboItems(ComboBox combo, List<CropComboItem> items, string preferredValue, bool selectFirstOnMissing)
         {
             if (combo == null || items == null)
@@ -2837,7 +2863,7 @@ namespace ScanLink
             {
                 if (selectFirstOnMissing)
                 {
-                    combo.SelectedIndex = 0;
+                    SelectFirstItemSafely(combo);
                 }
                 else
                 {
@@ -7226,6 +7252,7 @@ namespace ScanLink
             filterLineNumber = lineNumberTextBox.Text.Trim();
             filterProductId = productIdComboBox.SelectedValue?.ToString() ?? "";
             filterCropId = cropIdComboBox.SelectedValue?.ToString() ?? "";
+            CaptureSearchFilter();
 
             // Apply filters to data
             ApplyFiltersToData();
@@ -7245,6 +7272,8 @@ namespace ScanLink
             filterLineNumber = "";
             filterProductId = "";
             filterCropId = "";
+            filterSearchText = "";
+            if (_searchField != null) _searchField.Clear();
 
             // Clear UI controls
             dateFromPicker.Checked = false;
@@ -7261,6 +7290,23 @@ namespace ScanLink
             currentPage = 1;
             LoadCurrentPage();
             UpdatePaginationControls();
+        }
+
+        /// <summary>
+        /// True when any visible column contains the term. Searching a fixed list of
+        /// columns rather than every column keeps internal fields such as ParsedInfo from
+        /// producing matches the operator cannot see the reason for.
+        /// </summary>
+        private static bool RowMatchesSearch(DataRow row, string term)
+        {
+            string[] searchable = { "SerialNumber", "BlockNumber", "LineNumber", "Supplier", "CropID", "ProductID" };
+            foreach (string column in searchable)
+            {
+                if (!row.Table.Columns.Contains(column)) continue;
+                string value = row[column]?.ToString() ?? "";
+                if (value.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+            }
+            return false;
         }
 
         private void ApplyFiltersToData()
@@ -7326,6 +7372,14 @@ namespace ScanLink
                         includeRow = false;
                 }
 
+                // Free-text search. Spans the columns the operator can actually see, so
+                // typing what is on screen finds the row; a term matching none of them
+                // excludes it.
+                if (includeRow && !string.IsNullOrEmpty(filterSearchText))
+                {
+                    includeRow = RowMatchesSearch(row, filterSearchText);
+                }
+
                 if (includeRow)
                 {
                     filteredScannerData.ImportRow(row);
@@ -7359,7 +7413,7 @@ namespace ScanLink
             items.AddRange(_scannerProductItems);
 
             productIdComboBox.DataSource = items;
-            productIdComboBox.SelectedIndex = 0;
+            SelectFirstItemSafely(productIdComboBox);
             SetProductDetailFields("N/A", "N/A", "N/A", "N/A");
         }
 

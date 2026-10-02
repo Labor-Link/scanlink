@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ScanLink.DesignSystem;
 
 namespace ScanLink
 {
@@ -12,7 +13,7 @@ namespace ScanLink
     // variety are picked from EXISTING master values only (not creatable here). Grade, count and
     // carton type can EITHER be picked from existing values OR created on the fly via a trailing
     // "+ Add new..." option in each of those three dropdowns.
-    public partial class AddCombinationDialog : Form
+    internal partial class AddCombinationDialog : SLDialog
     {
         // Sentinel value id for the trailing "+ Add new..." row in the grade/count/carton-type
         // dropdowns. Never sent to the server - selecting it triggers a create-then-select flow.
@@ -36,10 +37,10 @@ namespace ScanLink
         private ComboBox gradeCombo;
         private ComboBox countCombo;
         private ComboBox cartonTypeCombo;
-        private NumericUpDown avgWeightInput;
-        private Button createButton;
-        private Button cancelButton;
-        private Label statusLabel;
+        private SLNumberBox avgWeightInput;
+        private SLButton createButton;
+        private SLButton cancelButton;
+        private SLBanner statusBanner;
 
         public ProductCombination CreatedCombination { get; private set; }
 
@@ -50,79 +51,43 @@ namespace ScanLink
             PopulateCropStep();
         }
 
+        // Layout: SLDialog with a 2-column SLFieldSet (crop/variety, grade/count,
+        // carton type/avg weight), a status banner, and Cancel + Create in the footer.
         private void InitializeComponent()
         {
-            this.Text = "Add Product Combination";
-            this.Size = new Size(420, 500);
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            Title = "Add product combination";
+            Description = "Choose each step in order. The next one unlocks when the one before it is set.";
+            DialogWidth = 560;
 
-            var panel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(15) };
-            this.Controls.Add(panel);
+            var fields = new SLFieldSet { Columns = 2 };
+            cropCombo = AddStep(fields, "Crop", "Choose a crop");
+            varietyCombo = AddStep(fields, "Variety", "Choose a variety");
+            gradeCombo = AddStep(fields, "Grade", "Choose a grade");
+            countCombo = AddStep(fields, "Count", "Choose a count");
+            cartonTypeCombo = AddStep(fields, "Carton type", "Choose a carton type");
 
-            int y = 10;
-            const int rowHeight = 55;
-
-            AddStepRow(panel, ref y, rowHeight, "1. Crop", out cropCombo);
-            AddStepRow(panel, ref y, rowHeight, "2. Variety", out varietyCombo);
-            AddStepRow(panel, ref y, rowHeight, "3. Grade", out gradeCombo);
-            AddStepRow(panel, ref y, rowHeight, "4. Count", out countCombo);
-            AddStepRow(panel, ref y, rowHeight, "5. Carton Type", out cartonTypeCombo);
-
-            var weightLabel = new Label
+            avgWeightInput = new SLNumberBox
             {
-                Text = "6. Avg Weight (kg)",
-                Location = new Point(0, y),
-                AutoSize = true,
-                ForeColor = Theme.TextLabel
-            };
-            panel.Controls.Add(weightLabel);
-
-            avgWeightInput = new NumericUpDown
-            {
-                Location = new Point(0, y + 20),
-                Size = new Size(150, 24),
+                Unit = "kg",
                 DecimalPlaces = 2,
                 Minimum = 0,
                 Maximum = 100000,
                 Increment = 0.1M,
                 Enabled = false
             };
-            panel.Controls.Add(avgWeightInput);
-            y += rowHeight;
+            fields.Add(new SLField("Avg weight", avgWeightInput) { Required = true });
+            Body.Controls.Add(fields);
 
-            statusLabel = new Label
-            {
-                Location = new Point(0, y),
-                Size = new Size(380, 55),
-                Font = Theme.FontSmBold,
-                ForeColor = Theme.Err700,
-                Text = ""
-            };
-            panel.Controls.Add(statusLabel);
-            y += 60;
+            statusBanner = new SLBanner { Tone = SLTone.Error, IconName = "alert-circle" };
+            Body.Controls.Add(statusBanner);
+            SLVisibility.Set(statusBanner, false);
 
-            createButton = new Button
-            {
-                Text = "Create",
-                Location = new Point(200, y),
-                Size = new Size(90, 32),
-                Enabled = false
-            };
+            cancelButton = new SLButton { Text = "Cancel", Variant = SLVariant.Secondary, DialogResult = DialogResult.Cancel };
+            createButton = new SLButton { Text = "Create combination", Enabled = false };
             createButton.Click += CreateButton_Click;
-            panel.Controls.Add(createButton);
-
-            cancelButton = new Button
-            {
-                Text = "Cancel",
-                Location = new Point(300, y),
-                Size = new Size(90, 32),
-                DialogResult = DialogResult.Cancel
-            };
-            panel.Controls.Add(cancelButton);
-            this.CancelButton = cancelButton;
+            AddAction(cancelButton);
+            AddAction(createButton);
+            CancelButton = cancelButton;
 
             cropCombo.SelectedIndexChanged += (s, e) => OnStepSelected(cropCombo, varietyCombo, PopulateVarietyStep);
             varietyCombo.SelectedIndexChanged += (s, e) => OnStepSelected(varietyCombo, gradeCombo, PopulateGradeStep);
@@ -130,41 +95,13 @@ namespace ScanLink
             countCombo.SelectedIndexChanged += CountCombo_SelectedIndexChanged;
             cartonTypeCombo.SelectedIndexChanged += CartonTypeCombo_SelectedIndexChanged;
             avgWeightInput.ValueChanged += (s, e) => UpdateCreateButtonEnabled();
-
-            // Create confirms, so it takes the single indigo primary; Cancel is secondary.
-            // Geometry is pinned back afterwards because both buttons sit at hard-coded
-            // coordinates 100px apart and the variant minimum width would collide them.
-            ScanLink.Themed.ThemeStyles.DialogChrome(this);
-            ScanLink.Themed.ThemeStyles.Primary(createButton);
-            ScanLink.Themed.ThemeStyles.Secondary(cancelButton);
-            foreach (Button b in new[] { createButton, cancelButton })
-            {
-                b.MinimumSize = new Size(90, 32);
-                b.Size = new Size(90, 32);
-            }
         }
 
-        private void AddStepRow(Panel parent, ref int y, int rowHeight, string labelText, out ComboBox combo)
+        private static ComboBox AddStep(SLFieldSet fields, string label, string placeholder)
         {
-            var label = new Label
-            {
-                Text = labelText,
-                Location = new Point(0, y),
-                AutoSize = true,
-                ForeColor = Theme.TextLabel
-            };
-            parent.Controls.Add(label);
-
-            var box = new ComboBox
-            {
-                Location = new Point(0, y + 20),
-                Size = new Size(380, 24),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Enabled = false
-            };
-            parent.Controls.Add(box);
-            combo = box;
-            y += rowHeight;
+            var box = new SLComboBox { PlaceholderText = placeholder, Enabled = false };
+            fields.Add(new SLField(label, box) { Required = true });
+            return box;
         }
 
         private void OnStepSelected(ComboBox current, ComboBox next, Action populateNext)
@@ -216,15 +153,13 @@ namespace ScanLink
             UpdateCreateButtonEnabled();
         }
 
-        // Prompts for a name via the same lightweight VB InputBox already used elsewhere in this
-        // app (Form1's LAN-target prompt), creates the grade on the server, and - on success -
+        // Prompts for a name with SLPrompt, creates the grade on the server, and - on success -
         // inserts it into gradeCombo's list and selects it (as if the user had picked an
         // existing row) instead of re-deriving options from cached combinations, since a
         // brand-new grade has no combinations referencing it yet.
         private async Task HandleAddNewGrade()
         {
-            string name = Microsoft.VisualBasic.Interaction.InputBox(
-                "Enter the new grade name (e.g. \"Class 3\"):", "Add New Grade", "");
+            string name = SLPrompt.Ask(this, "Add a new grade", "Grade name", hint: "For example \"Class 3\".", confirmText: "Add grade");
             if (string.IsNullOrWhiteSpace(name))
             {
                 ResetComboSelection(gradeCombo);
@@ -249,8 +184,7 @@ namespace ScanLink
 
         private async Task HandleAddNewCount()
         {
-            string name = Microsoft.VisualBasic.Interaction.InputBox(
-                "Enter the new count/size (e.g. \"75\"):", "Add New Count", "");
+            string name = SLPrompt.Ask(this, "Add a new count", "Count or size", hint: "For example \"75\".", confirmText: "Add count");
             if (string.IsNullOrWhiteSpace(name))
             {
                 ResetComboSelection(countCombo);
@@ -275,16 +209,19 @@ namespace ScanLink
 
         private async Task HandleAddNewCartonType()
         {
-            string name = Microsoft.VisualBasic.Interaction.InputBox(
-                "Enter the new carton type name (e.g. \"F20D - 20kg\"):", "Add New Carton Type", "");
+            string name = SLPrompt.Ask(this, "Add a new carton type", "Carton type name", hint: "For example \"F20D - 20kg\".", confirmText: "Next");
             if (string.IsNullOrWhiteSpace(name))
             {
                 ResetComboSelection(cartonTypeCombo);
                 return;
             }
 
-            string weightText = Microsoft.VisualBasic.Interaction.InputBox(
-                "Enter the empty carton weight in kg (e.g. \"15\"):", "Add New Carton Type", "0");
+            string weightText = SLPrompt.Ask(this, "Add a new carton type", "Empty carton weight (kg)", "0", hint: "For example \"15\".", confirmText: "Add carton type");
+            if (weightText == null)
+            {
+                ResetComboSelection(cartonTypeCombo);
+                return;
+            }
             if (!double.TryParse(weightText, out double weightKg) || weightKg < 0)
             {
                 SetErrorStatus("Weight must be a non-negative number.");
@@ -311,19 +248,25 @@ namespace ScanLink
         private void SetBusyStatus(string text)
         {
             createButton.Enabled = false;
-            statusLabel.ForeColor = Theme.TextLabel;
-            statusLabel.Text = text;
+            ShowStatus(SLTone.Info, "loader", text);
         }
 
         private void SetErrorStatus(string text)
         {
-            statusLabel.ForeColor = Theme.Err700;
-            statusLabel.Text = text;
+            ShowStatus(SLTone.Error, "alert-circle", text);
         }
 
         private void ClearStatus()
         {
-            statusLabel.Text = "";
+            SLVisibility.Set(statusBanner, false);
+        }
+
+        private void ShowStatus(SLTone tone, string icon, string text)
+        {
+            statusBanner.Tone = tone;
+            statusBanner.IconName = icon;
+            statusBanner.Message = text;
+            SLVisibility.Set(statusBanner, !string.IsNullOrEmpty(text));
         }
 
         private void ResetComboSelection(ComboBox combo)
@@ -375,7 +318,7 @@ namespace ScanLink
                 c => c.crop_id, c => c.crop_name);
             cropCombo.Enabled = cropCombo.Items.Count > 0;
             if (cropCombo.Items.Count == 0)
-                statusLabel.Text = "No crops available - fetch product combinations first.";
+                SetErrorStatus("No crops are available yet. Fetch product combinations first, then try again.");
         }
 
         private void PopulateVarietyStep()
@@ -460,9 +403,8 @@ namespace ScanLink
 
         private async void CreateButton_Click(object sender, EventArgs e)
         {
-            createButton.Enabled = false;
-            statusLabel.ForeColor = Theme.TextLabel;
-            statusLabel.Text = "Creating combination...";
+            createButton.Loading = true;
+            ShowStatus(SLTone.Info, "loader", "Creating combination…");
 
             string cropId = cropCombo.SelectedValue?.ToString();
             string varietyId = varietyCombo.SelectedValue?.ToString();
@@ -474,6 +416,7 @@ namespace ScanLink
             var result = await _productCombinationsService.CreateProductCombinationAsync(
                 cropId, varietyId, gradeId, countId, cartonTypeId, avgWeightKg);
 
+            createButton.Loading = false;
             if (result.Success)
             {
                 CreatedCombination = result.Data;
@@ -482,8 +425,7 @@ namespace ScanLink
             }
             else
             {
-                statusLabel.ForeColor = Theme.Err700;
-                statusLabel.Text = result.ErrorMessage ?? "Failed to create combination.";
+                SetErrorStatus(result.ErrorMessage ?? "The combination couldn't be created. Try again.");
                 createButton.Enabled = true;
             }
         }

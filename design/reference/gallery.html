@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<!--
+  Reference gallery: every component state the C# library must match, rendered with the
+  mockup's OWN components (design/mockup/vendor/design-system.js). Each scene has an id; the
+  C# side renders the same id in ScanLink/DesignSystem/Gallery/SLGallery.cs.
+
+    node design/tools/unpack-mockup.js        (once, restores vendor/)
+    node design/tools/capture-references.js   (writes design/reference/png/<id>.png)
+
+  Open in a browser with ?scene=<id> to see one scene, or with no query to see them all.
+  When you add a scene here, add the same id to SLGallery.cs (and vice versa).
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>ScanLink reference gallery</title>
+<link rel="stylesheet" href="../mockup/tokens.css">
+<style>
+  body { margin: 0; padding: 24px; background: #E9EBF0; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .scene { box-sizing: border-box; padding: 24px; }
+  .scene.app { background: var(--surface-app); }
+  .scene.card { background: var(--surface-card); }
+  .label { font: 11px/1.4 monospace; color: #667085; margin-bottom: 4px; }
+  /* Dialog scenes: the Dialog component is position:fixed; contain it in its scene box. */
+  .dialog-host { position: relative; transform: translateZ(0); }
+</style>
+<script src="../mockup/vendor/react.js"></script>
+<script src="../mockup/vendor/react-dom.js"></script>
+<script src="../mockup/vendor/lucide.js"></script>
+<script src="../mockup/vendor/babel.js"></script>
+<script src="../mockup/vendor/design-system.js"></script>
+</head>
+<body>
+<div id="root" style="display:contents"></div>
+<script type="text/babel">
+const DS = window.ScanLinkDesignSystem_c824b0;
+const { Button, IconButton, Icon, Badge, Banner, TextField, Select, NumberField, Checkbox, Toggle,
+        Card, FieldSet, EmptyState, DataTable, Dialog } = DS;
+
+const RECENT = [
+  { serial: "SC-0093-AA", time: "07:14", block: "14", picker: "J. Mokoena", state: "Synced", tone: "success" },
+  { serial: "SC-0093-AB", time: "07:15", block: "14", picker: "J. Mokoena", state: "Synced", tone: "success" },
+  { serial: "SC-0094-AC", time: "07:16", block: "07", picker: "P. Naidoo", state: "Waiting", tone: "warning" },
+  { serial: "SC-0094-AD", time: "07:17", block: "07", picker: "P. Naidoo", state: "Waiting", tone: "warning" }
+];
+const COLS = [
+  { key: "serial", header: "Serial", mono: true },
+  { key: "time", header: "Time", muted: true },
+  { key: "block", header: "Block" },
+  { key: "picker", header: "Picked by" },
+  { key: "state", header: "Status", render: (r) => <Badge tone={r.tone} dot>{r.state}</Badge> }
+];
+
+// id -> { width, bg: "app" | "card", dialog?: true, render }
+// Keep ids, widths and content identical to SLGallery.cs.
+const SCENES = {
+  "button-primary":     { width: 240, bg: "card", render: () => <Button variant="primary" icon={<Icon name="printer" size={16} />}>Print labels</Button> },
+  "button-secondary":   { width: 240, bg: "card", render: () => <Button variant="secondary" icon={<Icon name="cloud-upload" size={16} />}>Sync now</Button> },
+  "button-ghost-sm":    { width: 240, bg: "card", render: () => <Button variant="ghost" size="sm" iconEnd={<Icon name="arrow-right" size={16} />}>See all scans</Button> },
+  "button-danger":      { width: 240, bg: "card", render: () => <Button variant="danger">Remove scanner</Button> },
+  "button-disabled":    { width: 240, bg: "card", render: () => <Button variant="primary" disabled>Next</Button> },
+  "button-variants":    { width: 520, bg: "card", render: () => (
+      <div style={{ display: "flex", gap: "8px" }}>
+        <Button variant="navy">Navy</Button><Button variant="success">Success</Button><Button variant="dangerQuiet">Clean up</Button>
+      </div>) },
+  "button-lg-block":    { width: 428, bg: "app", render: () => <Button variant="primary" size="lg" block>Sign in</Button> },
+  "iconbuttons":        { width: 240, bg: "card", render: () => (
+      <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+        <IconButton size="sm" icon={<Icon name="pencil" size={16} />} label="Edit" />
+        <IconButton size="sm" variant="danger" icon={<Icon name="trash-2" size={16} />} label="Remove" />
+        <IconButton variant="solid" icon={<Icon name="refresh-cw" size={16} />} label="Refresh" />
+      </div>) },
+  "badges":             { width: 520, bg: "card", render: () => (
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <Badge tone="success" dot>Working</Badge><Badge tone="warning" dot>Waiting</Badge><Badge tone="error" dot>Offline</Badge>
+        <Badge tone="info" dot>Syncing</Badge><Badge tone="brand">Live</Badge><Badge>Draft</Badge>
+      </div>) },
+  "banner-warning":     { width: 720, bg: "app", render: () => (
+      <Banner tone="warning" icon={<Icon name="cloud-off" />} title="42 scans haven't reached the cloud yet"
+        action={<Button size="sm" variant="secondary">Sync now</Button>}>
+        They're safely saved on this computer. Sync them before you clean up local scans.
+      </Banner>) },
+  "banner-error":       { width: 720, bg: "app", render: () => (
+      <Banner tone="error" icon={<Icon name="unplug" />} title="Line 2 scanner isn't answering"
+        action={<Button size="sm" variant="secondary">Look again</Button>}>
+        Check that it's plugged in and switched on, then look again. Scans already saved are not affected.
+      </Banner>) },
+  "textfield-hint":     { width: 420, bg: "card", render: () => <TextField label="Printer address" mono defaultValue="192.168.1.44:9100" hint="You'll find this printed on the label on the printer." /> },
+  "textfield-required-lg": { width: 428, bg: "app", render: () => <TextField label="Email address" required type="email" placeholder="you@packhouse.co" size="lg" /> },
+  "textfield-error":    { width: 420, bg: "card", render: () => <TextField label="Email address" required defaultValue="jmokoena@" error="Enter the email address you use for ScanLink." /> },
+  "select":             { width: 420, bg: "card", render: () => <Select label="Connection" defaultValue="Network (LAN)" hint="Network is the usual choice in a packhouse." options={["Network (LAN)", "USB cable", "Serial cable (COM)", "Save to a file"]} /> },
+  "numberfield":        { width: 420, bg: "card", render: () => <NumberField label="Avg weight" unit="kg" defaultValue={4} /> },
+  "checks":             { width: 420, bg: "card", render: () => (
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <Checkbox label="Keep me signed in" defaultChecked />
+        <Checkbox label="Print two labels per row" description="Uses the 2-up label roll." />
+        <Toggle label="Open ScanLink on this page" description="Otherwise ScanLink opens on Scans." checked={true} onChange={() => {}} />
+        <Toggle label="Advanced settings" checked={false} onChange={() => {}} />
+      </div>) },
+  "card-equipment":     { width: 440, bg: "app", render: () => (
+      <Card title="Equipment" subtitle="Green means it's sending data right now." padding="8px"
+        actions={<Button size="sm" variant="ghost">Manage</Button>}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {[["Line 3 scanner", "SL-HH-02 · COM3", "Working", "success"], ["Line 2 scanner", "SL-HH-11 · COM7", "Offline", "error"]].map(([n, d, s, t]) => (
+            <div key={d} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px" }}>
+              <span style={{ display: "flex", flexDirection: "column", gap: "1px", flex: 1, minWidth: 0 }}>
+                <span style={{ font: "500 var(--f-sm)/1.3 var(--font-ui)", color: "var(--text-body)" }}>{n}</span>
+                <span style={{ font: "400 var(--f-xs)/1.3 var(--font-mono)", color: "var(--text-muted)" }}>{d}</span>
+              </span>
+              <Badge tone={t} dot>{s}</Badge>
+            </div>))}
+        </div>
+      </Card>) },
+  "card-form":          { width: 640, bg: "app", render: () => (
+      <Card title="What are you labelling?" subtitle="Pick the crop first — the product list narrows to match."
+        footer={<Button variant="primary" iconEnd={<Icon name="arrow-right" size={16} />}>Next: how many?</Button>}>
+        <FieldSet columns={2}>
+          <Select label="Crop" required defaultValue="Avocado (01)" options={["Avocado (01)", "Citrus (02)"]} />
+          <Select label="Product" required defaultValue="Hass Loose (118)" options={["Hass Loose (118)", "Valencia 88 (204)"]} />
+        </FieldSet>
+      </Card>) },
+  "emptystate":         { width: 520, bg: "card", render: () => (
+      <EmptyState icon={<Icon name="search-x" size={22} />} title="No scans match that search"
+        description="Try a shorter search, or widen the date range to Last 7 days."
+        action={<Button variant="secondary" size="sm">Clear filters</Button>} />) },
+  "table":              { width: 720, bg: "card", render: () => <DataTable rowKey="serial" columns={COLS} rows={RECENT} selectedId="SC-0093-AB" /> },
+  "dialog-remove":      { width: 520, bg: "app", dialog: true, render: () => (
+      <Dialog title="Remove this scanner?" tone="danger" width="440px"
+        description="Line 2 scanner (SL-HH-11) will stop sending scans to this site. You can add it again later."
+        onClose={() => {}}
+        actions={<><Button variant="secondary">Keep it</Button><Button variant="danger">Remove scanner</Button></>} />) },
+  "dialog-printer":     { width: 560, bg: "app", dialog: true, render: () => (
+      <Dialog title="How is the printer connected?" width="480px"
+        description="Choose how this computer reaches the label printer. If you're not sure, ask whoever set it up."
+        onClose={() => {}}
+        actions={<><Button variant="secondary">Cancel</Button><Button variant="primary">Save connection</Button></>}>
+        <FieldSet columns={1}>
+          <Select label="Connection" defaultValue="Network (LAN)" hint="Network is the usual choice in a packhouse." options={["Network (LAN)", "USB cable", "Serial cable (COM)", "Save to a file"]} />
+          <TextField label="Printer address" mono defaultValue="192.168.1.44:9100" hint="You'll find this printed on the label on the printer." />
+        </FieldSet>
+      </Dialog>) },
+  "dialog-scan":        { width: 540, bg: "app", dialog: true, render: () => (
+      <Dialog title="SC-0093-AA" description="Everything recorded when this carton was scanned." onClose={() => {}} width="460px"
+        actions={<><Button variant="secondary">Close</Button><Button variant="primary" icon={<Icon name="printer" size={16} />}>Reprint this label</Button></>}>
+        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "10px 20px" }}>
+          {[["Time", "07:14"], ["Block", "14"], ["Line", "1"], ["Picked by", "J. Mokoena"], ["Supplier", "Rooidraai"], ["Product", "Hass Loose"]].map(([k, v]) => (
+            <React.Fragment key={k}>
+              <span style={{ font: "400 var(--f-sm)/1.4 var(--font-ui)", color: "var(--text-muted)" }}>{k}</span>
+              <span style={{ font: "500 var(--f-sm)/1.4 var(--font-ui)", color: "var(--text-body)" }}>{v}</span>
+            </React.Fragment>))}
+        </div>
+        <Badge tone="success" dot>Sent to the cloud</Badge>
+      </Dialog>) }
+};
+
+function Scene({ id, spec }) {
+  if (spec.dialog) {
+    // The Dialog draws its own fixed backdrop; the host gives it a containing block so the
+    // capture can screenshot just the dialog panel ([role=dialog]).
+    return (
+      <div>
+        <div className="label">{id}</div>
+        <div className="dialog-host" data-scene={id} style={{ width: spec.width + "px", height: "520px" }}>{spec.render()}</div>
+      </div>);
+  }
+  return (
+    <div>
+      <div className="label">{id}</div>
+      <div className={"scene " + spec.bg} data-scene={id} data-capture style={{ width: spec.width + "px" }}>{spec.render()}</div>
+    </div>);
+}
+
+const only = new URLSearchParams(location.search).get("scene");
+const ids = Object.keys(SCENES).filter((id) => !only || id === only);
+window.__SCENES__ = Object.keys(SCENES).map((id) => ({ id, dialog: !!SCENES[id].dialog }));
+ReactDOM.createRoot(document.getElementById("root")).render(<>{ids.map((id) => <Scene key={id} id={id} spec={SCENES[id]} />)}</>);
+setTimeout(() => { window.__READY__ = true; }, 300);
+</script>
+</body>
+</html>

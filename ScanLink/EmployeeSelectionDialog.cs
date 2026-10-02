@@ -4,27 +4,25 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ScanLink.DesignSystem;
 
 namespace ScanLink
 {
-    public partial class EmployeeSelectionDialog : Form
+    internal partial class EmployeeSelectionDialog : SLDialog
     {
         private ApiAuthService _apiAuthService;
-        private DataGridView employeeDataGridView;
-        
-        private Label nameLabel;
-        private TextBox searchTextBox;
-        private Button searchButton;
+        private SLTable employeeDataGridView;
+
+        private SLTextBox searchTextBox;
+        private SLButton searchButton;
         private CheckedListBox departmentCheckedListBox;
-        private Label departmentLabel;
-        private Button selectButton;
-        private Button cancelButton;
-        // private Label statusLabel;
-        private Label countLabel;
+        private SLButton selectButton;
+        private SLButton cancelButton;
+        private SLText countLabel;
         private ApiAuthService.EmployeeInfo _selectedEmployee;
-        private Button prevPageButton;
-        private Button nextPageButton;
-        private Label pageInfoLabel;
+        private SLButton prevPageButton;
+        private SLButton nextPageButton;
+        private SLText pageInfoLabel;
         private int _currentPage = 0;
 
         public ApiAuthService.EmployeeInfo SelectedEmployee => _selectedEmployee;
@@ -35,209 +33,68 @@ namespace ScanLink
             InitializeComponent();
         }
 
+        // Layout (SLDialog, 800 wide, fixed body height so the table scrolls):
+        //   [Name search ................................] [Search]
+        //   [Departments: multi-column checked list            ]
+        //   SLCard: employee table / footer: count · Previous · page · Next
+        //   Footer: Cancel · Select employee
         private void InitializeComponent()
         {
-            this.Text = "Select Employee";
-            this.Size = new Size(800, 600);
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            Title = "Choose an employee";
+            Description = "Search by name or employee ID, then pick the person who is picking.";
+            DialogWidth = 800;
+            BodyHeight = 470;
 
-            // Create main panel
-            var mainPanel = new Panel();
-            mainPanel.Dock = DockStyle.Fill;
-            mainPanel.Padding = new Padding(10);
-            mainPanel.AutoScroll = true;
-            this.Controls.Add(mainPanel);
-
-            // Create search panel
-            var searchPanel = new Panel();
-            searchPanel.Height = 100;
-            searchPanel.Dock = DockStyle.Top;
-            searchPanel.BackColor = Color.FromArgb(247, 249, 249);
-            mainPanel.Controls.Add(searchPanel);
-
-            // Name label
-            nameLabel = new Label();
-            nameLabel.Text = "Name:";
-            nameLabel.Location = new Point(10, 17);
-            nameLabel.AutoSize = true;
-            nameLabel.ForeColor = Color.FromArgb(52, 73, 94);
-            searchPanel.Controls.Add(nameLabel);
-
-            // Search textbox
-            searchTextBox = new TextBox();
-            searchTextBox.Location = new Point(50, 15);
-            searchTextBox.Size = new Size(250, 20);
-            // searchTextBox.Text = "Search by name or employee ID...";
-            searchTextBox.Text = "";
-            searchTextBox.ForeColor = Color.Gray;
-            searchTextBox.Enter += (s, e) => {
-                if (searchTextBox.Text == "Search by name or employee ID...") {
-                    searchTextBox.Text = "";
-                    searchTextBox.ForeColor = Color.Black;
-                }
-            };
-            searchTextBox.Leave += (s, e) => {
-                if (string.IsNullOrWhiteSpace(searchTextBox.Text)) {
-                    searchTextBox.Text = "";
-                    searchTextBox.ForeColor = Color.Gray;
-                }
-            };
-            searchPanel.Controls.Add(searchTextBox);
-
-            // Department label
-            departmentLabel = new Label();
-            departmentLabel.Text = "Departments:";
-            departmentLabel.Location = new Point(320, 17);
-            departmentLabel.AutoSize = true;
-            departmentLabel.ForeColor = Color.FromArgb(52, 73, 94);
-            searchPanel.Controls.Add(departmentLabel);
-            
-
-            // Department checked list box
-            departmentCheckedListBox = new CheckedListBox();
-            departmentCheckedListBox.Location = new Point(395, 13);
-            departmentCheckedListBox.Size = new Size(180, 80);
-            departmentCheckedListBox.CheckOnClick = true;
-            departmentCheckedListBox.IntegralHeight = false;
-            departmentCheckedListBox.BorderStyle = BorderStyle.FixedSingle;
-            departmentCheckedListBox.BackColor = Color.White;
-            searchPanel.Controls.Add(departmentCheckedListBox);
-
-            // Search button
-            searchButton = new Button();
-            searchButton.Text = "🔍 Search";
-            searchButton.Location = new Point(585, 13);
-            searchButton.Size = new Size(80, 25);
-            searchButton.BackColor = Color.FromArgb(52, 152, 219);
-            searchButton.FlatStyle = FlatStyle.Flat;
-            searchButton.ForeColor = Color.White;
+            searchTextBox = new SLTextBox { PrefixIcon = "search", PlaceholderText = "Search by name or employee ID" };
+            searchTextBox.Inner.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; searchButton.PerformClick(); } };
+            searchButton = new SLButton { Text = "Search", Variant = SLVariant.Secondary, IconName = "search" };
             searchButton.Click += SearchButton_Click;
-            searchPanel.Controls.Add(searchButton);
 
-            // Create data grid view
-            employeeDataGridView = new DataGridView();
-            employeeDataGridView.Location = new Point(10, 110); // Position below search panel
-            employeeDataGridView.Size = new Size(760, 410);
-            employeeDataGridView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
-            employeeDataGridView.AllowUserToAddRows = false;
-            employeeDataGridView.AllowUserToDeleteRows = false;
-            employeeDataGridView.ReadOnly = true;
-            employeeDataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            employeeDataGridView.MultiSelect = false;
-            employeeDataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            employeeDataGridView.BackgroundColor = Color.White;
-            employeeDataGridView.BorderStyle = BorderStyle.FixedSingle;
-            employeeDataGridView.GridColor = Color.FromArgb(220, 220, 220);
-            employeeDataGridView.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 249, 250);
-            employeeDataGridView.DefaultCellStyle.SelectionBackColor = Color.FromArgb(52, 152, 219);
-            employeeDataGridView.DefaultCellStyle.SelectionForeColor = Color.White;
-            employeeDataGridView.RowHeadersVisible = false;
-            employeeDataGridView.ColumnHeadersVisible = true;
-            employeeDataGridView.EnableHeadersVisualStyles = false;
-            employeeDataGridView.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(52, 73, 94);
-            employeeDataGridView.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            employeeDataGridView.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            employeeDataGridView.ColumnHeadersHeight = 30;
-            employeeDataGridView.RowTemplate.Height = 25;
-            mainPanel.Controls.Add(employeeDataGridView);
+            var searchRow = new SLStack(SLOrientation.Horizontal, 12) { Align = SLAlign.End };
+            var nameField = new SLField("Name", searchTextBox);
+            searchRow.AddRange(nameField, searchButton);
+            searchRow.SetGrow(nameField);
+            Body.Controls.Add(searchRow);
 
+            departmentCheckedListBox = new CheckedListBox { CheckOnClick = true, MultiColumn = true, ColumnWidth = 190 };
+            Body.Controls.Add(new SLField("Departments", new SLFrame(departmentCheckedListBox) { Height = 76 }));
 
-            // Create button panel
-            var buttonPanel = new Panel();
-            buttonPanel.Height = 50;
-            buttonPanel.Dock = DockStyle.Bottom;
-            buttonPanel.BackColor = Color.FromArgb(247, 249, 249);
-            mainPanel.Controls.Add(buttonPanel);
-
-            // Status label
-            // statusLabel = new Label();
-            // statusLabel.Text = "Loading employees...";
-            // statusLabel.Location = new Point(10, 18);
-            // statusLabel.AutoSize = true;
-            // statusLabel.ForeColor = Color.FromArgb(52, 152, 219);
-            // buttonPanel.Controls.Add(statusLabel);
-
-            
-            // Previous page button
-            prevPageButton = new Button();
-            prevPageButton.Text = "◀ Prev";
-            prevPageButton.Location = new Point(10, 25);
-            prevPageButton.Size = new Size(80, 24);
-            prevPageButton.BackColor = Color.FromArgb(52, 152, 219);
-            prevPageButton.FlatStyle = FlatStyle.Flat;
-            prevPageButton.ForeColor = Color.White;
-            prevPageButton.Enabled = false;
-            prevPageButton.Click += PrevPageButton_Click;
-            buttonPanel.Controls.Add(prevPageButton);
-            
-
-            // Page info label
-            pageInfoLabel = new Label();
-            pageInfoLabel.Text = "Page 1 of 1";
-            pageInfoLabel.Location = new Point(93, 29);
-            pageInfoLabel.AutoSize = true;
-            pageInfoLabel.ForeColor = Color.FromArgb(52, 73, 94);
-            buttonPanel.Controls.Add(pageInfoLabel);
-
-            // Next page button
-            nextPageButton = new Button();
-            nextPageButton.Text = "Next ▶";
-            nextPageButton.Location = new Point(170, 25);
-            nextPageButton.Size = new Size(80, 24);
-            nextPageButton.BackColor = Color.FromArgb(52, 152, 219);
-            nextPageButton.FlatStyle = FlatStyle.Flat;
-            nextPageButton.ForeColor = Color.White;
-            nextPageButton.Enabled = true;
-            nextPageButton.Click += NextPageButton_Click;
-            buttonPanel.Controls.Add(nextPageButton);
-
-            // Count label
-            countLabel = new Label();
-            countLabel.Text = "Total: 0 employees";
-            countLabel.Location = new Point(270, 30);
-            countLabel.AutoSize = true;
-            countLabel.ForeColor = Theme.TextMuted;
-            buttonPanel.Controls.Add(countLabel);
-
-            // Cancel button
-            cancelButton = new Button();
-            cancelButton.Text = "Cancel";
-            cancelButton.Location = new Point(680, 25);
-            cancelButton.Size = new Size(75, 25);
-            cancelButton.DialogResult = DialogResult.Cancel;
-            buttonPanel.Controls.Add(cancelButton);
-
-            // Select button
-            selectButton = new Button();
-            selectButton.Text = "Select";
-            selectButton.Location = new Point(600, 25);
-            selectButton.Size = new Size(75, 25);
-            selectButton.Enabled = false;
-            selectButton.Click += SelectButton_Click;
-            buttonPanel.Controls.Add(selectButton);
-
-            // Initialize data grid columns
-            InitializeDataGridView();
-
-            // Runs after InitializeDataGridView so the grid's columns already exist and pick
-            // up the uppercase header treatment. Select confirms, so it takes the single
-            // indigo primary; Cancel is secondary.
-            ScanLink.Themed.ThemeStyles.DialogChrome(this);
-            ScanLink.Themed.ThemeStyles.Primary(selectButton);
-            ScanLink.Themed.ThemeStyles.Secondary(cancelButton);
-            ScanLink.Themed.IconSet.ApplyTo(searchButton, "search", 16, ScanLink.Themed.IconSet.Tint.Dark);
-            // Geometry preserved deliberately: both buttons sit at hard-coded coordinates
-            // inside buttonPanel where the variant minimums would make them overlap.
-            foreach (Button b in new[] { selectButton, cancelButton })
+            employeeDataGridView = new SLTable { Height = 200 };
+            employeeDataGridView.EmptyState = new SLEmptyState
             {
-                b.MinimumSize = new Size(75, 28);
-                b.Size = new Size(75, 28);
-            }
+                Compact = true,
+                IconName = "users",
+                Title = "No employees match",
+                Description = "Try a shorter name, or tick more departments."
+            };
 
-            // Load employees on form load
+            prevPageButton = new SLButton { Text = "Previous", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "chevron-left", Enabled = false };
+            prevPageButton.Click += PrevPageButton_Click;
+            nextPageButton = new SLButton { Text = "Next", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconEndName = "chevron-right" };
+            nextPageButton.Click += NextPageButton_Click;
+            pageInfoLabel = new SLText("Page 1 of 1", SLTextStyle.Muted) { SingleLine = true };
+            countLabel = new SLText("Total: 0 employees", SLTextStyle.Muted) { SingleLine = true };
+
+            var table = new SLCard { BodyPadding = Padding.Empty };
+            table.Body.Controls.Add(employeeDataGridView);
+            table.Body.SetGrow(employeeDataGridView);
+            table.Footer.Justify = SLJustify.SpaceBetween;
+            var pager = new SLStack(SLOrientation.Horizontal, 8) { Align = SLAlign.Center };
+            pager.AddRange(prevPageButton, pageInfoLabel, nextPageButton);
+            table.Footer.AddRange(countLabel, pager);
+            Body.Controls.Add(table);
+            Body.SetGrow(table);
+
+            cancelButton = new SLButton { Text = "Cancel", Variant = SLVariant.Secondary, DialogResult = DialogResult.Cancel };
+            selectButton = new SLButton { Text = "Select employee", Enabled = false };
+            selectButton.Click += SelectButton_Click;
+            AddAction(cancelButton);
+            AddAction(selectButton);
+            CancelButton = cancelButton;
+
+            InitializeDataGridView();
+            employeeDataGridView.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && selectButton.Enabled) selectButton.PerformClick(); };
+
             this.Load += EmployeeSelectionDialog_Load;
         }
 
@@ -259,10 +116,8 @@ namespace ScanLink
             employeeDataGridView.Columns["user_id"].Width = 250;
             employeeDataGridView.Columns["scanlink_id"].Visible = false;
 
-            // Style the grid
-            employeeDataGridView.AlternatingRowsDefaultCellStyle.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
-            employeeDataGridView.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(50, 74, 95);
-            employeeDataGridView.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
+            employeeDataGridView.SetMono("employee_site_id");
+            employeeDataGridView.SetMuted("user_id");
 
             // Handle row selection
             employeeDataGridView.SelectionChanged += EmployeeDataGridView_SelectionChanged;
