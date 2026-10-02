@@ -379,8 +379,29 @@ namespace ScanLink.DesignSystem
 
             Footer.Visible = HasFooter;
             if (HasFooter) Footer.SetBounds(1, Height - 1 - (footer - 1), w - 2, footer - 1);
+            ClipBottomCorners(HasFooter ? (Control)Footer : Body);
             Invalidate();
             SLLayout.NotifyIfChanged(this, MeasureHeight(w), ref _lastMeasured);
+        }
+
+        /// <summary>
+        /// Rounds the bottom corners of the last child (an edge-to-edge table would otherwise
+        /// paint square corners over the card's 12px radius).
+        /// </summary>
+        private void ClipBottomCorners(Control last)
+        {
+            if (last == null || last.Width < 4 || last.Height < 4) return;
+            int r = Theme.RadiusLg - 1;
+            using (GraphicsPath p = new GraphicsPath())
+            {
+                int w = last.Width, h = last.Height, d = r * 2;
+                p.AddLine(0, 0, w, 0);
+                p.AddArc(w - d, h - d, d, d, 0, 90);
+                p.AddArc(0, h - d, d, d, 90, 90);
+                p.CloseFigure();
+                last.Region = new Region(p);
+            }
+            if (last != Body) Body.Region = null;
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)

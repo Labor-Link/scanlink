@@ -64,7 +64,7 @@ namespace ScanLink.DesignSystem
         public string Description { get { return _description; } set { _description = value; PerformLayout(); Invalidate(); } }
         public SLDialogTone Tone { get { return _tone; } set { _tone = value; Invalidate(); } }
 
-        /// <summary>The mockup's width prop, in px. Default 520.</summary>
+        /// <summary>The mockup's width prop, in px. Default 520. Narrower screens shrink it.</summary>
         public int DialogWidth { get { return _width; } set { _width = value; PerformLayout(); } }
 
         /// <summary>Fixed body height (e.g. for a log or a grid that scrolls). 0 = fit content.</summary>
@@ -101,7 +101,14 @@ namespace ScanLink.DesignSystem
 
         private int PanelWidth
         {
-            get { return Embedded ? Math.Max(200, Math.Min(_width, ClientSize.Width - 48)) : _width; }
+            get
+            {
+                if (Embedded) return Math.Max(200, Math.Min(_width, ClientSize.Width - 48));
+                // Windows will not size a window past the screen, so shrink to fit (with a
+                // margin) rather than be clipped; content reflows to the narrower width.
+                int screen = Screen.FromControl(this).WorkingArea.Width - 48;
+                return Math.Max(320, Math.Min(_width, screen));
+            }
         }
 
         private int TextWidth { get { return PanelWidth - 40 - (CloseVisible ? 12 + 24 : 0); } }

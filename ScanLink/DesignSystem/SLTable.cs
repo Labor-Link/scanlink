@@ -76,6 +76,12 @@ namespace ScanLink.DesignSystem
         public static void Apply(DataGridView grid)
         {
             if (grid == null) return;
+            // Combo columns show plain text until edited (painted with a chevron above).
+            foreach (DataGridViewColumn c in grid.Columns)
+            {
+                DataGridViewComboBoxColumn cc = c as DataGridViewComboBoxColumn;
+                if (cc != null) { cc.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing; cc.FlatStyle = FlatStyle.Flat; }
+            }
             State st;
             bool already = States.TryGetValue(grid, out st);
             S(grid);
@@ -112,6 +118,11 @@ namespace ScanLink.DesignSystem
             foreach (DataGridViewRow row in grid.Rows) row.Height = RowHeightOf(grid);
 
             if (already) return;
+            grid.ColumnAdded += (s, e) =>
+            {
+                DataGridViewComboBoxColumn cc = e.Column as DataGridViewComboBoxColumn;
+                if (cc != null) { cc.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing; cc.FlatStyle = FlatStyle.Flat; }
+            };
             grid.CellPainting += OnCellPainting;
             grid.CellMouseEnter += OnCellMouseEnter;
             grid.MouseLeave += OnMouseLeave;
@@ -279,6 +290,20 @@ namespace ScanLink.DesignSystem
                 bool hot = st.HoverRow == e.RowIndex && st.HoverCol == e.ColumnIndex;
                 if (hot) SLPaint.Box(gr, btn, Theme.RadiusSm, action.Value ? Theme.Err50 : Theme.N100, Color.Empty);
                 SLIcon.Draw(gr, action.Key, new Rectangle(btn.X + 7, btn.Y + 7, 16, 16), action.Value ? Theme.Err500 : Theme.N500);
+                e.Handled = true;
+                return;
+            }
+
+            DataGridViewComboBoxCell combo = g.Rows[e.RowIndex].Cells[e.ColumnIndex] as DataGridViewComboBoxCell;
+            if (combo != null)
+            {
+                // A drop-down cell reads as text with a small chevron, like the rest of the
+                // table; the stock drop-down editor still opens when the cell is clicked.
+                bool locked = combo.ReadOnly || g.ReadOnly || column.ReadOnly;
+                Rectangle textRect = new Rectangle(content.X, content.Y, Math.Max(0, content.Width - (locked ? 0 : 18)), content.Height);
+                SLPaint.TextEllipsis(gr, Convert.ToString(e.FormattedValue), Theme.FontSm, textRect, locked ? Theme.TextMuted : Theme.TextBody, TextFormatFlags.Left);
+                if (!locked)
+                    SLIcon.Draw(gr, "chevron-down", new Rectangle(content.Right - 14, content.Y + (content.Height - 14) / 2, 14, 14), Theme.N400);
                 e.Handled = true;
                 return;
             }

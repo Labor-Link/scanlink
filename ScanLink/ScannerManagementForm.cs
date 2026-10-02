@@ -629,6 +629,9 @@ namespace ScanLink
             AddAction(saveButton);
 
             this.Load += ScannerManagementForm_Load;
+            // The grid selects its first row when its handle is created, after Populate ran.
+            this.Shown += (s, e) => scannerDataGridView.ClearSelection();
+            scannerDataGridView.VisibleChanged += (s, e) => { if (scannerDataGridView.Visible) scannerDataGridView.ClearSelection(); };
         }
 
         private void ScannerManagementForm_Load(object sender, EventArgs e)
@@ -666,56 +669,22 @@ namespace ScanLink
         {
             if (scannerDataGridView.Columns.Count == 0) return;
 
-            // Adjust FillWeight based on form width - more columns now with COM settings
-            bool isWideForm = this.ClientSize.Width > 1200;
-            bool isNarrowForm = this.ClientSize.Width < 900;
-
-            if (isWideForm)
-            {
-                SetColumnFillWeight("SerialNumber", 10f);
-                SetColumnFillWeight("PNPDeviceID", 23f);
-                SetColumnFillWeight("ComPort", 8f);
-                SetColumnFillWeight("LineID", 8f);
-                SetColumnFillWeight("BlockID", 8f);
-                SetColumnFillWeight("Supplier", 9f);
-                SetColumnFillWeight("BaudRate", 7f);
-                SetColumnFillWeight("Parity", 6f);
-                SetColumnFillWeight("DataBits", 5f);
-                SetColumnFillWeight("StopBits", 5f);
-                SetColumnFillWeight("Status", 10f);
-                SetColumnFillWeight("Delete", 8f);
-            }
-            else if (isNarrowForm)
-            {
-                SetColumnFillWeight("SerialNumber", 8f);
-                SetColumnFillWeight("PNPDeviceID", 18f);
-                SetColumnFillWeight("ComPort", 7f);
-                SetColumnFillWeight("LineID", 9f);
-                SetColumnFillWeight("BlockID", 9f);
-                SetColumnFillWeight("Supplier", 10f);
-                SetColumnFillWeight("BaudRate", 8f);
-                SetColumnFillWeight("Parity", 7f);
-                SetColumnFillWeight("DataBits", 6f);
-                SetColumnFillWeight("StopBits", 6f);
-                SetColumnFillWeight("Status", 7f);
-                SetColumnFillWeight("Delete", 9f);
-            }
-            else
-            {
-                // Medium size - balanced
-                SetColumnFillWeight("SerialNumber", 9f);
-                SetColumnFillWeight("PNPDeviceID", 20f);
-                SetColumnFillWeight("ComPort", 8f);
-                SetColumnFillWeight("LineID", 9f);
-                SetColumnFillWeight("BlockID", 9f);
-                SetColumnFillWeight("Supplier", 9f);
-                SetColumnFillWeight("BaudRate", 7f);
-                SetColumnFillWeight("Parity", 6f);
-                SetColumnFillWeight("DataBits", 6f);
-                SetColumnFillWeight("StopBits", 5f);
-                SetColumnFillWeight("Status", 9f);
-                SetColumnFillWeight("Delete", 8f);
-            }
+            // One set of weights: the dialog shrinks to the screen instead of the grid
+            // re-balancing by window width. Status keeps room for its badge.
+            SetColumnFillWeight("SerialNumber", 9f);
+            SetColumnFillWeight("PNPDeviceID", 15f);
+            SetColumnFillWeight("ComPort", 7f);
+            SetColumnFillWeight("LineID", 6f);
+            SetColumnFillWeight("BlockID", 6f);
+            SetColumnFillWeight("Supplier", 10f);
+            SetColumnFillWeight("BaudRate", 8f);
+            SetColumnFillWeight("Parity", 7f);
+            SetColumnFillWeight("DataBits", 7f);
+            SetColumnFillWeight("StopBits", 7f);
+            SetColumnFillWeight("Status", 12f);
+            SetColumnFillWeight("Delete", 5f);
+            if (scannerDataGridView.Columns.Contains("Status")) scannerDataGridView.Columns["Status"].MinimumWidth = 128;
+            if (scannerDataGridView.Columns.Contains("Delete")) scannerDataGridView.Columns["Delete"].MinimumWidth = 46;
         }
 
         private void SetColumnFillWeight(string columnName, float weight)
@@ -1223,6 +1192,7 @@ namespace ScanLink
             // Update FillWeight proportions after populating data
             UpdateColumnFillWeights();
             UpdateConnectionBanner();
+            scannerDataGridView.ClearSelection();   // no row looks "chosen" when the page opens
             
             // Attach event handler for delete button clicks
             scannerDataGridView.CellContentClick += ScannerDataGridView_CellContentClick;
