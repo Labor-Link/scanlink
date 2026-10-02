@@ -79,6 +79,7 @@ namespace ScanLink.DesignSystem
             // Combo columns show plain text until edited (painted with a chevron above).
             foreach (DataGridViewColumn c in grid.Columns)
             {
+                if (c.HeaderText != null) c.HeaderText = c.HeaderText.ToUpperInvariant();
                 DataGridViewComboBoxColumn cc = c as DataGridViewComboBoxColumn;
                 if (cc != null) { cc.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing; cc.FlatStyle = FlatStyle.Flat; }
             }
@@ -120,6 +121,9 @@ namespace ScanLink.DesignSystem
             if (already) return;
             grid.ColumnAdded += (s, e) =>
             {
+                // Headers are painted UPPERCASE; store them that way so auto-sized columns
+                // measure the text that is actually drawn.
+                if (e.Column.HeaderText != null) e.Column.HeaderText = e.Column.HeaderText.ToUpperInvariant();
                 DataGridViewComboBoxColumn cc = e.Column as DataGridViewComboBoxColumn;
                 if (cc != null) { cc.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing; cc.FlatStyle = FlatStyle.Flat; }
             };

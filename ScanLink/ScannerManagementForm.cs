@@ -669,20 +669,17 @@ namespace ScanLink
         {
             if (scannerDataGridView.Columns.Count == 0) return;
 
-            // One set of weights: the dialog shrinks to the screen instead of the grid
-            // re-balancing by window width. Status keeps room for its badge.
-            SetColumnFillWeight("SerialNumber", 9f);
-            SetColumnFillWeight("PNPDeviceID", 15f);
-            SetColumnFillWeight("ComPort", 7f);
-            SetColumnFillWeight("LineID", 6f);
-            SetColumnFillWeight("BlockID", 6f);
-            SetColumnFillWeight("Supplier", 10f);
-            SetColumnFillWeight("BaudRate", 8f);
-            SetColumnFillWeight("Parity", 7f);
-            SetColumnFillWeight("DataBits", 7f);
-            SetColumnFillWeight("StopBits", 7f);
-            SetColumnFillWeight("Status", 12f);
-            SetColumnFillWeight("Delete", 5f);
+            // Short columns fit their header and values; the long Device ID absorbs whatever
+            // width is left (and truncates with "…"). Proportional weights clipped "SL-HH-02"
+            // and "COM3" on a 1024px screen.
+            foreach (DataGridViewColumn col in scannerDataGridView.Columns)
+            {
+                col.AutoSizeMode = col.Name == "PNPDeviceID"
+                    ? DataGridViewAutoSizeColumnMode.Fill
+                    : DataGridViewAutoSizeColumnMode.AllCells;
+                if (col is DataGridViewComboBoxColumn) col.MinimumWidth = 84;   // value + chevron
+            }
+            if (scannerDataGridView.Columns.Contains("PNPDeviceID")) scannerDataGridView.Columns["PNPDeviceID"].MinimumWidth = 90;
             if (scannerDataGridView.Columns.Contains("Status")) scannerDataGridView.Columns["Status"].MinimumWidth = 128;
             if (scannerDataGridView.Columns.Contains("Delete")) scannerDataGridView.Columns["Delete"].MinimumWidth = 46;
         }
@@ -1084,14 +1081,14 @@ namespace ScanLink
             scannerDataGridView.Columns.Add(parityColumn);
 
             DataGridViewComboBoxColumn dataBitsColumn = new DataGridViewComboBoxColumn();
-            dataBitsColumn.HeaderText = "Data bits";
+            dataBitsColumn.HeaderText = "Data";
             dataBitsColumn.Name = "DataBits";
             dataBitsColumn.FillWeight = 6;
             dataBitsColumn.Items.AddRange(new object[] { "5", "6", "7", "8" });
             scannerDataGridView.Columns.Add(dataBitsColumn);
 
             DataGridViewComboBoxColumn stopBitsColumn = new DataGridViewComboBoxColumn();
-            stopBitsColumn.HeaderText = "Stop bits";
+            stopBitsColumn.HeaderText = "Stop";
             stopBitsColumn.Name = "StopBits";
             stopBitsColumn.FillWeight = 6;
             stopBitsColumn.Items.AddRange(new object[] { "None", "One", "Two", "OnePointFive" });
