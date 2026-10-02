@@ -445,8 +445,8 @@ namespace ScanLink.DesignSystem
             Color ink = !Enabled ? Theme.N400 : empty ? Theme.N400 : Theme.TextBody;
             // Chrome's native <select> adds ~4px inside the 12px padding and draws a small dark
             // arrow close to the right edge (measured from the CI fidelity report).
-            SLPaint.Text(g, text, Font, new Rectangle(16, 0, Width - 16 - 28, Height), ink, TextFormatFlags.Left);
-            SLIcon.Draw(g, "chevron-down", new Rectangle(Width - 15, (Height - 14) / 2, 14, 14), Enabled ? Theme.N800 : Theme.N300, 2.4f);
+            SLPaint.TextEllipsis(g, text, Font, new Rectangle(16, 0, Width - 16 - 28, Height), ink, TextFormatFlags.Left);
+            SLIcon.Draw(g, "chevron-down", new Rectangle(Width - 15, (Height - 14) / 2, 14, 14), Enabled ? Theme.N800 : Theme.N300, 3.4f);
         }
 
         protected override void OnDrawItem(DrawItemEventArgs e)
@@ -458,7 +458,7 @@ namespace ScanLink.DesignSystem
                 e.Graphics.FillRectangle(b, e.Bounds);
             string text = GetItemText(Items[e.Index]);
             Rectangle r = new Rectangle(e.Bounds.X + 16, e.Bounds.Y, e.Bounds.Width - 28, e.Bounds.Height);
-            SLPaint.Text(e.Graphics, text, Font, r, selected ? Theme.TextHeading : Theme.TextBody, TextFormatFlags.Left);
+            SLPaint.TextEllipsis(e.Graphics, text, Font, r, selected ? Theme.TextHeading : Theme.TextBody, TextFormatFlags.Left);
         }
     }
 

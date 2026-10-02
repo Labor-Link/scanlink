@@ -67,7 +67,7 @@ namespace ScanLink.DesignSystem
         {
             SLTypeSpec spec = Spec;
             if (SingleLine)
-                SLPaint.Text(e.Graphics, Text, spec.Font, new Rectangle(0, 0, Width, spec.LineBox), spec.Color, _align);
+                SLPaint.TextEllipsis(e.Graphics, Text, spec.Font, new Rectangle(0, 0, Width, spec.LineBox), spec.Color, _align);
             else
                 SLLayout.DrawWrapped(e.Graphics, Text, spec, ClientRectangle, _align);
         }

@@ -119,9 +119,17 @@ namespace ScanLink.DesignSystem
             return Theme.SurfaceApp;
         }
 
+        /// <summary>Single line, no clipping: text is laid out with typographic widths (see
+        /// Measure) and GDI may draw it a pixel or two wider, which must not clip or ellipsise.</summary>
         public const TextFormatFlags SingleLine =
             TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter |
-            TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix;
+            TextFormatFlags.NoPrefix | TextFormatFlags.NoClipping;
+
+        /// <summary>Single line that truncates with "…" when it does not fit (select boxes,
+        /// table cells, SLText.SingleLine).</summary>
+        public const TextFormatFlags SingleLineEllipsis =
+            TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter |
+            TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis;
 
         public const TextFormatFlags Wrapped =
             TextFormatFlags.NoPadding | TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl |
@@ -134,6 +142,13 @@ namespace ScanLink.DesignSystem
             TextRenderer.DrawText(g, text, font, rect, color, SingleLine | align);
         }
 
+        /// <summary>Single-line text that ends in "…" if it is wider than rect.</summary>
+        public static void TextEllipsis(Graphics g, string text, Font font, Rectangle rect, Color color, TextFormatFlags align)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            TextRenderer.DrawText(g, text, font, rect, color, SingleLineEllipsis | align);
+        }
+
         /// <summary>Wrapped text from the top-left of rect.</summary>
         public static void Paragraph(Graphics g, string text, Font font, Rectangle rect, Color color)
         {
@@ -141,11 +156,14 @@ namespace ScanLink.DesignSystem
             TextRenderer.DrawText(g, text, font, rect, color, Wrapped);
         }
 
-        // Measuring goes through a device context: the MeasureText overloads WITHOUT one ignore
-        // NoPadding and add ~6px of overhang padding, which made every button, badge and
-        // label-to-asterisk gap 6px wider than the mockup (seen in the CI fidelity report).
+        // Text WIDTHS for layout are typographic (GDI+ GenericTypographic, unhinted): the same
+        // fractional advances Chrome's DirectWrite uses, so buttons, badges and line breaks come
+        // out the mockup's size. GDI's own measure rounds every glyph to whole pixels and drifts
+        // a few px per line (seen in CI report 2). Text is still DRAWN with GDI for crispness.
         private static Bitmap _measureBitmap;
         private static Graphics _measureGraphics;
+        private static StringFormat _typographic;
+        private static readonly object MeasureGate = new object();
 
         private static Graphics MeasureSurface
         {
@@ -155,6 +173,9 @@ namespace ScanLink.DesignSystem
                 {
                     _measureBitmap = new Bitmap(1, 1);
                     _measureGraphics = Graphics.FromImage(_measureBitmap);
+                    _measureGraphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                    _typographic = (StringFormat)StringFormat.GenericTypographic.Clone();
+                    _typographic.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces | StringFormatFlags.NoWrap;
                 }
                 return _measureGraphics;
             }
@@ -163,15 +184,20 @@ namespace ScanLink.DesignSystem
         public static Size Measure(string text, Font font)
         {
             if (string.IsNullOrEmpty(text)) return Size.Empty;
-            return TextRenderer.MeasureText(MeasureSurface, text, font, new Size(int.MaxValue, int.MaxValue),
-                TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
+            lock (MeasureGate)
+            {
+                Graphics g = MeasureSurface;
+                SizeF size = g.MeasureString(text, font, PointF.Empty, _typographic);
+                return new Size((int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height));
+            }
         }
 
         /// <summary>Height of text wrapped to width, matching Paragraph.</summary>
         public static int MeasureHeight(string text, Font font, int width)
         {
             if (string.IsNullOrEmpty(text) || width <= 0) return 0;
-            return TextRenderer.MeasureText(MeasureSurface, text, font, new Size(width, int.MaxValue), Wrapped).Height;
+            lock (MeasureGate)
+                return TextRenderer.MeasureText(MeasureSurface, text, font, new Size(width, int.MaxValue), Wrapped).Height;
         }
 
         /// <summary>

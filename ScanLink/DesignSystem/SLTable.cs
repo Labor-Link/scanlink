@@ -216,7 +216,7 @@ namespace ScanLink.DesignSystem
                 DataGridViewColumn col = g.Columns[e.ColumnIndex];
                 TextFormatFlags align = AlignOf(col);
                 Rectangle tr = new Rectangle(r.X + CellPadX, r.Y, r.Width - CellPadX * 2, r.Height - 1);
-                SLPaint.Text(gr, (text ?? "").ToUpperInvariant(), Theme.FontXsSemibold, tr, Theme.TextMuted, align);
+                SLPaint.TextEllipsis(gr, (text ?? "").ToUpperInvariant(), Theme.FontXsSemibold, tr, Theme.TextMuted, align);
                 e.Handled = true;
                 return;
             }
@@ -268,7 +268,7 @@ namespace ScanLink.DesignSystem
             Color ink = muted ? Theme.TextMuted : Theme.TextBody;
             if (e.CellStyle != null && e.CellStyle.ForeColor != g.DefaultCellStyle.ForeColor && !e.CellStyle.ForeColor.IsEmpty && !muted)
                 ink = e.CellStyle.ForeColor; // honour per-cell status colours set by existing code
-            SLPaint.Text(gr, Convert.ToString(e.FormattedValue), font, content, ink, AlignOf(column));
+            SLPaint.TextEllipsis(gr, Convert.ToString(e.FormattedValue), font, content, ink, AlignOf(column));
             e.Handled = true;
         }
 
