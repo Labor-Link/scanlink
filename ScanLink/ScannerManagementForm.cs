@@ -7,20 +7,29 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ScanLink.DesignSystem;
 using System.Diagnostics;
 using System.Management;
 
 namespace ScanLink
 {
-    public partial class ScannerManagementForm : Form
+    /// <summary>
+    /// Scanners on this site (the mockup's Devices screen): one row per scanner with its line,
+    /// block, supplier and COM settings. Built on SLDialog; also used as a page via
+    /// EmbeddedFormHost. See design/screens.md, "Devices".
+    /// </summary>
+    [System.ComponentModel.DesignerCategory("Code")]
+    internal partial class ScannerManagementForm : SLDialog
     {
-        private DataGridView scannerDataGridView;
-        private Button saveButton;
-        private Button refreshButton;
-        private Button configHelpButton;
-        private Label titleLabel;
-        private TextBox debugOutputTextBox;
-        private Label debugLabel;
+        private SLTable scannerDataGridView;
+        private SLButton saveButton;
+        private SLButton refreshButton;
+        private SLButton configHelpButton;
+        private SLTextBox debugOutputTextBox;
+        private SLBanner connectionBanner;
+        private SLBanner resultBanner;
+        private SLField debugField;
+        private SLToggle debugToggle;
         private List<ScannerInfo> detectedScanners;
 		public event EventHandler ScannersSaved;
 
@@ -526,153 +535,84 @@ namespace ScanLink
             PopulateDataGridView();
         }
 
+        // Layout:
+        //   [Error banner: a scanner isn't answering  (Look again)]
+        //   [Result banner: saved / removed / failed]
+        //   SLCard "Scanners"  actions: COM mode help · Look for scanners
+        //     SLTable (editable Line / Block / Supplier / COM settings, trash action)
+        //     footer: Show detection log
+        //   [Detection log]
+        //   Footer: Close · Save assignments
         private void InitializeComponent()
         {
-            this.scannerDataGridView = new DataGridView();
-            this.saveButton = new Button();
-            this.refreshButton = new Button();
-            this.configHelpButton = new Button();
-            this.titleLabel = new Label();
-            this.debugOutputTextBox = new TextBox();
-            this.debugLabel = new Label();
-            this.SuspendLayout();
+            Name = "ScannerManagementForm";
+            Title = "Scanners on this site";
+            Description = "Each scanner is tied to a line and a block so scans land in the right place.";
+            DialogWidth = 1100;
+            BodyHeight = 560;
 
-            // 
-            // titleLabel - Centered and responsive
-            // 
-            this.titleLabel.AutoSize = true;
-            this.titleLabel.Font = new Font("Segoe UI", 16F, FontStyle.Bold);
-            this.titleLabel.ForeColor = Color.FromArgb(52, 73, 94);
-            this.titleLabel.Name = "titleLabel";
-            this.titleLabel.Size = new Size(250, 20);
-            this.titleLabel.TabIndex = 0;
-            this.titleLabel.Text = "🔧 Scanner Management";
-            this.titleLabel.TextAlign = ContentAlignment.MiddleCenter;
-            this.titleLabel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            connectionBanner = new SLBanner { Tone = SLTone.Error, IconName = "unplug" };
+            connectionBanner.Action = new SLButton { Text = "Look again", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm };
+            connectionBanner.Action.Click += refreshButton_Click;
+            resultBanner = new SLBanner();
+            Body.Controls.Add(connectionBanner);
+            Body.Controls.Add(resultBanner);
+            SLVisibility.Set(connectionBanner, false);
+            SLVisibility.Set(resultBanner, false);
 
-            // 
-            // scannerDataGridView - Responsive with margins
-            // 
-            this.scannerDataGridView.AllowUserToAddRows = false;
-            this.scannerDataGridView.AllowUserToDeleteRows = false;
-            this.scannerDataGridView.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
-            this.scannerDataGridView.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.scannerDataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            this.scannerDataGridView.BackgroundColor = Color.White;
-            this.scannerDataGridView.BorderStyle = BorderStyle.Fixed3D;
-            this.scannerDataGridView.GridColor = Color.FromArgb(230, 230, 230);
-            this.scannerDataGridView.Name = "scannerDataGridView";
-            this.scannerDataGridView.RowHeadersVisible = false;
-            this.scannerDataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            // Only one row selectable at a time. With MultiSelect (the default) clicking a second row
-            // left both it and the previously-selected/connected row highlighted (two blue rows), which
-            // made it look like two scanners were selected and confused which one's edit was saved.
-            // Same root cause as the printer USB dialog fix.
-            this.scannerDataGridView.MultiSelect = false;
-            this.scannerDataGridView.TabIndex = 1;
+            scannerDataGridView = new SLTable
+            {
+                Name = "scannerDataGridView",
+                ReadOnly = false,            // Line, Block, Supplier and COM settings are edited in place
+                EditMode = DataGridViewEditMode.EditOnEnter,
+                // Only one row selectable at a time. With MultiSelect clicking a second row left
+                // two rows highlighted, which made it unclear which scanner's edit was saved.
+                MultiSelect = false,
+                Height = 240
+            };
+            scannerDataGridView.EmptyState = new SLEmptyState
+            {
+                Compact = true,
+                IconName = "usb",
+                Title = "No scanners found yet",
+                Description = "Plug a scanner into this computer, then choose Look for scanners.",
+                Action = new SLButton { Text = "Look for scanners", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm }
+            };
+            scannerDataGridView.EmptyState.Action.Click += refreshButton_Click;
 
-            // 
-            // refreshButton - Bottom left with margin
-            // 
-            this.refreshButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Left;
-            this.refreshButton.Name = "refreshButton";
-            this.refreshButton.Size = new Size(140, 40);
-            this.refreshButton.TabIndex = 2;
-            this.refreshButton.Text = "🔄 Refresh";
-            this.refreshButton.UseVisualStyleBackColor = false;
-            this.refreshButton.Click += new EventHandler(this.refreshButton_Click);
+            refreshButton = new SLButton { Name = "refreshButton", Text = "Look for scanners", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "refresh-cw" };
+            refreshButton.Click += refreshButton_Click;
+            configHelpButton = new SLButton { Name = "configHelpButton", Text = "COM mode help", Variant = SLVariant.Ghost, ButtonSize = SLSize.Sm, IconName = "circle-help" };
+            configHelpButton.Click += configHelpButton_Click;
 
-            // 
-            // configHelpButton - Bottom middle
-            // 
-            this.configHelpButton.Anchor = AnchorStyles.Bottom;
-            this.configHelpButton.Name = "configHelpButton";
-            this.configHelpButton.Size = new Size(200, 40);
-            this.configHelpButton.TabIndex = 4;
-            this.configHelpButton.Text = "📋 COM Mode Setup Help";
-            this.configHelpButton.UseVisualStyleBackColor = false;
-            this.configHelpButton.Click += new EventHandler(this.configHelpButton_Click);
+            debugToggle = new SLToggle { Text = "Show detection log" };
+            debugToggle.CheckedChanged += (s, e) => SLVisibility.Set(debugField, debugToggle.Checked);
 
-            // 
-            // saveButton - Bottom right with margin
-            // 
-            this.saveButton.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-            this.saveButton.Name = "saveButton";
-            this.saveButton.Size = new Size(140, 40);
-            this.saveButton.TabIndex = 3;
-            this.saveButton.Text = "💾 Save";
-            this.saveButton.UseVisualStyleBackColor = false;
-            this.saveButton.Click += new EventHandler(this.saveButton_Click);
+            var card = new SLCard { Title = "Scanners", BodyPadding = Padding.Empty };
+            card.Actions.AddRange(configHelpButton, refreshButton);
+            card.Body.Controls.Add(scannerDataGridView);
+            card.Body.SetGrow(scannerDataGridView);
+            card.Footer.Controls.Add(debugToggle);
+            Body.Controls.Add(card);
+            Body.SetGrow(card);
 
-            // 
-            // debugLabel
-            // 
-            this.debugLabel.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            this.debugLabel.AutoSize = true;
-            this.debugLabel.Font = Theme.FontXsBold;
-            this.debugLabel.ForeColor = Theme.TextLabel;
-            this.debugLabel.Name = "debugLabel";
-            this.debugLabel.Text = "🔍 Detection Log:";
-            this.debugLabel.TabIndex = 4;
+            debugOutputTextBox = new SLTextBox { Name = "debugOutputTextBox", Multiline = true, ReadOnly = true, Mono = true, Height = 110 };
+            debugField = new SLField("Detection log", debugOutputTextBox);
+            Body.Controls.Add(debugField);
+            SLVisibility.Set(debugField, false);
 
-            // 
-            // debugOutputTextBox
-            // 
-            this.debugOutputTextBox.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            this.debugOutputTextBox.BorderStyle = BorderStyle.FixedSingle;
-            this.debugOutputTextBox.Multiline = true;
-            this.debugOutputTextBox.Name = "debugOutputTextBox";
-            this.debugOutputTextBox.ReadOnly = true;
-            this.debugOutputTextBox.ScrollBars = ScrollBars.Vertical;
-            this.debugOutputTextBox.TabIndex = 5;
+            var close = new SLButton { Text = "Close", Variant = SLVariant.Secondary, DialogResult = DialogResult.Cancel };
+            close.Click += (s, e) => Close();   // also shown modeless, where DialogResult does not close
+            saveButton = new SLButton { Name = "saveButton", Text = "Save assignments", IconName = "save" };
+            saveButton.Click += saveButton_Click;
+            AddAction(close);
+            AddAction(saveButton);
 
-            // 
-            // ScannerManagementForm - Responsive and centered
-            // 
-            this.AutoScaleDimensions = new SizeF(96F, 96F); // Use DPI-aware scaling
-            this.AutoScaleMode = AutoScaleMode.Dpi;
-            this.BackColor = Theme.SurfaceApp;
-            this.ClientSize = new Size(900, 600); // Reduced height for more compact dialog
-            this.Controls.Add(this.saveButton);
-            this.Controls.Add(this.configHelpButton);
-            this.Controls.Add(this.refreshButton);
-            this.Controls.Add(this.scannerDataGridView);
-            this.Controls.Add(this.titleLabel);
-            this.Controls.Add(this.debugLabel);
-            this.Controls.Add(this.debugOutputTextBox);
-            this.MinimumSize = new Size(800, 600); // Set minimum size for usability
-            this.Name = "ScannerManagementForm";
-            this.Text = "Scanner Management - ScanLink";
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.WindowState = FormWindowState.Normal;
-            
-            // Add event handlers for responsive layout
             this.Load += ScannerManagementForm_Load;
-            this.Resize += ScannerManagementForm_Resize;
-            
-            this.ResumeLayout(false);
-            this.PerformLayout();
-
-            // Save confirms the scanner assignments, so it takes the single indigo primary;
-            // Refresh and the setup-help link are secondary. No geometry is pinned because
-            // LayoutForm positions these buttons at runtime.
-            ScanLink.Themed.ThemeStyles.DialogChrome(this);
-            ScanLink.Themed.ThemeStyles.Primary(this.saveButton);
-            ScanLink.Themed.ThemeStyles.Secondary(this.refreshButton);
-            ScanLink.Themed.ThemeStyles.Secondary(this.configHelpButton);
-            ScanLink.Themed.IconSet.ApplyTo(this.saveButton, "save", 16, ScanLink.Themed.IconSet.Tint.White);
-            ScanLink.Themed.IconSet.ApplyTo(this.refreshButton, "refresh-cw", 16, ScanLink.Themed.IconSet.Tint.Dark);
-            ScanLink.Themed.IconSet.ApplyTo(this.titleLabel, "wrench", 24, ScanLink.Themed.IconSet.Tint.Dark);
-            // Icon dropped deliberately on these two — the labels already say it.
-            this.configHelpButton.Text = ScanLink.Themed.IconSet.StripLeadingGlyph(this.configHelpButton.Text);
-            this.debugLabel.Text = ScanLink.Themed.IconSet.StripLeadingGlyph(this.debugLabel.Text);
         }
 
         private void ScannerManagementForm_Load(object sender, EventArgs e)
         {
-            // Initial layout setup
-            LayoutForm();
-            
             // Ensure grid is populated on form load
             if (detectedScanners != null && detectedScanners.Count > 0 && scannerDataGridView.Rows.Count == 0)
             {
@@ -680,97 +620,26 @@ namespace ScanLink
             }
         }
 
-        private void ScannerManagementForm_Resize(object sender, EventArgs e)
+        /// <summary>Owner for confirmation dialogs, whether this is a window or an embedded page.</summary>
+        private IWin32Window DialogOwner { get { return TopLevel ? (IWin32Window)this : TopLevelControl; } }
+
+        private void ShowResult(SLTone tone, string title, string message)
         {
-            // Recalculate layout when form is resized
-            LayoutForm();
+            resultBanner.Tone = tone;
+            resultBanner.IconName = tone == SLTone.Success ? "circle-check" : tone == SLTone.Error ? "circle-alert" : "info";
+            resultBanner.Title = title;
+            resultBanner.Message = message;
+            SLVisibility.Set(resultBanner, true);
         }
 
-        private void LayoutForm()
+        /// <summary>The mockup's "Line 2 scanner isn't answering" banner, for every scanner that is not connected.</summary>
+        private void UpdateConnectionBanner()
         {
-            if (this.Width < 50 || this.Height < 50) return; // Avoid layout during form creation
-
-            // Use client size for precise layout (excludes borders/title bar)
-            int clientWidth = this.ClientSize.Width;
-            int clientHeight = this.ClientSize.Height;
-
-            // Calculate responsive margins (percentage-based with smooth scaling)
-            int horizontalMargin = Math.Max(20, clientWidth / 20); // 5% margin, minimum 20px
-            int topMargin = Math.Max(10, clientHeight / 40); // slightly smaller to move content upward
-            int bottomPadding = 24; // reserve extra space so buttons are fully visible
-            int buttonHeight = Math.Max(35, this.refreshButton.Height);
-            int titleHeight = 30; // compact title height to free space
-
-            // Position title label - centered horizontally at top with bounds checking
-            int titleWidth = this.titleLabel.PreferredWidth;
-            int titleX = (clientWidth - titleWidth) / 2;
-            titleX = Math.Max(horizontalMargin, Math.Min(titleX, clientWidth - titleWidth - horizontalMargin));
-            this.titleLabel.Location = new Point(titleX, topMargin);
-            this.titleLabel.Size = new Size(titleWidth, titleHeight);
-
-            // Position DataGridView - responsive with margins; reduce height to keep buttons and debug panel visible
-            int gridTop = topMargin + titleHeight + 10; // gap after title
-            int debugPanelHeight = 120; // height for debug output
-            int bottomReserved = buttonHeight + bottomPadding + 10 + debugPanelHeight + 30; // include debug panel
-            int gridBottom = clientHeight - bottomReserved;
-            int gridLeft = horizontalMargin;
-            int gridRight = clientWidth - horizontalMargin;
-
-            // Ensure minimum grid size
-            int gridWidth = Math.Max(400, gridRight - gridLeft);
-            int gridHeight = Math.Max(200, gridBottom - gridTop);
-
-            this.scannerDataGridView.Location = new Point(gridLeft, gridTop);
-            this.scannerDataGridView.Size = new Size(gridWidth, gridHeight);
-
-            // Position debug label and textbox above buttons
-            int debugLabelY = gridBottom + 15;
-            this.debugLabel.Location = new Point(horizontalMargin, debugLabelY);
-            
-            int debugTextBoxY = debugLabelY + 20;
-            this.debugOutputTextBox.Location = new Point(horizontalMargin, debugTextBoxY);
-            this.debugOutputTextBox.Size = new Size(gridWidth, debugPanelHeight);
-
-            // Position buttons at bottom with margins
-            int buttonY = clientHeight - bottomPadding - buttonHeight;
-            this.refreshButton.Location = new Point(horizontalMargin, buttonY);
-            
-            // Center the config help button
-            int configButtonX = (clientWidth - this.configHelpButton.Width) / 2;
-            this.configHelpButton.Location = new Point(configButtonX, buttonY);
-            
-            this.saveButton.Location = new Point(clientWidth - horizontalMargin - this.saveButton.Width, buttonY);
-
-            // Add visual feedback for form state
-            UpdateFormVisuals();
-
-            // With Fill mode enabled, columns fill automatically; adjust weights if needed
-            UpdateColumnFillWeights();
-        }
-
-        private void UpdateFormVisuals()
-        {
-            // Update form appearance based on size for better UX
-            if (this.WindowState == FormWindowState.Maximized)
-            {
-                this.BackColor = Color.FromArgb(245, 248, 250); // Slightly lighter for maximized state
-            }
-            else
-            {
-                this.BackColor = Color.FromArgb(248, 249, 250); // Standard color for normal state
-            }
-
-            // Add subtle border effect for better visual separation
-            if (this.Width > 1000)
-            {
-                // Larger form - add more visual elements
-                this.scannerDataGridView.BorderStyle = BorderStyle.Fixed3D;
-            }
-            else
-            {
-                // Smaller form - use simpler border
-                this.scannerDataGridView.BorderStyle = BorderStyle.FixedSingle;
-            }
+            int offline = detectedScanners == null ? 0 : detectedScanners.Count(sc => !sc.IsCurrentlyConnected);
+            if (offline == 0) { SLVisibility.Set(connectionBanner, false); return; }
+            connectionBanner.Title = offline == 1 ? "1 scanner isn't answering" : offline + " scanners aren't answering";
+            connectionBanner.Message = "Check that it's plugged in and switched on, then look again. Scans already saved are not affected.";
+            SLVisibility.Set(connectionBanner, true);
         }
 
         private void UpdateColumnFillWeights()
@@ -873,7 +742,7 @@ namespace ScanLink
                 if (!File.Exists(scriptPath))
                 {
                     LogDebug($"ERROR: Scanner detection script not found at: {scriptPath}");
-                    MessageBox.Show($"Scanner detection script not found at: {scriptPath}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowResult(SLTone.Error, "Scanner detection isn't installed", "ScanLink couldn't find its detection script at " + scriptPath + ". Reinstall ScanLink, then look again.");
                     return;
                 }
 
@@ -904,7 +773,7 @@ namespace ScanLink
                     if (process.ExitCode != 0)
                     {
                         LogDebug($"ERROR: Script execution failed");
-                        MessageBox.Show($"Error running scanner detection: {error}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        ShowResult(SLTone.Error, "Scanner detection failed", string.IsNullOrWhiteSpace(error) ? "Turn on Show detection log for details." : error.Trim());
                         return;
                     }
 
@@ -944,7 +813,7 @@ namespace ScanLink
             {
                 LogDebug($"EXCEPTION: {ex.Message}");
                 LogDebug($"Stack trace: {ex.StackTrace}");
-                MessageBox.Show($"Error loading scanners: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowResult(SLTone.Error, "Couldn't read the scanner list", ex.Message);
             }
         }
 
@@ -957,7 +826,7 @@ namespace ScanLink
             }
             
             string timestamp = DateTime.Now.ToString("HH:mm:ss");
-            debugOutputTextBox.AppendText($"[{timestamp}] {message}\r\n");
+            debugOutputTextBox.Inner.AppendText($"[{timestamp}] {message}\r\n");
         }
 
         private void LoadHistoricalScanners()
@@ -1023,7 +892,7 @@ namespace ScanLink
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading historical scanners: {ex.Message}");
-                MessageBox.Show($"Error loading historical scanners: {ex.Message}", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowResult(SLTone.Warning, "Saved scanner assignments couldn't be read", ex.Message);
                 
                 // Add a test entry even if there's an error
                 detectedScanners.Add(new ScannerInfo
@@ -1176,28 +1045,28 @@ namespace ScanLink
             scannerDataGridView.Columns.Add(serialColumn);
 
             DataGridViewTextBoxColumn pnpColumn = new DataGridViewTextBoxColumn();
-            pnpColumn.HeaderText = "PNPDeviceID";
+            pnpColumn.HeaderText = "Device ID";
             pnpColumn.Name = "PNPDeviceID";
             pnpColumn.FillWeight = 25;
             pnpColumn.ReadOnly = true;
             scannerDataGridView.Columns.Add(pnpColumn);
 
             DataGridViewTextBoxColumn comPortColumn = new DataGridViewTextBoxColumn();
-            comPortColumn.HeaderText = "COM Port";
+            comPortColumn.HeaderText = "COM port";
             comPortColumn.Name = "ComPort";
             comPortColumn.FillWeight = 8;
             comPortColumn.ReadOnly = true;
             scannerDataGridView.Columns.Add(comPortColumn);
 
             DataGridViewTextBoxColumn lineIdColumn = new DataGridViewTextBoxColumn();
-            lineIdColumn.HeaderText = "Line ID";
+            lineIdColumn.HeaderText = "Line";
             lineIdColumn.Name = "LineID";
             lineIdColumn.FillWeight = 10;
             lineIdColumn.ReadOnly = false;
             scannerDataGridView.Columns.Add(lineIdColumn);
 
             DataGridViewTextBoxColumn blockIdColumn = new DataGridViewTextBoxColumn();
-            blockIdColumn.HeaderText = "Block ID";
+            blockIdColumn.HeaderText = "Block";
             blockIdColumn.Name = "BlockID";
             blockIdColumn.FillWeight = 10;
             blockIdColumn.ReadOnly = false;
@@ -1226,14 +1095,14 @@ namespace ScanLink
             scannerDataGridView.Columns.Add(parityColumn);
 
             DataGridViewComboBoxColumn dataBitsColumn = new DataGridViewComboBoxColumn();
-            dataBitsColumn.HeaderText = "Data";
+            dataBitsColumn.HeaderText = "Data bits";
             dataBitsColumn.Name = "DataBits";
             dataBitsColumn.FillWeight = 6;
             dataBitsColumn.Items.AddRange(new object[] { "5", "6", "7", "8" });
             scannerDataGridView.Columns.Add(dataBitsColumn);
 
             DataGridViewComboBoxColumn stopBitsColumn = new DataGridViewComboBoxColumn();
-            stopBitsColumn.HeaderText = "Stop";
+            stopBitsColumn.HeaderText = "Stop bits";
             stopBitsColumn.Name = "StopBits";
             stopBitsColumn.FillWeight = 6;
             stopBitsColumn.Items.AddRange(new object[] { "None", "One", "Two", "OnePointFive" });
@@ -1248,9 +1117,10 @@ namespace ScanLink
 
             // Add Delete button column
             DataGridViewButtonColumn deleteColumn = new DataGridViewButtonColumn();
-            deleteColumn.HeaderText = "Action";
+            deleteColumn.HeaderText = "";
             deleteColumn.Name = "Delete";
-            deleteColumn.Text = "🗑 Delete";
+            deleteColumn.Text = "Remove";
+            deleteColumn.ToolTipText = "Remove this scanner";
             deleteColumn.UseColumnTextForButtonValue = true;
             deleteColumn.FillWeight = 8;
             scannerDataGridView.Columns.Add(deleteColumn);
@@ -1264,6 +1134,15 @@ namespace ScanLink
             {
                 col.SortMode = DataGridViewColumnSortMode.NotSortable;
             }
+
+            scannerDataGridView.SetMono("SerialNumber");
+            scannerDataGridView.SetMono("PNPDeviceID");
+            scannerDataGridView.SetMono("ComPort");
+            scannerDataGridView.SetMuted("PNPDeviceID");
+            scannerDataGridView.SetBadge("Status", v => Convert.ToString(v) == "Connected" ? SLTone.Success : SLTone.Error);
+            scannerDataGridView.SetIconAction("Delete", "trash-2", danger: true);
+            scannerDataGridView.CellFormatting -= StatusCellFormatting;
+            scannerDataGridView.CellFormatting += StatusCellFormatting;
 
             // Populate data
             scannerDataGridView.Rows.Clear();
@@ -1318,22 +1197,22 @@ namespace ScanLink
                         row.Cells["StopBits"].Style.BackColor = SystemColors.Window;
                     }
                 }
-
-                if (row.Cells["Status"].Value?.ToString() == "Connected")
-                {
-                    row.DefaultCellStyle.BackColor = Color.LightGreen;
-                }
-                else if (row.Cells["Status"].Value?.ToString() == "Not Connected")
-                {
-                    row.DefaultCellStyle.BackColor = Color.LightCoral;
-                }
+                // Connection state is shown by the Status badge, not by tinting the whole row.
             }
 
             // Update FillWeight proportions after populating data
             UpdateColumnFillWeights();
+            UpdateConnectionBanner();
             
             // Attach event handler for delete button clicks
             scannerDataGridView.CellContentClick += ScannerDataGridView_CellContentClick;
+        }
+
+        /// <summary>"Not Connected" is stored as-is (existing data); shown in sentence case.</summary>
+        private void StatusCellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.ColumnIndex < 0 || scannerDataGridView.Columns[e.ColumnIndex].Name != "Status") return;
+            if (Convert.ToString(e.Value) == "Not Connected") { e.Value = "Not connected"; e.FormattingApplied = true; }
         }
 
         private void ScannerDataGridView_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -1346,35 +1225,43 @@ namespace ScanLink
                 {
                     var scanner = detectedScanners[e.RowIndex];
                     
-                    // Confirm deletion
-                    var result = MessageBox.Show(
-                        $"Are you sure you want to delete this scanner configuration?\n\n" +
-                        $"PNPDeviceID: {scanner.PNPDeviceID}\n" +
-                        $"COM Port: {scanner.GetComPortDisplay()}\n" +
-                        $"Line ID: {scanner.LineID}\n" +
-                        $"Block ID: {scanner.BlockID}\n" +
-                        $"Supplier: {scanner.Supplier}",
-                        "Confirm Delete",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Warning
-                    );
-                    
-                    if (result == DialogResult.Yes)
+                    // Confirm deletion (the mockup's "Remove this scanner?" dialog)
+                    bool confirmed;
+                    using (var confirm = new SLDialog
+                    {
+                        Title = "Remove this scanner?",
+                        Tone = SLDialogTone.Danger,
+                        DialogWidth = 460,
+                        Description = "The scanner on " + scanner.GetComPortDisplay() + " will stop sending scans to this site. You can add it again later."
+                    })
+                    {
+                        var details = new SLKeyValueList();
+                        details.Add("Device ID", scanner.PNPDeviceID ?? "");
+                        details.Add("Line", string.IsNullOrEmpty(scanner.LineID) ? "—" : scanner.LineID);
+                        details.Add("Block", string.IsNullOrEmpty(scanner.BlockID) ? "—" : scanner.BlockID);
+                        details.Add("Supplier", string.IsNullOrEmpty(scanner.Supplier) ? "—" : scanner.Supplier);
+                        confirm.Body.Controls.Add(details);
+                        confirm.AddAction(new SLButton { Text = "Keep it", Variant = SLVariant.Secondary, DialogResult = DialogResult.Cancel });
+                        confirm.AddAction(new SLButton { Text = "Remove scanner", Variant = SLVariant.Danger, DialogResult = DialogResult.OK });
+                        confirmed = confirm.ShowDialog(DialogOwner) == DialogResult.OK;
+                    }
+
+                    if (confirmed)
                     {
                         LogDebug($"Deleting scanner: {scanner.PNPDeviceID}");
-                        
+
                         // Remove from list
                         detectedScanners.RemoveAt(e.RowIndex);
-                        
+
                         // Save updated configuration immediately
-						SaveScannersToFile();
-						ScannersSaved?.Invoke(this, EventArgs.Empty);
-                        
+                        SaveScannersToFile();
+                        ScannersSaved?.Invoke(this, EventArgs.Empty);
+
                         // Refresh the grid
                         PopulateDataGridView();
-                        
+
                         LogDebug($"Scanner deleted successfully");
-                        MessageBox.Show("Scanner configuration deleted successfully.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        ShowResult(SLTone.Success, "Scanner removed", "It will no longer send scans to this site.");
                     }
                 }
             }
@@ -1388,81 +1275,39 @@ namespace ScanLink
 
         private void configHelpButton_Click(object sender, EventArgs e)
         {
-            string helpMessage = @"🔧 How to Configure Scanner for COM Port Mode
+            using (var help = new SLDialog
+            {
+                Title = "Put a scanner in COM port mode",
+                Description = "ScanLink reads scanners as COM ports. A scanner in keyboard (HID) mode drops back to it when unplugged until it is switched on the scanner itself.",
+                DialogWidth = 600
+            })
+            {
+                help.Body.Controls.Add(new SLBanner
+                {
+                    Tone = SLTone.Info,
+                    IconName = "info",
+                    Message = "The setting is stored in the scanner, so you only do this once per scanner. ScanLink cannot switch it from the computer."
+                });
+                AddHelpSection(help, "Option 1 — Datalogic Aladdin (recommended)",
+                    "Download Aladdin from datalogic.com and connect the scanner by USB. In Aladdin go to Interface → USB, choose USB COM Port (Virtual COM Port), set the baud rate to 9600 and the suffix to CR+LF, then click Write Configuration.");
+                AddHelpSection(help, "Option 2 — programming barcodes",
+                    "Open your scanner's programming guide (search for \"<your model> programming guide\") and scan, in order: Enter Programming Mode, USB COM Port Mode, Save Configuration. The scanner beeps after each one.");
+                AddHelpSection(help, "Which one fits my scanner?",
+                    "Gryphon (GD/GBT): Aladdin. QuickScan (QD/QW/QM): programming barcodes. Magellan and PowerScan: Datalogic's configuration utility.");
+                AddHelpSection(help, "Check that it worked",
+                    "Open Device Manager (Win + X). The scanner should be under Ports (COM & LPT), not Keyboards. Then choose Look for scanners here.");
+                var ok = new SLButton { Text = "Got it", DialogResult = DialogResult.OK };
+                help.AddAction(ok);
+                help.AcceptButton = ok;
+                help.ShowDialog(DialogOwner);
+            }
+        }
 
-PROBLEM: Scanner keeps reverting to HID Keyboard mode when unplugged.
-
-SOLUTION: Permanently configure scanner using one of these methods:
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-METHOD 1: Use Datalogic Configuration Software (RECOMMENDED)
-
-1. Download 'Datalogic Aladdin' from:
-   https://www.datalogic.com
-
-2. Connect scanner via USB
-
-3. Open Aladdin software
-
-4. Go to: Interface → USB
-
-5. Select: 'USB COM Port (Virtual COM Port)'
-
-6. Set Baud Rate: 9600
-
-7. Enable Suffix: CR+LF
-
-8. Click 'Write Configuration' to save permanently
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-METHOD 2: Scan Programming Barcodes
-
-1. Find your scanner's programming guide (PDF):
-   - Search: '[Your Scanner Model] programming guide'
-   - Example: 'Datalogic Gryphon programming guide'
-
-2. In the PDF, find and scan these barcodes IN ORDER:
-   a. 'Enter Programming Mode'
-   b. 'USB COM Port Mode' or 'USB Virtual COM Port'
-   c. 'Save Configuration' or 'Exit Programming'
-
-3. The scanner will beep to confirm each scan
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-METHOD 3: Check Scanner Model Documentation
-
-Common Datalogic models:
-• Gryphon (GD/GBT series) → Use Aladdin software
-• QuickScan (QD/QW/QM series) → Use programming barcodes
-• Magellan series → Use configuration utility
-• PowerScan series → Use Datalogic Scan Config
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-VERIFY CONFIGURATION:
-
-1. Open Device Manager (Win + X → Device Manager)
-
-2. Check under 'Ports (COM & LPT)':
-   ✓ Should see: 'Datalogic USB-COM Port (COMx)'
-   ✗ If under 'Keyboards': Still in HID mode
-
-3. In ScanLink, click 'Refresh' to detect the COM port
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-IMPORTANT:
-• Configuration is saved IN THE SCANNER
-• Will persist even after unplugging
-• Only needs to be done ONCE per scanner
-• ScanLink cannot switch mode via software (scanner hardware limitation)
-
-Need more help? Contact Datalogic support or check their website.";
-
-            MessageBox.Show(helpMessage, "Scanner COM Port Configuration Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        private static void AddHelpSection(SLDialog dialog, string title, string text)
+        {
+            var section = new SLStack(SLOrientation.Vertical, 4);
+            section.AddRange(new SLText(title, SLTextStyle.TitleSm), new SLText(text, SLTextStyle.BodySm));
+            dialog.Body.Controls.Add(section);
         }
 
         private void saveButton_Click(object sender, EventArgs e)
@@ -1501,11 +1346,11 @@ Need more help? Contact Datalogic support or check their website.";
                 
 				SaveScannersToFile();
 				ScannersSaved?.Invoke(this, EventArgs.Empty);
-                MessageBox.Show("Scanner assignments saved successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ShowResult(SLTone.Success, "Scanner assignments saved", "Scanners are reconnecting with the new settings.");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving scanner assignments: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowResult(SLTone.Error, "Couldn't save scanner assignments", ex.Message);
             }
         }
 

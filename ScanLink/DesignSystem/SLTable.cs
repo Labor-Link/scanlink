@@ -14,7 +14,8 @@ namespace ScanLink.DesignSystem
     ///   Header  37px, #F7F8FA, 12px/600 UPPERCASE muted ink, 16px side padding, 1px #E4E7EC bottom.
     ///   Rows    43px (49px when there is a badge column), white; hover #F7F8FA; selected #EFEFFD; 13px body ink; 16px side padding;
     ///           1px #F1F3F7 divider. No zebra striping.
-    ///   Columns SetMono (Consolas — serials), SetMuted (grey — times), SetBadge (status pill).
+    ///   Columns SetMono (Consolas — serials), SetMuted (grey — times), SetBadge (status pill),
+    ///           SetIconAction (a DataGridViewButtonColumn drawn as an SLIconButton: pencil, trash-2).
     ///   Empty   set EmptyState; it replaces the rows when the grid has none.
     /// </summary>
     [DesignerCategory("Code")]
@@ -42,6 +43,10 @@ namespace ScanLink.DesignSystem
         public void SetMono(string column) { SLTableStyle.SetMono(this, column); }
         public void SetMuted(string column) { SLTableStyle.SetMuted(this, column); }
         public void SetBadge(string column, Func<object, SLTone> toneFor, bool dot = true) { SLTableStyle.SetBadge(this, column, toneFor, dot); }
+
+        /// <summary>Draws a button column as an icon button (the mockup's row actions). Clicks
+        /// still arrive through CellContentClick.</summary>
+        public void SetIconAction(string column, string iconName, bool danger = false) { SLTableStyle.SetIconAction(this, column, iconName, danger); }
     }
 
     internal static class SLTableStyle
@@ -55,6 +60,8 @@ namespace ScanLink.DesignSystem
         private sealed class State
         {
             public int HoverRow = -1;
+            public int HoverCol = -1;
+            public readonly Dictionary<string, KeyValuePair<string, bool>> IconActions = new Dictionary<string, KeyValuePair<string, bool>>(StringComparer.OrdinalIgnoreCase);
             public readonly HashSet<string> Mono = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             public readonly HashSet<string> Muted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             public readonly Dictionary<string, Func<object, SLTone>> Badges = new Dictionary<string, Func<object, SLTone>>(StringComparer.OrdinalIgnoreCase);
@@ -150,6 +157,12 @@ namespace ScanLink.DesignSystem
             foreach (DataGridViewRow row in g.Rows) row.Height = h;
         }
 
+        public static void SetIconAction(DataGridView g, string column, string iconName, bool danger)
+        {
+            S(g).IconActions[column] = new KeyValuePair<string, bool>(iconName, danger);
+            g.Invalidate();
+        }
+
         public static SLEmptyState GetEmpty(DataGridView g) { return S(g).Empty; }
 
         public static void SetEmpty(DataGridView g, SLEmptyState empty)
@@ -183,7 +196,8 @@ namespace ScanLink.DesignSystem
         {
             DataGridView g = (DataGridView)sender;
             State st = S(g);
-            if (st.HoverRow == e.RowIndex) return;
+            if (st.HoverRow == e.RowIndex && st.HoverCol == e.ColumnIndex) return;
+            st.HoverCol = e.ColumnIndex;
             int old = st.HoverRow;
             st.HoverRow = e.RowIndex;
             if (old >= 0 && old < g.Rows.Count) g.InvalidateRow(old);
@@ -196,6 +210,7 @@ namespace ScanLink.DesignSystem
             State st = S(g);
             int old = st.HoverRow;
             st.HoverRow = -1;
+            st.HoverCol = -1;
             if (old >= 0 && old < g.Rows.Count) g.InvalidateRow(old);
         }
 
@@ -248,6 +263,21 @@ namespace ScanLink.DesignSystem
                     if ((AlignOf(column) & TextFormatFlags.Right) != 0) bx = content.Right - bs.Width;
                     SLBadge.PaintBadge(gr, new Rectangle(bx, content.Y + (content.Height - bs.Height) / 2, bs.Width, bs.Height), text, toneFor(e.Value), dot);
                 }
+                e.Handled = true;
+                return;
+            }
+
+            KeyValuePair<string, bool> action;
+            if (st.IconActions.TryGetValue(name, out action) && g.Rows[e.RowIndex].Cells[e.ColumnIndex] is DataGridViewButtonCell)
+            {
+                // IconButton.js, size sm: 30x30, radius 6; ghost = grey icon, danger = red icon,
+                // hover wash grey / red-50.
+                Rectangle btn = new Rectangle(content.X + (content.Width - 30) / 2, content.Y + (content.Height - 30) / 2, 30, 30);
+                if ((AlignOf(column) & TextFormatFlags.HorizontalCenter) == 0 && (AlignOf(column) & TextFormatFlags.Right) != 0)
+                    btn.X = content.Right - 30;
+                bool hot = st.HoverRow == e.RowIndex && st.HoverCol == e.ColumnIndex;
+                if (hot) SLPaint.Box(gr, btn, Theme.RadiusSm, action.Value ? Theme.Err50 : Theme.N100, Color.Empty);
+                SLIcon.Draw(gr, action.Key, new Rectangle(btn.X + 7, btn.Y + 7, 16, 16), action.Value ? Theme.Err500 : Theme.N500);
                 e.Handled = true;
                 return;
             }

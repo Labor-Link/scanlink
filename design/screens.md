@@ -18,7 +18,7 @@ contents, then page layout. The shell (sidebar, top bar) already exists in `V2Sh
 | All tables | `ThemeStyles.Grid` → `SLTableStyle` | ✅ painted to spec |
 | Scans | `V2ScansPage.cs` (rehosts Form1 controls) | ⏳ filters/cards use `Themed/*`; move to `SLCard` + `SLTextBox`/`SLComboBox` |
 | Labels | `V2PrintPage.cs`, `V2PrintSurfaces.cs` | ⏳ |
-| Devices → scanners | `ScannerManagementForm.cs` (embedded page) | ⏳ |
+| Devices → scanners | `ScannerManagementForm.cs` (embedded page) | ✅ on `SLDialog`: offline banner, `SLTable` with badges + trash action, remove/help dialogs, log behind a toggle |
 | Crops & products | `SetupDialog.cs` (embedded page) | ✅ on `SLDialog`: `SLSegmentedControl` tabs, filter fields, `SLTable` in an `SLCard` |
 | Employee picker | `EmployeeSelectionDialog.cs` | ✅ on `SLDialog` + `SLTable` in an `SLCard` with pager footer |
 | Login | `V2LoginScreen.cs` | ⏳ inputs/buttons → `SLField`/`SLTextBox`/`SLButton` |

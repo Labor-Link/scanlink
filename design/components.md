@@ -317,6 +317,7 @@ var table = new SLTable { DataSource = rows };              // read-only, full-r
 table.SetMono("Serial");
 table.SetMuted("Time");
 table.SetBadge("Status", v => (string)v == "Synced" ? SLTone.Success : SLTone.Warning);
+table.SetIconAction("Delete", "trash-2", danger: true);     // a DataGridViewButtonColumn, drawn as an IconButton
 table.EmptyState = new SLEmptyState { IconName = "search-x", Title = "No scans match that search", Description = "…" };
 ```
 * Header 37px `#F7F8FA`, 12px/600 UPPERCASE muted, 1px bottom border. Rows 43px (49px once a badge column is set), 16px padding,

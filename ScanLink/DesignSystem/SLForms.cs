@@ -259,6 +259,8 @@ namespace ScanLink.DesignSystem
         public bool WordWrap { get { return Box.WordWrap; } set { Box.WordWrap = value; } }
 
         public void SelectAll() { Box.SelectAll(); }
+        public void Clear() { Box.Clear(); }
+        public void AppendText(string text) { Box.AppendText(text); }
         public new bool Focus() { return Box.Focus(); }
         public override bool Focused { get { return Box.Focused; } }
 
