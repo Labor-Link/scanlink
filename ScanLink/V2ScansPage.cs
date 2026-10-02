@@ -134,7 +134,10 @@ namespace ScanLink
             host.Controls.Add(card, col, row);
 
             original.Dock = DockStyle.Fill;
-            original.BackColor = Color.Transparent;
+            // A DataGridView does not support a transparent BackColor: setting it threw here,
+            // after the grid had been removed from the layout, so the scans table never
+            // reached its card and the rest of the page build (pagination) was skipped.
+            original.BackColor = original is DataGridView ? Theme.SurfaceCard : Color.Transparent;
             card.Body.Controls.Add(original);
 
             return card;
@@ -404,6 +407,9 @@ namespace ScanLink
             Control statsRow = ResolveStatsRowControl();
             if (statsRow != null)
             {
+                // InitDashboardStatusUI's split panel is AutoSize, which grew straight back
+                // from Height = 0 — the details were never hidden.
+                statsRow.AutoSize = false;
                 statsRow.Height = _detailsExpanded ? StatsRowFullHeight(statsRow) : 0;
                 statsRow.Margin = new Padding(0, 0, 0, _detailsExpanded ? Theme.S4 : 0);
             }
@@ -412,6 +418,60 @@ namespace ScanLink
                 _detailsToggle.Text = _detailsExpanded ? "Hide details" : "Show details";
                 _detailsToggle.IconName = _detailsExpanded ? "chevron-up" : "chevron-down";
             }
+        }
+
+        // ---------------------------------------------------------------- details panels
+
+        /// <summary>
+        /// Runs after InitDashboardStatusUI (which builds the Daily Stats Logger and Connected
+        /// Scanners panels after the page): restyles both as cards and re-applies the details
+        /// disclosure to the row they now occupy.
+        /// </summary>
+        private void StyleScansDashboard()
+        {
+            try
+            {
+                StyleDashboardCard(dailyStatsPanel);
+                StyleDashboardCard(activeScannersPanel);
+                if (dgvActiveScanners != null)
+                {
+                    ThemeStyles.Grid(dgvActiveScanners);
+                    SLTableStyle.SetIconAction(dgvActiveScanners, "Action", "save", false);
+                }
+                ApplyDetailsDisclosure();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[SCANS] dashboard styling failed: " + ex);
+            }
+        }
+
+        /// <summary>A legacy panel as an SLCard: white, 1px border, radius 12, 16/20 padding,
+        /// 16px/600 title, v2 inputs.</summary>
+        private static void StyleDashboardCard(Panel panel)
+        {
+            if (panel == null) return;
+            panel.BorderStyle = BorderStyle.None;
+            panel.BackColor = Theme.SurfaceApp;           // shows only at the rounded corners
+            panel.Padding = new Padding(Theme.S5, Theme.S4, Theme.S5, Theme.S4);
+            foreach (Control c in panel.Controls)
+            {
+                Label title = c as Label;
+                if (title != null && title.Dock == DockStyle.Top)
+                {
+                    title.Font = Theme.FontLgSemibold;
+                    title.ForeColor = Theme.TextHeading;
+                    title.BackColor = Theme.SurfaceCard;
+                    // Docked first, so a Fill sibling sits below it instead of under it
+                    // (that overlap clipped "Date Selected").
+                    title.SendToBack();
+                }
+                else c.BackColor = Theme.SurfaceCard;
+            }
+            ThemeStyles.Inputs(panel);
+            panel.Paint += (s, e) =>
+                SLPaint.Box(e.Graphics, new Rectangle(0, 0, panel.Width, panel.Height), Theme.RadiusLg, Theme.SurfaceCard, Theme.BorderDefault);
+            panel.Invalidate();
         }
 
         // ---------------------------------------------------------------- search & period
@@ -556,6 +616,14 @@ namespace ScanLink
             }
 
             _gridCard.Margin = new Padding(0);
+
+            SLTableStyle.SetEmpty(scannerDataGridView, new SLEmptyState
+            {
+                Compact = true,
+                IconName = "scan-line",
+                Title = "No scans to show",
+                Description = "Scans appear here as soon as they come in. If you expected some, widen the date range or clear the filters."
+            });
 
             scannerDataGridView.DataSourceChanged += (s, e) => UpdateScanCountLabel();
             scannerDataGridView.DataBindingComplete += (s, e) => StyleScanColumns();

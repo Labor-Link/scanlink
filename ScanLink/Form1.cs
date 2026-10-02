@@ -469,6 +469,7 @@ namespace ScanLink
             LayoutRootPanels();
             
             InitDashboardStatusUI();
+            StyleScansDashboard();   // v2: the panels InitDashboardStatusUI just built
             InitializeProductAndCropSelectors();
         }
 

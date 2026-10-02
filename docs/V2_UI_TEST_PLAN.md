@@ -49,9 +49,13 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 2.4 | Custom | Opens "More filters" with the date pickers; picking dates filters. |
 | 2.5 | Crop select | Filters by crop; list fills after sign-in. |
 | 2.6 | More filters / Fewer filters | Shows/hides block, line, product and date filters; Apply/Clear still work. |
-| 2.7 | Show details / Hide details | Shows/hides the scanner console and totals; console keeps logging while hidden. |
-| 2.8 | Previous / Next | Pages through scans; disabled on first/last page; "Page x of y" correct. |
-| 2.9 | Table | Serial in monospace; hover highlights a row; selected row light indigo. |
+| 2.7 | Page opens | Filter card, then the **scans table** in a card with "Page x of y" and Previous / Next in its footer. The Daily Stats Logger and Connected Scanners panels are **hidden**. |
+| 2.8 | Show details / Hide details | Shows/hides the scanner console, the totals, and the Daily Stats Logger + Connected Scanners cards; the console keeps logging while hidden. |
+| 2.9 | Daily Stats Logger (details shown) | "Date Selected" label not clipped; entering values and Save still work. |
+| 2.10 | Connected Scanners (details shown) | Editing Line / Block / Supplier and the save icon on a row still update that scanner. |
+| 2.11 | Previous / Next | Pages through scans; disabled on first/last page; "Page x of y" correct. |
+| 2.12 | Table | Serial in monospace, time in grey; hover highlights a row; selected row light indigo. |
+| 2.13 | No scans for the filters | "No scans to show" message in the table instead of a blank box. |
 
 ## 3. Print labels
 
@@ -135,6 +139,10 @@ Open from the sidebar (Scanners).
 ---
 
 ## Known limitations (not bugs)
+
+- A round blue button floating over the Scans date-range switch was seen in one screenshot. It is
+  not part of ScanLink (nothing in the app draws it); if you see it, note which other apps were
+  running (touch keyboard, screen-capture or remote-desktop tools).
 
 - **No logo** on the login panel or sidebar: the client's white logo asset renders as a solid
   white block, so it is disabled until the UI team supplies a proper transparent white logo.
