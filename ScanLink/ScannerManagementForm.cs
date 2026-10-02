@@ -672,14 +672,18 @@ namespace ScanLink
             // Short columns fit their header and values; the long Device ID absorbs whatever
             // width is left (and truncates with "…"). Proportional weights clipped "SL-HH-02"
             // and "COM3" on a 1024px screen.
+            // Device ID is a long technical string ("USB\VID_05F9&PID_4204\S/N:…") that only
+            // fits as "USB\V…"; it stays in the grid (Save reads it) but is hidden and shown as
+            // the Serial cell's tooltip. Supplier takes the remaining width.
             foreach (DataGridViewColumn col in scannerDataGridView.Columns)
             {
-                col.AutoSizeMode = col.Name == "PNPDeviceID"
+                col.AutoSizeMode = col.Name == "Supplier"
                     ? DataGridViewAutoSizeColumnMode.Fill
                     : DataGridViewAutoSizeColumnMode.AllCells;
                 if (col is DataGridViewComboBoxColumn) col.MinimumWidth = 84;   // value + chevron
             }
-            if (scannerDataGridView.Columns.Contains("PNPDeviceID")) scannerDataGridView.Columns["PNPDeviceID"].MinimumWidth = 90;
+            if (scannerDataGridView.Columns.Contains("PNPDeviceID")) scannerDataGridView.Columns["PNPDeviceID"].Visible = false;
+            if (scannerDataGridView.Columns.Contains("Supplier")) scannerDataGridView.Columns["Supplier"].MinimumWidth = 110;
             if (scannerDataGridView.Columns.Contains("Status")) scannerDataGridView.Columns["Status"].MinimumWidth = 128;
             if (scannerDataGridView.Columns.Contains("Delete")) scannerDataGridView.Columns["Delete"].MinimumWidth = 46;
         }
@@ -1157,6 +1161,7 @@ namespace ScanLink
                     var scanner = detectedScanners[row.Index];
 
                     row.Cells["ComPort"].Value = scanner.GetComPortDisplay();
+                    row.Cells["SerialNumber"].ToolTipText = "Device ID: " + scanner.PNPDeviceID;
                     var statusValue = scanner.IsCurrentlyConnected ? "Connected" : "Not Connected";
                     row.Cells["Status"].Value = statusValue;
 

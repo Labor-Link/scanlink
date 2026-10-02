@@ -63,7 +63,7 @@ const COLS = [
 // inline: true = the content is an inline control (a lone Button) that must not stretch.
 const SCENES = {
   // Whole screens: fixed window size, no padding (screen: true).
-  "screen-login":       { width: 1280, height: 800, screen: true, render: () => <window.LoginScreen onLogin={() => {}} /> },
+  "screen-login":       { width: 1000, height: 700, screen: true, render: () => <window.LoginScreen onLogin={() => {}} /> },
 
   "button-primary":     { width: 240, bg: "card", inline: true, render: () => <Button variant="primary" icon={<Icon name="printer" size={16} />}>Print labels</Button> },
   "button-secondary":   { width: 240, bg: "card", inline: true, render: () => <Button variant="secondary" icon={<Icon name="cloud-upload" size={16} />}>Sync now</Button> },

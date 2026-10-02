@@ -271,7 +271,7 @@ namespace ScanLink.DesignSystem
             yield return new Scene { Id = "dialog-scan", BuildDialog = ScanDialog };
 
             // Whole screens, scored against the mockup's own screen components.
-            yield return new Scene { Id = "screen-login", Width = 1280, ScreenHeight = 800, Build = LoginScreen };
+            yield return new Scene { Id = "screen-login", Width = 1000, ScreenHeight = 700, Build = LoginScreen };   // fits the 1024x768 CI screen
 
             // C#-only scenes (no mockup counterpart): rendered for review, not scored.
             yield return new Scene { Id = "app-add-combination", BuildDialog = () => new AddCombinationDialog(new ProductCombinationsService(new ApiAuthService())) };
@@ -283,7 +283,7 @@ namespace ScanLink.DesignSystem
         /// <summary>The real login layout with stand-in fields, in Form1's opening state.</summary>
         private static Control LoginScreen()
         {
-            Panel host = new Panel { BackColor = Theme.SurfaceApp, Size = new Size(1280, 800) };
+            Panel host = new Panel { BackColor = Theme.SurfaceApp, Size = new Size(1000, 700) };
             TextBox email = new TextBox { Text = "you@packhouse.co", ForeColor = Color.Gray };
             TextBox password = new TextBox();
             SLButton signIn = new SLButton { Text = "Sign in" };

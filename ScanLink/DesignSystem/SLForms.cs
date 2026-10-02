@@ -177,7 +177,7 @@ namespace ScanLink.DesignSystem
     /// The real TextBox is in Inner for anything not forwarded here.
     /// </summary>
     [DesignerCategory("Code")]
-    internal class SLTextBox : SLControl, ISLInvalid
+    internal class SLTextBox : SLControl, ISLInvalid, ISLSurface
     {
         private const int EM_SETCUEBANNER = 0x1501;
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -226,6 +226,9 @@ namespace ScanLink.DesignSystem
             Cursor = Cursors.IBeam;
             Height = Theme.HeightMd;
         }
+
+        /// <summary>A suffix button (password eye) sits on the field's fill, not the page.</summary>
+        public Color SurfaceFor(Control child) { return (!Enabled || Box.ReadOnly) ? Theme.N50 : Theme.N0; }
 
         /// <summary>Legacy greys/blacks -> placeholder and body ink.</summary>
         private static Color MapInk(Color c)
@@ -646,7 +649,7 @@ namespace ScanLink.DesignSystem
     ///   new SLFrame(productCombo)       new SLFrame(new CheckedListBox()) { Height = 96 }
     /// </summary>
     [DesignerCategory("Code")]
-    internal class SLFrame : SLControl
+    internal class SLFrame : SLControl, ISLSurface
     {
         private readonly Control _child;
         private readonly Panel _clip;   // hides a stock ComboBox's own 1px border
@@ -688,6 +691,8 @@ namespace ScanLink.DesignSystem
         }
 
         public Control Child { get { return _child; } }
+
+        public Color SurfaceFor(Control child) { return Enabled ? Theme.N0 : Theme.N50; }
 
         private bool IsSingleLine
         {

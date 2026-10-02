@@ -69,3 +69,17 @@ jobs:
           name: design-fidelity-report
           path: out/report
           retention-days: 14
+
+      # The same Release build, for manual testing (docs/V2_UI_TEST_PLAN.md). Unzip and run
+      # ScanLink.exe on a Windows PC; the scripts must stay next to the exe.
+      - name: Upload test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: scanlink-test-build
+          path: |
+            ScanLink/bin/Release/ScanLink.exe
+            ScanLink/bin/Release/ScanLink.exe.config
+            ScanLink/bin/Release/*.dll
+            ScanLink/bin/Release/*.ps1
+            ScanLink/bin/Release/ScanLinkLogo.png
+          retention-days: 30
