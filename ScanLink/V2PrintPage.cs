@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
+using ScanLink.DesignSystem;
 using ScanLink.Themed;
 
 namespace ScanLink
@@ -32,13 +33,14 @@ namespace ScanLink
         };
 
         private Panel _printPage;
-        private Panel _stepper;
-        private readonly Panel[] _stepChips = new Panel[3];
+        private SLStack _stepper;
+        private readonly PrintStepChip[] _stepChips = new PrintStepChip[3];
         private readonly CardPanel[] _stepCards = new CardPanel[3];
+        private readonly int[] _stepCardHeights = new int[3];
         private CardPanel _printerSettingsCard;
         private Panel _labelPreview;
-        private Label _printSummary;
-        private Label _stepValidation;
+        private SLKeyValueList _printSummary;
+        private SLBanner _stepValidation;
         private int _activeStep = StepIdentify;
 
         // ---------------------------------------------------------------- page
@@ -115,134 +117,26 @@ namespace ScanLink
 
         // ---------------------------------------------------------------- stepper
 
-        private Panel BuildStepper()
+        /// <summary>The mockup's three step buttons, side by side (LabelsScreen.js).</summary>
+        private SLStack BuildStepper()
         {
-            Panel stepper = new Panel
+            SLStack stepper = new SLStack(SLOrientation.Horizontal, Theme.S2)
             {
                 Dock = DockStyle.Top,
-                // Two rows of chips plus the gap under them.
-                Height = ChipHeight * 2 + Theme.S3 + Theme.S4,
-                BackColor = Color.Transparent,
+                Height = PrintStepChip.ChipHeight + Theme.S4,
+                Padding = new Padding(0, 0, 0, Theme.S4),
+                Align = SLAlign.Stretch,
                 Margin = new Padding(0)
             };
-
             for (int i = 0; i < _stepChips.Length; i++)
             {
-                _stepChips[i] = BuildStepChip(i);
+                int index = i;
+                _stepChips[i] = new PrintStepChip { Number = i + 1, Caption = StepTitles[i] };
+                _stepChips[i].Click += (s, e) => TryGoToStep(index);
                 stepper.Controls.Add(_stepChips[i]);
+                stepper.SetGrow(_stepChips[i]);
             }
-
-            // Placed by hand rather than flowed. A FlowLayoutPanel wrapped to one chip per
-            // row because the chips' right margins were not in the width budget, and the
-            // third chip then fell outside the stepper's fixed height and was covered by the
-            // step card below it.
-            stepper.Resize += (s, e) => LayoutStepChips(stepper);
-            LayoutStepChips(stepper);
             return stepper;
-        }
-
-        private const int ChipHeight = 62;
-        private const int ChipMinWidth = 230;
-        private const int ChipMaxWidth = 380;
-        private const int ChipNumberLeft = Theme.S5;
-        private const int ChipCaptionLeft = Theme.S5 + 26 + Theme.S3;
-
-        /// <summary>Two chips on the first row, the third below, at any column width.</summary>
-        private void LayoutStepChips(Panel stepper)
-        {
-            if (stepper == null) return;
-
-            int available = stepper.ClientSize.Width;
-            if (available <= 0) return;
-
-            int width = (available - Theme.S3) / 2;
-            if (width < ChipMinWidth) width = ChipMinWidth;
-            if (width > ChipMaxWidth) width = ChipMaxWidth;
-
-            for (int i = 0; i < _stepChips.Length; i++)
-            {
-                Panel chip = _stepChips[i];
-                if (chip == null) continue;
-
-                chip.Width = width;
-                chip.Left = (i % 2 == 0) ? 0 : width + Theme.S3;
-                chip.Top = (i / 2) * (ChipHeight + Theme.S3);
-                if (chip.Controls.Count > 1)
-                {
-                    chip.Controls[1].Width = Math.Max(60, width - ChipCaptionLeft - Theme.S4);
-                }
-            }
-        }
-
-        private Panel BuildStepChip(int index)
-        {
-            Panel chip = new Panel
-            {
-                Width = ChipMaxWidth,
-                Height = ChipHeight,
-                BackColor = Theme.SurfaceCard,
-                Cursor = Cursors.Hand,
-                Tag = index
-            };
-
-            Label number = new Label
-            {
-                Text = (index + 1).ToString(),
-                AutoSize = false,
-                Size = new Size(26, 26),
-                Location = new Point(ChipNumberLeft, 18),
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = Theme.FontSmBold,
-                BackColor = Theme.SurfaceSunken,
-                ForeColor = Theme.TextMuted,
-                Cursor = Cursors.Hand,
-                UseMnemonic = false
-            };
-            ThemeStyles.RoundedCorners(number, 13);
-
-            Label caption = new Label
-            {
-                Text = StepTitles[index],
-                AutoSize = false,
-                Location = new Point(ChipCaptionLeft, 18),
-                Size = new Size(chip.Width - ChipCaptionLeft - Theme.S4, 26),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Font = Theme.FontMd,
-                ForeColor = Theme.TextMuted,
-                BackColor = Color.Transparent,
-                Cursor = Cursors.Hand,
-                UseMnemonic = false
-            };
-
-            chip.Controls.Add(number);
-            chip.Controls.Add(caption);
-            chip.Paint += (s, e) => PaintStepChip((Panel)s, e);
-
-            // Labels sit on top of the panel and swallow its clicks, so each forwards.
-            foreach (Control c in new Control[] { chip, number, caption })
-            {
-                c.Click += (s, e) => TryGoToStep(index);
-            }
-            return chip;
-        }
-
-        private void PaintStepChip(Panel chip, PaintEventArgs e)
-        {
-            int index = (int)chip.Tag;
-            bool active = index == _activeStep;
-            bool reachable = index <= FurthestReachableStep();
-
-            Graphics g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            Rectangle bounds = new Rectangle(0, 0, chip.Width - 1, chip.Height - 1);
-
-            using (GraphicsPath path = Theme.RoundedPath(bounds, Theme.RadiusLg))
-            using (SolidBrush fill = new SolidBrush(reachable ? Theme.SurfaceCard : Theme.SurfaceApp))
-            using (Pen border = new Pen(active ? Theme.ActionPrimary : Theme.BorderDefault, active ? 2f : 1f))
-            {
-                g.FillPath(fill, path);
-                g.DrawPath(border, path);
-            }
         }
 
         private void RestyleStepChips()
@@ -250,24 +144,12 @@ namespace ScanLink
             int furthest = FurthestReachableStep();
             for (int i = 0; i < _stepChips.Length; i++)
             {
-                Panel chip = _stepChips[i];
+                PrintStepChip chip = _stepChips[i];
                 if (chip == null) continue;
-
-                bool active = i == _activeStep;
-                bool reachable = i <= furthest;
-                bool done = i < _activeStep;
-
-                Label number = (Label)chip.Controls[0];
-                Label caption = (Label)chip.Controls[1];
-
-                number.BackColor = active ? Theme.ActionPrimary : (done ? Theme.Ok50 : Theme.SurfaceSunken);
-                number.ForeColor = active ? Theme.TextOnAccent : (done ? Theme.Ok700 : Theme.TextMuted);
-                number.Text = done ? "✓" : (i + 1).ToString();
-
-                caption.Font = active ? Theme.FontMdBold : Theme.FontMd;
-                caption.ForeColor = active ? Theme.TextHeading : (reachable ? Theme.TextBody : Theme.TextMuted);
-                chip.Cursor = reachable ? Cursors.Hand : Cursors.Default;
-
+                chip.Active = i == _activeStep;
+                chip.Done = i < _activeStep;
+                chip.Reachable = i <= furthest;
+                chip.Cursor = chip.Reachable ? Cursors.Hand : Cursors.Default;
                 chip.Invalidate();
             }
         }
@@ -317,8 +199,13 @@ namespace ScanLink
         private void ShowStepValidation(string message)
         {
             if (_stepValidation == null) return;
-            _stepValidation.Text = message ?? string.Empty;
-            _stepValidation.Visible = !string.IsNullOrEmpty(message);
+            bool show = !string.IsNullOrEmpty(message);
+            _stepValidation.Message = message ?? string.Empty;
+            SLVisibility.Set(_stepValidation, show);
+            // The banner sits in the identify card; its row needs the extra height.
+            CardPanel card = _stepCards[StepIdentify];
+            if (card != null)
+                card.Height = _stepCardHeights[StepIdentify] + (show ? Theme.S4 + _stepValidation.MeasureHeight(Math.Max(300, card.Width - 42)) : 0);
         }
 
         private void UpdateStepAvailability()
@@ -335,57 +222,16 @@ namespace ScanLink
             _stepCards[StepPrint] = BuildPrintCard();
         }
 
-        /// <summary>Moves a designer-built control out of its original parent and places it
-        /// at an explicit position in the step that now asks for it.</summary>
-        private static void Adopt(Control control, Control newParent, int left, int top, int width)
-        {
-            if (control == null || newParent == null) return;
-            if (control.Parent != null) control.Parent.Controls.Remove(control);
-            control.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-            control.Dock = DockStyle.None;
-            control.Location = new Point(left, top);
-            if (width > 0) control.Width = width;
-            control.Visible = true;
-            newParent.Controls.Add(control);
-        }
+        // Step card = CardPanel (header, body, footer with the step's buttons) holding one
+        // SLStack laid out from LabelsScreen.js. Card heights are fixed per step because the
+        // steps column is a TableLayoutPanel whose rows size from each card's Height.
+        private const int StepFooterHeight = 57;   // 1px divider + 12px + 32px + 12px
 
-        private static Label FieldLabel(string text, int left, int top, bool required)
-        {
-            Label label = new Label
-            {
-                Text = text,
-                AutoSize = false,
-                Size = new Size(260, 20),
-                Location = new Point(left, top),
-                Font = Theme.FontSmBold,
-                ForeColor = Theme.TextLabel,
-                BackColor = Color.Transparent,
-                UseMnemonic = false
-            };
-            if (required) label.Text = text + " *";
-            return label;
-        }
-
-        private static Label HintLabel(string text, int left, int top, int width)
-        {
-            return new Label
-            {
-                Text = text,
-                AutoSize = false,
-                Size = new Size(width, 18),
-                Location = new Point(left, top),
-                Font = Theme.FontXs,
-                ForeColor = Theme.TextMuted,
-                BackColor = Color.Transparent,
-                UseMnemonic = false
-            };
-        }
-
-        private CardPanel NewStepCard(string title, string subtitle, int bodyHeight)
+        private CardPanel NewStepCard(int step, string subtitle, int bodyHeight, SLStack content, params Control[] footer)
         {
             CardPanel card = new CardPanel
             {
-                Title = title,
+                Title = StepTitles[step],
                 Subtitle = subtitle,
                 Dock = DockStyle.Top,
                 Margin = new Padding(0, 0, 0, Theme.S4),
@@ -396,73 +242,90 @@ namespace ScanLink
             card.VisibleChanged += (s, e) =>
                 card.Margin = card.Visible ? new Padding(0, 0, 0, Theme.S4) : Padding.Empty;
             card.BodyPadding = true;
-            // bodyHeight is the CONTENT height; the header and the body's own padding are
-            // added on top. Sizing the card to the content alone clips whatever sits at the
-            // bottom of the step, which is always its Next button.
-            card.Height = CardPanel.TitledHeaderHeight + CardPanel.BodyPaddingV + bodyHeight;
+
+            content.Dock = DockStyle.Fill;
+            content.BackColor = Theme.SurfaceCard;
+            card.Body.Controls.Add(content);
+
+            SLStack actions = new SLStack(SLOrientation.Horizontal, Theme.S2) { Dock = DockStyle.Fill, Align = SLAlign.Center };
+            actions.AddRange(footer);
+            card.Footer.Controls.Add(actions);
+            card.ShowFooter(true);
+
+            _stepCardHeights[step] = CardPanel.TitledHeaderHeight + CardPanel.BodyPaddingV + bodyHeight + StepFooterHeight;
+            card.Height = _stepCardHeights[step];
             return card;
+        }
+
+        private SLButton BackButton(int toStep)
+        {
+            SLButton back = new SLButton { Text = "Back", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "arrow-left" };
+            back.Click += (s, e) => GoToStep(toStep);
+            return back;
         }
 
         private CardPanel BuildIdentifyCard()
         {
-            CardPanel card = NewStepCard(StepTitles[StepIdentify],
-                "Pick the crop first — the product list narrows to match.", 262);
-            // Opaque, not transparent: a transparent panel over the owner-painted card
-            // left a stale 1px line above every button it contained. The card ground is
-            // the same white, and the body is inset by the card's padding so it never
-            // reaches the rounded corners.
-            Panel body = new Panel { Dock = DockStyle.Fill, BackColor = Theme.SurfaceCard };
-
-            const int colA = 0;
-            const int colB = 320;
-
-            body.Controls.Add(FieldLabel("Crop", colA, 0, true));
-            Adopt(comboBox_CropID, body, colA, 22, 280);
-
-            body.Controls.Add(FieldLabel("Product", colB, 0, true));
-            Adopt(comboBox_ProductID, body, colB, 22, 320);
-
-            body.Controls.Add(FieldLabel("Who is picking?", colA, 68, true));
-            body.Controls.Add(HintLabel("Start typing a number or a name.", colA, 88, 280));
-            Adopt(textBox_EmployeeID, body, colA, 110, 200);
-            Adopt(button_FetchEmployees, body, colA + 210, 108, 0);
-            if (button_FetchEmployees != null)
+            // Crop: a drop-down list, swapped for an SLComboBox before any data is bound to it
+            // (SetComboItems binds through the ComboBox API).
+            if (comboBox_CropID != null && !(comboBox_CropID is SLComboBox))
             {
-                button_FetchEmployees.Text = "Find picker";
-                ThemeStyles.Secondary(button_FetchEmployees);
+                ComboBox old = comboBox_CropID;
+                if (old.Parent != null) old.Parent.Controls.Remove(old);
+                SLComboBox crop = new SLComboBox { Name = old.Name, PlaceholderText = "Choose a crop" };
+                if (old.DataSource != null)
+                {
+                    crop.DisplayMember = old.DisplayMember;
+                    crop.ValueMember = old.ValueMember;
+                    crop.DataSource = old.DataSource;
+                }
+                else
+                {
+                    foreach (object item in old.Items) crop.Items.Add(item);
+                    crop.SelectedIndex = old.SelectedIndex;
+                }
+                comboBox_CropID = crop;
             }
 
-            Label printsAs = FieldLabel("This combination prints as", colB, 68, false);
-            printsAs.Width = 360;
-            body.Controls.Add(printsAs);
-            Adopt(label_ProductDetail, body, colB, 90, 360);
+            // Product stays the stock editable combo (owner-drawn, type-ahead handlers) in a frame.
+            SLFrame product = new SLFrame(comboBox_ProductID);
+
+            button_FetchEmployees = ReplaceButton(button_FetchEmployees, button_FetchEmployees_Click,
+                new SLButton { Text = "Find picker", Variant = SLVariant.Secondary, IconName = "search" });
+            SLStack picker = new SLStack(SLOrientation.Horizontal, Theme.S2) { Align = SLAlign.Center };
+            SLTextBox employee = new SLTextBox(textBox_EmployeeID);
+            picker.AddRange(employee, button_FetchEmployees);
+            picker.SetGrow(employee);
+
             if (label_ProductDetail != null)
             {
+                if (label_ProductDetail.Parent != null) label_ProductDetail.Parent.Controls.Remove(label_ProductDetail);
                 label_ProductDetail.AutoSize = false;
-                label_ProductDetail.Height = 56;
-                label_ProductDetail.Font = Theme.FontSm;
+                label_ProductDetail.Height = 40;
+                label_ProductDetail.Font = Theme.FontSmSemibold;
                 label_ProductDetail.ForeColor = Theme.Indigo700;
                 label_ProductDetail.BackColor = Color.Transparent;
+                label_ProductDetail.Visible = true;
             }
+            button_AddCombination = ReplaceButton(button_AddCombination, button_AddCombination_Click,
+                new SLButton { Text = "Add combination", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "plus" });
+            SLStack printsAs = new SLStack(SLOrientation.Vertical, Theme.S2) { Align = SLAlign.Start };
+            if (label_ProductDetail != null) printsAs.Controls.Add(label_ProductDetail);
+            printsAs.Controls.Add(button_AddCombination);
+            if (label_ProductDetail != null) label_ProductDetail.Width = 360;
 
-            Adopt(button_AddCombination, body, colB, 150, 0);
-            if (button_AddCombination != null) ThemeStyles.Secondary(button_AddCombination);
+            SLFieldSet fields = new SLFieldSet { Columns = 2 };
+            fields.Add(new SLField("Crop", comboBox_CropID) { Required = true });
+            fields.Add(new SLField("Product", product) { Required = true });
+            fields.Add(new SLField("Who is picking?", picker) { Required = true, Hint = "Start typing a number or a name." });
+            fields.Add(new SLField("This combination prints as", printsAs));
 
-            _stepValidation = new Label
-            {
-                AutoSize = false,
-                Size = new Size(600, 20),
-                Location = new Point(colA, 186),
-                Font = Theme.FontSm,
-                ForeColor = Theme.Err500,
-                BackColor = Color.Transparent,
-                Visible = false,
-                UseMnemonic = false
-            };
-            body.Controls.Add(_stepValidation);
+            _stepValidation = new SLBanner { Tone = SLTone.Error, IconName = "circle-alert" };
+            SLStack content = new SLStack(SLOrientation.Vertical, Theme.S4);
+            content.AddRange(fields, _stepValidation);
+            SLVisibility.Set(_stepValidation, false);
 
-            Button next = new Button { Text = "Next: how many?  →", Location = new Point(colA, 210), Width = 200 };
-            ThemeStyles.Primary(next);
+            SLButton next = new SLButton { Text = "Next: how many?", IconEndName = "arrow-right" };
             next.Click += (s, e) =>
             {
                 if (!IsIdentifyStepComplete())
@@ -472,106 +335,72 @@ namespace ScanLink
                 }
                 GoToStep(StepQuantity);
             };
-            body.Controls.Add(next);
 
-            card.Body.Controls.Add(body);
-            return card;
+            // Rows: Crop/Product (16 + 6 + 38) + 16 + Picker (16 + 2 + 17 + 6 + 38) / prints-as.
+            return NewStepCard(StepIdentify, "Pick the crop first — the product list narrows to match.", 182, content, next);
         }
 
         private CardPanel BuildQuantityCard()
         {
-            CardPanel card = NewStepCard(StepTitles[StepQuantity],
-                "One label per carton. You can change this before printing.", 146);
-            // Opaque, not transparent: a transparent panel over the owner-painted card
-            // left a stale 1px line above every button it contained. The card ground is
-            // the same white, and the body is inset by the card's padding so it never
-            // reaches the rounded corners.
-            Panel body = new Panel { Dock = DockStyle.Fill, BackColor = Theme.SurfaceCard };
+            SLFrame count = new SLFrame(numericUpDown_count) { Width = 160 };
+            SLStack row = new SLStack(SLOrientation.Horizontal, 0) { Align = SLAlign.Start };
+            row.Controls.Add(count);
 
-            body.Controls.Add(FieldLabel("Number of labels", 0, 0, true));
-            Adopt(numericUpDown_count, body, 0, 22, 140);
-            if (numericUpDown_count != null) numericUpDown_count.Font = Theme.FontLg;
+            SLStack content = new SLStack(SLOrientation.Vertical, Theme.S4);
+            content.Controls.Add(new SLField("Number of labels", row) { Required = true, Hint = "One label per carton. The printer runs this many identical labels." });
 
-            body.Controls.Add(HintLabel("The printer will run this many identical labels.", 0, 58, 400));
-
-            Button back = new Button { Text = "←  Back", Location = new Point(0, 96), Width = 110 };
-            ThemeStyles.Secondary(back);
-            back.Height = Theme.HeightMd;
-            back.Click += (s, e) => GoToStep(StepIdentify);
-
-            Button next = new Button { Text = "Next: check and print  →", Location = new Point(120, 96), Width = 220 };
-            ThemeStyles.Primary(next);
+            SLButton next = new SLButton { Text = "Next: check and print", IconEndName = "arrow-right" };
             next.Click += (s, e) => GoToStep(StepPrint);
 
-            body.Controls.Add(back);
-            body.Controls.Add(next);
-
-            card.Body.Controls.Add(body);
-            return card;
+            return NewStepCard(StepQuantity, "You can change this before printing.", 80, content, BackButton(StepIdentify), next);
         }
 
         private CardPanel BuildPrintCard()
         {
-            CardPanel card = NewStepCard(StepTitles[StepPrint],
-                "Generate the barcode, check the preview, then print.", 226);
-            // Opaque, not transparent: a transparent panel over the owner-painted card
-            // left a stale 1px line above every button it contained. The card ground is
-            // the same white, and the body is inset by the card's padding so it never
-            // reaches the rounded corners.
-            Panel body = new Panel { Dock = DockStyle.Fill, BackColor = Theme.SurfaceCard };
+            _printSummary = new SLKeyValueList();
 
-            _printSummary = new Label
+            button_generateBarcode = ReplaceButton(button_generateBarcode, button_generateBarcode_Click,
+                new SLButton { Text = "Generate barcode", Variant = SLVariant.Navy, IconName = "barcode" });
+            button_generateBarcode.Click += (s, e) => { UpdatePrintSummary(); RefreshLabelPreview(); };
+
+            button_preview = ReplaceButton(button_preview, button_preview_Click,
+                new SLButton { Text = "Open full preview", Variant = SLVariant.Secondary, IconName = "eye" });
+
+            // Start printing: its text and enabled state are driven by the print handlers, which
+            // also colour it green when ready. That green maps to the Success variant.
+            SLButton send = new SLButton { Text = button_send != null ? button_send.Text : "Start printing", IconName = "printer" };
+            bool wasEnabled = button_send == null || button_send.Enabled;
+            button_send = ReplaceButton(button_send, button_send_Click, send);
+            send.Enabled = wasEnabled;
+            bool mapping = false;
+            send.BackColorChanged += (s, e) =>
             {
-                AutoSize = false,
-                Size = new Size(560, 76),
-                Location = new Point(0, 0),
-                Font = Theme.FontSm,
-                ForeColor = Theme.TextBody,
-                BackColor = Color.Transparent,
-                UseMnemonic = false
+                if (mapping || send.BackColor.A != 255) return;   // ignore our own reset below
+                mapping = true;
+                send.Variant = send.BackColor.ToArgb() == Color.FromArgb(46, 125, 50).ToArgb() ? SLVariant.Success : SLVariant.Primary;
+                send.BackColor = Color.Transparent;               // the colour comes from the variant
+                mapping = false;
             };
-            body.Controls.Add(_printSummary);
 
-            Adopt(button_generateBarcode, body, 0, 88, 180);
-            if (button_generateBarcode != null)
+            SLStack generateRow = new SLStack(SLOrientation.Horizontal, Theme.S2) { Align = SLAlign.Center };
+            generateRow.AddRange(button_generateBarcode, button_preview);
+
+            SLStack printRow = new SLStack(SLOrientation.Horizontal, Theme.S3) { Align = SLAlign.Center };
+            printRow.Controls.Add(send);
+            if (progressBar != null)
             {
-                button_generateBarcode.Text = "Generate barcode";
-                ThemeStyles.Navy(button_generateBarcode);
-                button_generateBarcode.Height = Theme.HeightMd;
-                button_generateBarcode.Click += (s, e) => { UpdatePrintSummary(); RefreshLabelPreview(); };
+                if (progressBar.Parent != null) progressBar.Parent.Controls.Remove(progressBar);
+                progressBar.Dock = DockStyle.None;
+                progressBar.Height = 8;
+                progressBar.Width = 240;
+                printRow.Controls.Add(progressBar);
             }
 
-            Adopt(button_preview, body, 190, 88, 170);
-            if (button_preview != null)
-            {
-                button_preview.Text = "Open full preview";
-                ThemeStyles.Secondary(button_preview);
-                button_preview.Height = Theme.HeightMd;
-            }
+            SLStack content = new SLStack(SLOrientation.Vertical, Theme.S4);
+            content.AddRange(_printSummary, generateRow, printRow);
 
-            Adopt(button_send, body, 0, 138, 200);
-            if (button_send != null)
-            {
-                // Left as the handler manages it: button_send_Click and
-                // button_generateBarcode_Click both drive its text, colour and enabled state
-                // as the print job progresses, so the variant is not applied here.
-                button_send.Height = Theme.HeightMd;
-                button_send.FlatStyle = FlatStyle.Flat;
-                button_send.FlatAppearance.BorderSize = 0;
-                button_send.Font = Theme.FontSmBold;
-                button_send.ForeColor = Theme.TextOnAccent;
-                ThemeStyles.RoundedCorners(button_send, Theme.RadiusSm);
-            }
-
-            Adopt(progressBar, body, 210, 144, 240);
-
-            Button back = new Button { Text = "←  Back", Location = new Point(0, 182), Width = 110 };
-            ThemeStyles.Secondary(back);
-            back.Click += (s, e) => GoToStep(StepQuantity);
-            body.Controls.Add(back);
-
-            card.Body.Controls.Add(body);
-            return card;
+            // Summary: 5 rows x 18 + 4 x 10 gaps; then two 38px rows, 16px gaps.
+            return NewStepCard(StepPrint, "Generate the barcode, check the preview, then print.", 130 + 16 + 38 + 16 + 38, content, BackButton(StepQuantity));
         }
 
         private void UpdatePrintSummary()
@@ -586,13 +415,14 @@ namespace ScanLink
 
                 string barcode = _barcodeGenerated && !string.IsNullOrEmpty(_generatedBarcode)
                     ? _generatedBarcode
-                    : "not generated yet";
+                    : "Not generated yet";
 
-                _printSummary.Text =
-                    "Crop:  " + crop + "\r\n" +
-                    "Product:  " + product + "\r\n" +
-                    "Picker:  " + picker + "     Labels:  " + count + "\r\n" +
-                    "Barcode:  " + barcode;
+                _printSummary.Clear();
+                _printSummary.Add("Crop", string.IsNullOrWhiteSpace(crop) ? "—" : crop);
+                _printSummary.Add("Product", string.IsNullOrWhiteSpace(product) ? "—" : product);
+                _printSummary.Add("Picker", string.IsNullOrWhiteSpace(picker) ? "—" : picker);
+                _printSummary.Add("Labels", count);
+                _printSummary.Add("Barcode", barcode);
             }
             catch (Exception ex)
             {
@@ -624,8 +454,7 @@ namespace ScanLink
             card.BodyPadding = true;
             card.Height = CardPanel.TitledHeaderHeight;
 
-            Button toggle = new Button { Text = "Show", Width = 96 };
-            ThemeStyles.Secondary(toggle);
+            SLButton toggle = new SLButton { Text = "Show", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "chevron-down" };
 
             Panel settingsHost = new Panel
             {
@@ -656,6 +485,7 @@ namespace ScanLink
                 expanded = !expanded;
                 settingsHost.Visible = expanded;
                 toggle.Text = expanded ? "Hide" : "Show";
+                toggle.IconName = expanded ? "chevron-up" : "chevron-down";
                 card.Height = expanded
                     ? CardPanel.TitledHeaderHeight + CardPanel.BodyPaddingV + AdvancedPanelHeight
                     : CardPanel.TitledHeaderHeight;
@@ -769,16 +599,12 @@ namespace ScanLink
             Rectangle label = new Rectangle(
                 (surface.ClientSize.Width - labelWidth) / 2, Theme.S2, labelWidth, labelHeight);
 
-            using (SolidBrush ground = new SolidBrush(Theme.SurfaceSunken))
-            {
-                g.FillRectangle(ground, new Rectangle(0, 0, surface.ClientSize.Width, surface.ClientSize.Height));
-            }
-            using (SolidBrush paper = new SolidBrush(Color.White))
-            using (Pen edge = new Pen(Theme.BorderStrong, 1f))
-            {
-                g.FillRectangle(paper, label);
-                g.DrawRectangle(edge, label);
-            }
+            // LabelsScreen.js sticker: a #F1F3F7 tray (radius 8) holding a white label with a
+            // #D0D5DD border (radius 4).
+            using (SolidBrush card = new SolidBrush(Theme.SurfaceCard))
+                g.FillRectangle(card, surface.ClientRectangle);
+            SLPaint.Box(g, new Rectangle(0, 0, surface.ClientSize.Width, surface.ClientSize.Height), Theme.RadiusMd, Theme.N100, Color.Empty);
+            SLPaint.Box(g, label, Theme.RadiusXs, Color.White, Theme.BorderStrong);
 
             string barcodeId;
             string productLine;
@@ -808,7 +634,7 @@ namespace ScanLink
                 return;
             }
 
-            using (Font mono = new Font("Courier New", 8.5f, FontStyle.Bold))
+            using (Font mono = new Font("Consolas", 8.25f, FontStyle.Bold))   // 11px / 700, as the mockup's sticker
             {
                 TextRenderer.DrawText(g, productLine ?? "", mono,
                     new Rectangle(label.X + Theme.S3, label.Y + Theme.S3, label.Width - Theme.S3 * 2, 18),
@@ -834,6 +660,61 @@ namespace ScanLink
                     new Rectangle(label.X + Theme.S3, label.Bottom - 26, label.Width - Theme.S3 * 2, 18),
                     Color.Black, TextFormatFlags.Left | TextFormatFlags.NoPrefix);
             }
+        }
+    }
+
+    /// <summary>
+    /// One step button from LabelsScreen.js: white, radius 8, padding 12x14, a 24px circle
+    /// (green tick when done, indigo number when current, grey otherwise) and a 13px caption
+    /// (600 heading ink when current, 500 muted otherwise). The current step gets an indigo
+    /// border and soft ring.
+    /// </summary>
+    [System.ComponentModel.DesignerCategory("Code")]
+    internal sealed class PrintStepChip : SLControl
+    {
+        public const int ChipHeight = 50;   // 12 + 24 + 12 + 2px border
+
+        public int Number { get; set; }
+        public string Caption { get; set; }
+        public bool Active { get; set; }
+        public bool Done { get; set; }
+        public bool Reachable { get; set; } = true;
+
+        public PrintStepChip()
+        {
+            Height = ChipHeight;
+            Cursor = Cursors.Hand;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            Rectangle box = new Rectangle(0, 0, Width, Height);
+            SLPaint.Box(g, box, Theme.RadiusMd, Theme.SurfaceCard, Active ? Theme.ActionPrimary : Theme.BorderDefault);
+            if (Active)
+            {
+                using (GraphicsPath p = SLPaint.RoundedRect(new RectangleF(2f, 2f, Width - 4f, Height - 4f), Theme.RadiusMd - 2))
+                using (Pen pen = new Pen(Theme.FocusRingSoft, 2f))
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.DrawPath(pen, p);
+                }
+            }
+
+            Rectangle circle = new Rectangle(15, (Height - 24) / 2, 24, 24);
+            Color fill = Done ? Theme.Ok500 : Active ? Theme.ActionPrimary : Theme.N100;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using (SolidBrush b = new SolidBrush(fill)) g.FillEllipse(b, circle);
+            if (Done)
+                SLIcon.Draw(g, "check", new Rectangle(circle.X + 5, circle.Y + 5, 14, 14), Color.White, 2.4f);
+            else
+                SLPaint.Text(g, Number.ToString(), Theme.FontXsSemibold, circle, Active ? Color.White : Theme.N500, TextFormatFlags.HorizontalCenter);
+
+            Font font = Active ? Theme.FontSmSemibold : Theme.FontSmMedium;
+            Color ink = Active ? Theme.TextHeading : Theme.TextMuted;
+            if (!Reachable && !Active) ink = Theme.N400;
+            int x = circle.Right + 10;
+            SLPaint.TextEllipsis(g, Caption, font, new Rectangle(x, 0, Math.Max(10, Width - x - 14), Height), ink, TextFormatFlags.Left);
         }
     }
 }

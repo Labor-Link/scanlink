@@ -52,6 +52,13 @@ namespace ScanLink.DesignSystem
             }
         }
 
+        /// <summary>Selects without raising SelectedIndexChanged (initial state set by code).</summary>
+        public void SelectSilently(int index)
+        {
+            _selected = Math.Max(0, Math.Min(_items.Count - 1, index));
+            Invalidate();
+        }
+
         public string SelectedItem { get { return _selected >= 0 && _selected < _items.Count ? _items[_selected] : null; } }
 
         private static Font FontFor(bool selected) { return selected ? Theme.FontSmSemibold : Theme.FontSmMedium; }

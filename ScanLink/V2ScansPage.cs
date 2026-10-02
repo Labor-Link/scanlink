@@ -2,6 +2,7 @@
 using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
+using ScanLink.DesignSystem;
 using ScanLink.Themed;
 
 namespace ScanLink
@@ -25,14 +26,15 @@ namespace ScanLink
         private StatTile _lastHourTile;
         private StatTile _seasonTile;
 
-        private SearchField _searchField;
-        private SegmentedControl _periodSegments;
-        private Label _scanCountLabel;
-        private Label _detailsToggle;
+        private SLTextBox _searchField;
+        private SLSegmentedControl _periodSegments;
+        private SLText _scanCountLabel;
+        private SLButton _detailsToggle;
         private Panel _moreFiltersHost;
         private int _moreFiltersFullHeight;
         private int _outputCardFullHeight;
-        private Label _moreFiltersToggle;
+        private SLButton _moreFiltersToggle;
+        private static readonly string[] PeriodKeys = { PeriodToday, PeriodWeek, PeriodSeason, PeriodCustom };
         private Timer _searchDebounce;
 
         private bool _detailsExpanded;
@@ -44,7 +46,8 @@ namespace ScanLink
         private const string PeriodCustom = "custom";
 
         private const int FilterBarHeight = Theme.HeightMd;
-        private const int FilterLinksHeight = 28;
+        /// <summary>The disclosure row under the bar: 8px gap + 32px ghost buttons.</summary>
+        private const int FilterLinksHeight = Theme.S2 + Theme.HeightSm;
         private const int StatsPanelFullHeight = 116;
         /// <summary>Height of the Daily Stats / Connected Scanners row that
         /// InitDashboardStatusUI adds under the tiles; its RowStyle is Absolute 250.</summary>
@@ -81,26 +84,16 @@ namespace ScanLink
 
         // ---------------------------------------------------------------- top bar actions
 
+        // The mockup's Scans header: a pulsing "Live" badge, Sync now (secondary) and
+        // Print labels (primary), all small.
         private Control BuildScansLivePill()
         {
-            Pill live = new Pill("Live");
-            live.SetTone("info");
-            return live;
+            return new SLBadge("Live", SLTone.Brand, dot: true);
         }
 
         private Control BuildScansSyncAction()
         {
-            Button sync = new Button { Text = "Sync now", AutoSize = false };
-            Image icon = IconSet.Get("cloud-upload", 16, IconSet.Tint.Dark);
-            if (icon != null)
-            {
-                sync.Image = icon;
-                sync.ImageAlign = ContentAlignment.MiddleLeft;
-                sync.TextAlign = ContentAlignment.MiddleRight;
-                sync.Padding = new Padding(Theme.S2, 0, Theme.S3, 0);
-            }
-            ThemeStyles.Secondary(sync);
-            sync.Height = Theme.HeightMd;
+            SLButton sync = new SLButton { Text = "Sync now", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "cloud-upload" };
             // Same action as the console's "Sync logs to API", promoted to the page header
             // because it is the one thing an operator reaches for when the count looks wrong.
             sync.Click += (s, e) => { if (button_manualUpload != null) button_manualUpload.PerformClick(); };
@@ -109,16 +102,7 @@ namespace ScanLink
 
         private Control BuildScansPrintAction()
         {
-            Button print = new Button { Text = "Print labels", AutoSize = false };
-            Image icon = IconSet.Get("printer", 16, IconSet.Tint.White);
-            if (icon != null)
-            {
-                print.Image = icon;
-                print.ImageAlign = ContentAlignment.MiddleLeft;
-                print.TextAlign = ContentAlignment.MiddleRight;
-                print.Padding = new Padding(Theme.S2, 0, Theme.S3, 0);
-            }
-            ThemeStyles.Primary(print);
+            SLButton print = new SLButton { Text = "Print labels", ButtonSize = SLSize.Sm, IconName = "printer" };
             print.Click += (s, e) => NavigateTo(NavPrint);
             return print;
         }
@@ -279,84 +263,77 @@ namespace ScanLink
             filtersPanel.BackColor = Color.Transparent;
             _moreFiltersHost.Controls.Add(filtersPanel);
 
-            // --- the v2 bar ---
-            Panel bar = new Panel { Dock = DockStyle.Top, Height = FilterBarHeight, BackColor = Color.Transparent };
-
-            _searchField = new SearchField("Search serial, block, supplier or product")
+            // --- the v2 bar (ScansScreen.js): search 300 · range switch · crop 160 · count ---
+            SLStack bar = new SLStack(SLOrientation.Horizontal, Theme.S3)
             {
-                Left = 0,
-                Top = 0,
-                Width = 320
+                Dock = DockStyle.Top,
+                Height = FilterBarHeight,
+                Align = SLAlign.Center
             };
-            _searchField.QueryChanged += (s, e) => RestartSearchDebounce();
 
-            _periodSegments = new SegmentedControl { Top = 0 };
-            _periodSegments.AddSegment(PeriodToday, "Today");
-            _periodSegments.AddSegment(PeriodWeek, "Last 7 days");
-            _periodSegments.AddSegment(PeriodSeason, "This season");
-            _periodSegments.AddSegment(PeriodCustom, "Custom");
-            _periodSegments.Left = _searchField.Right + Theme.S4;
-            _periodSegments.SegmentSelected += (s, key) => ApplyPeriodPreset(key);
+            _searchField = new SLTextBox { Width = 300, PrefixIcon = "search", PlaceholderText = "Search serial, block, supplier or product" };
+            _searchField.TextChanged += (s, e) => RestartSearchDebounce();
 
-            // The crop combo is moved rather than duplicated: a second combo would need its
-            // own binding and the two would drift out of step.
+            _periodSegments = new SLSegmentedControl("Today", "Last 7 days", "This season", "Custom");
+            _periodSegments.SelectedIndexChanged += (s, e) => ApplyPeriodPreset(PeriodKeys[_periodSegments.SelectedIndex]);
+
+            // The crop combo is moved rather than duplicated (a second combo would need its own
+            // binding). It is replaced by an SLComboBox here, before any data is bound to it:
+            // SetComboItems binds through the ComboBox API, and its one handler is re-attached.
             if (cropIdComboBox != null)
             {
-                if (filtersPanel.Controls.Contains(cropIdComboBox)) filtersPanel.Controls.Remove(cropIdComboBox);
-                if (cropIdLabel != null && filtersPanel.Controls.Contains(cropIdLabel)) cropIdLabel.Visible = false;
+                ComboBox old = cropIdComboBox;
+                old.SelectedIndexChanged -= cropIdComboBox_SelectedIndexChanged;
+                if (old.Parent != null) old.Parent.Controls.Remove(old);
+                if (cropIdLabel != null) cropIdLabel.Visible = false;
 
-                cropIdComboBox.Dock = DockStyle.None;
-                cropIdComboBox.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-                cropIdComboBox.Width = 200;
-                cropIdComboBox.Left = _periodSegments.Right + Theme.S4;
-                cropIdComboBox.Top = (FilterBarHeight - cropIdComboBox.Height) / 2;
-                bar.Controls.Add(cropIdComboBox);
+                SLComboBox crop = new SLComboBox { Name = "cropIdComboBox", Width = 160 };
+                if (old.DataSource != null)
+                {
+                    crop.DisplayMember = old.DisplayMember;
+                    crop.ValueMember = old.ValueMember;
+                    crop.DataSource = old.DataSource;
+                }
+                else
+                {
+                    foreach (object item in old.Items) crop.Items.Add(item);
+                    crop.SelectedIndex = old.SelectedIndex;
+                }
+                crop.SelectedIndexChanged += cropIdComboBox_SelectedIndexChanged;
+                cropIdComboBox = crop;
             }
 
-            _scanCountLabel = new Label
-            {
-                AutoSize = false,
-                Width = 120,
-                Height = FilterBarHeight,
-                TextAlign = ContentAlignment.MiddleRight,
-                Font = Theme.FontSm,
-                ForeColor = Theme.TextMuted,
-                BackColor = Color.Transparent,
-                UseMnemonic = false
-            };
+            _scanCountLabel = new SLText("", SLTextStyle.Muted) { SingleLine = true, Align = TextFormatFlags.Right, AutoSize = false };
 
-            bar.Controls.Add(_searchField);
-            bar.Controls.Add(_periodSegments);
+            bar.AddRange(_searchField, _periodSegments);
+            if (cropIdComboBox != null) bar.Controls.Add(cropIdComboBox);
             bar.Controls.Add(_scanCountLabel);
-
-            // Positioned in code rather than anchored. Search, period and crop are all
-            // fixed-width and the count is right-aligned, so at narrow widths the crop combo
-            // has to give up space instead of sliding under the count.
-            bar.Resize += (s, e) => LayoutFilterBar(bar);
+            bar.SetGrow(_scanCountLabel);   // margin-left: auto
 
             // --- second line: the two disclosures ---
-            Panel links = new Panel { Dock = DockStyle.Top, Height = 28, BackColor = Color.Transparent };
+            SLStack links = new SLStack(SLOrientation.Horizontal, Theme.S2)
+            {
+                Dock = DockStyle.Top,
+                Height = FilterLinksHeight,
+                Padding = new Padding(0, Theme.S2, 0, 0),
+                Align = SLAlign.Center
+            };
 
-            _moreFiltersToggle = MakeQuietLink("More filters", () =>
+            _moreFiltersToggle = new SLButton { Text = "More filters", Variant = SLVariant.Ghost, ButtonSize = SLSize.Sm, IconName = "sliders-horizontal" };
+            _moreFiltersToggle.Click += (s, e) =>
             {
                 _moreFiltersExpanded = !_moreFiltersExpanded;
                 ApplyMoreFiltersDisclosure();
-            });
-            _moreFiltersToggle.TextAlign = ContentAlignment.MiddleLeft;
-            _moreFiltersToggle.Location = new Point(0, 0);
-            _moreFiltersToggle.Height = 28;
+            };
 
-            _detailsToggle = MakeQuietLink("Show details", () =>
+            _detailsToggle = new SLButton { Text = "Show details", Variant = SLVariant.Ghost, ButtonSize = SLSize.Sm, IconName = "chevron-down" };
+            _detailsToggle.Click += (s, e) =>
             {
                 _detailsExpanded = !_detailsExpanded;
                 ApplyDetailsDisclosure();
-            });
-            _detailsToggle.TextAlign = ContentAlignment.MiddleLeft;
-            _detailsToggle.Location = new Point(_moreFiltersToggle.Width + Theme.S5, 0);
-            _detailsToggle.Height = 28;
+            };
 
-            links.Controls.Add(_moreFiltersToggle);
-            links.Controls.Add(_detailsToggle);
+            links.AddRange(_moreFiltersToggle, _detailsToggle);
 
             // Added bottom-up so the bar ends up above the links, and both above the
             // advanced filter row.
@@ -366,43 +343,7 @@ namespace ScanLink
 
             _filtersCard.Height = CardPanel.BodyPaddingV + FilterBarHeight + FilterLinksHeight;
 
-            LayoutFilterBar(bar);
-            _periodSegments.SetSelected(PeriodCustom);
-        }
-
-        private void LayoutFilterBar(Panel bar)
-        {
-            if (bar == null || _scanCountLabel == null) return;
-
-            int right = bar.ClientSize.Width;
-            _scanCountLabel.Left = right - _scanCountLabel.Width;
-
-            if (cropIdComboBox != null && cropIdComboBox.Parent == bar)
-            {
-                // The crop combo is the only elastic control on the row, so it absorbs
-                // whatever the fixed-width controls leave. Below its floor it is allowed to
-                // run under the count rather than vanish.
-                int available = _scanCountLabel.Left - Theme.S4 - cropIdComboBox.Left;
-                cropIdComboBox.Width = Math.Max(120, available);
-            }
-        }
-
-        private Label MakeQuietLink(string text, Action onClick)
-        {
-            Label link = new Label
-            {
-                Text = text,
-                AutoSize = false,
-                Width = Math.Max(90, TextRenderer.MeasureText(text, Theme.FontSmBold).Width + Theme.S2),
-                TextAlign = ContentAlignment.MiddleRight,
-                Font = Theme.FontSmBold,
-                ForeColor = Theme.TextLink,
-                Cursor = Cursors.Hand,
-                BackColor = Color.Transparent,
-                UseMnemonic = false
-            };
-            link.Click += (s, e) => onClick();
-            return link;
+            _periodSegments.SelectSilently(Array.IndexOf(PeriodKeys, PeriodCustom));
         }
 
         private void ApplyMoreFiltersDisclosure()
@@ -411,6 +352,7 @@ namespace ScanLink
 
             _moreFiltersHost.Height = _moreFiltersExpanded ? _moreFiltersFullHeight : 0;
             _moreFiltersToggle.Text = _moreFiltersExpanded ? "Fewer filters" : "More filters";
+            _moreFiltersToggle.IconName = _moreFiltersExpanded ? "x" : "sliders-horizontal";
             _filtersCard.Height = CardPanel.BodyPaddingV + FilterBarHeight + FilterLinksHeight
                                 + _moreFiltersHost.Height;
         }
@@ -465,7 +407,11 @@ namespace ScanLink
                 statsRow.Height = _detailsExpanded ? StatsRowFullHeight(statsRow) : 0;
                 statsRow.Margin = new Padding(0, 0, 0, _detailsExpanded ? Theme.S4 : 0);
             }
-            if (_detailsToggle != null) _detailsToggle.Text = _detailsExpanded ? "Hide details" : "Show details";
+            if (_detailsToggle != null)
+            {
+                _detailsToggle.Text = _detailsExpanded ? "Hide details" : "Show details";
+                _detailsToggle.IconName = _detailsExpanded ? "chevron-up" : "chevron-down";
+            }
         }
 
         // ---------------------------------------------------------------- search & period
@@ -554,7 +500,7 @@ namespace ScanLink
         /// filter fields so there is one place that snapshots the UI.</summary>
         private void CaptureSearchFilter()
         {
-            filterSearchText = (_searchField != null) ? _searchField.Query : "";
+            filterSearchText = (_searchField != null) ? (_searchField.Text ?? "").Trim() : "";
         }
 
         /// <summary>The "46 scans" readout — the size of the filtered set, not the page.</summary>
@@ -574,14 +520,38 @@ namespace ScanLink
             _gridCard = WrapInCard(scannerDataGridView, null, null, false, fillRow: true);
             if (_gridCard == null) return;
 
-            // Pagination becomes the card's footer. Its own row in the scans layout is
-            // AutoSize, so vacating it collapses the row to zero height.
+            // Pagination becomes the card's footer (Pagination.js: page text left, Previous /
+            // Next secondary small buttons right). Its own row in the scans layout is AutoSize,
+            // so vacating it collapses the row to zero height. The two buttons are replaced by
+            // SLButtons wired to the same handlers; Form1 keeps setting their Enabled state.
             if (paginationPanel != null)
             {
                 scannerContentPanel.Controls.Remove(paginationPanel);
-                paginationPanel.Dock = DockStyle.Fill;
-                paginationPanel.BackColor = Color.Transparent;
-                _gridCard.Footer.Controls.Add(paginationPanel);
+                paginationPanel.Visible = false;
+
+                previousPageButton = ReplaceButton(previousPageButton, previousPageButton_Click,
+                    new SLButton { Text = "Previous", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "chevron-left" });
+                nextPageButton = ReplaceButton(nextPageButton, nextPageButton_Click,
+                    new SLButton { Text = "Next", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconEndName = "chevron-right" });
+
+                if (pageInfoLabel.Parent != null) pageInfoLabel.Parent.Controls.Remove(pageInfoLabel);
+                pageInfoLabel.AutoSize = true;
+                pageInfoLabel.Dock = DockStyle.None;
+                pageInfoLabel.Font = Theme.FontSm;
+                pageInfoLabel.ForeColor = Theme.TextMuted;
+                pageInfoLabel.BackColor = Color.Transparent;
+                pageInfoLabel.Margin = Padding.Empty;
+
+                SLStack buttons = new SLStack(SLOrientation.Horizontal, Theme.S2) { Align = SLAlign.Center };
+                buttons.AddRange(previousPageButton, nextPageButton);
+                SLStack pager = new SLStack(SLOrientation.Horizontal, Theme.S4)
+                {
+                    Dock = DockStyle.Fill,
+                    Align = SLAlign.Center,
+                    Justify = SLJustify.SpaceBetween
+                };
+                pager.AddRange(pageInfoLabel, buttons);
+                _gridCard.Footer.Controls.Add(pager);
                 _gridCard.ShowFooter(true);
             }
 
@@ -589,6 +559,20 @@ namespace ScanLink
 
             scannerDataGridView.DataSourceChanged += (s, e) => UpdateScanCountLabel();
             scannerDataGridView.DataBindingComplete += (s, e) => StyleScanColumns();
+        }
+
+        /// <summary>Swaps a designer Button for an SL one, moving its Click handler across.</summary>
+        private static Button ReplaceButton(Button old, EventHandler handler, SLButton replacement)
+        {
+            if (old != null)
+            {
+                old.Click -= handler;
+                if (old.Parent != null) old.Parent.Controls.Remove(old);
+                replacement.Name = old.Name;
+                replacement.Enabled = old.Enabled;
+            }
+            replacement.Click += handler;
+            return replacement;
         }
 
         /// <summary>
@@ -600,7 +584,9 @@ namespace ScanLink
         {
             try
             {
-                SetColumnStyle("SerialNumber", Theme.FontMono, 150);
+                SetColumnStyle("SerialNumber", null, 150);
+                SLTableStyle.SetMono(scannerDataGridView, "SerialNumber");
+                SLTableStyle.SetMuted(scannerDataGridView, "Time");
                 SetColumnStyle("Time", null, 90);
                 SetColumnStyle("Date", null, 110);
                 SetColumnStyle("BlockNumber", null, 80);

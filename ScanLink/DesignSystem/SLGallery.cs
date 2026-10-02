@@ -27,6 +27,8 @@ namespace ScanLink.DesignSystem
             public bool AppBackground;
             public Func<Control> Build;
             public Func<Form> BuildDialog;
+            /// <summary>Whole-screen scene: Build fills a Width x Height window, no padding.</summary>
+            public int ScreenHeight;
         }
 
         public static int Run(string outDir)
@@ -37,7 +39,8 @@ namespace ScanLink.DesignSystem
             {
                 try
                 {
-                    using (Bitmap bmp = scene.BuildDialog != null ? CaptureDialog(scene) : CaptureScene(scene))
+                    using (Bitmap bmp = scene.BuildDialog != null ? CaptureDialog(scene)
+                                      : scene.ScreenHeight > 0 ? CaptureScreen(scene) : CaptureScene(scene))
                         bmp.Save(Path.Combine(outDir, scene.Id + ".png"), ImageFormat.Png);
                     Console.WriteLine("rendered " + scene.Id);
                 }
@@ -77,6 +80,26 @@ namespace ScanLink.DesignSystem
 
                 Bitmap bmp = new Bitmap(scene.Width, h, PixelFormat.Format32bppArgb);
                 host.DrawToBitmap(bmp, new Rectangle(0, 0, scene.Width, h));
+                host.Close();
+                return bmp;
+            }
+        }
+
+        private static Bitmap CaptureScreen(Scene scene)
+        {
+            using (Form host = OffscreenForm(Theme.SurfaceApp))
+            {
+                host.ClientSize = new Size(scene.Width, scene.ScreenHeight);
+                Control content = scene.Build();
+                content.Dock = DockStyle.Fill;
+                host.Controls.Add(content);
+                host.Show();
+                host.ActiveControl = null;
+                host.PerformLayout();
+                Application.DoEvents();
+                host.Refresh();
+                Bitmap bmp = new Bitmap(scene.Width, scene.ScreenHeight, PixelFormat.Format32bppArgb);
+                host.DrawToBitmap(bmp, new Rectangle(0, 0, scene.Width, scene.ScreenHeight));
                 host.Close();
                 return bmp;
             }
@@ -247,11 +270,26 @@ namespace ScanLink.DesignSystem
             yield return new Scene { Id = "dialog-printer", BuildDialog = PrinterDialog };
             yield return new Scene { Id = "dialog-scan", BuildDialog = ScanDialog };
 
+            // Whole screens, scored against the mockup's own screen components.
+            yield return new Scene { Id = "screen-login", Width = 1280, ScreenHeight = 800, Build = LoginScreen };
+
             // C#-only scenes (no mockup counterpart): rendered for review, not scored.
             yield return new Scene { Id = "app-add-combination", BuildDialog = () => new AddCombinationDialog(new ProductCombinationsService(new ApiAuthService())) };
             yield return new Scene { Id = "app-scanner-management", BuildDialog = () => ScannerManagementForm.CreatePreview() };
             yield return new Scene { Id = "app-setup-dialog", BuildDialog = () => new SetupDialog(new ProductCombinationsService(new ApiAuthService())) };
             yield return new Scene { Id = "app-error-dialog", BuildDialog = () => ErrorDialog.Create("Upload failed", "System.Net.WebException: The remote name could not be resolved: 'api.scanlink.app'\r\n   at ScanLogUploadService.UploadAsync()") };
+        }
+
+        /// <summary>The real login layout with stand-in fields, in Form1's opening state.</summary>
+        private static Control LoginScreen()
+        {
+            Panel host = new Panel { BackColor = Theme.SurfaceApp, Size = new Size(1280, 800) };
+            TextBox email = new TextBox { Text = "you@packhouse.co", ForeColor = Color.Gray };
+            TextBox password = new TextBox();
+            SLButton signIn = new SLButton { Text = "Sign in" };
+            SLIconButton toggle = new SLIconButton { ButtonSize = SLSize.Sm, IconName = "eye", Label = "Show password", IconSize = 18 };
+            LoginLayout.Compose(host, email, password, signIn, toggle, null); // the app currently shows no logo
+            return host;
         }
 
         private static Control EquipmentCard()

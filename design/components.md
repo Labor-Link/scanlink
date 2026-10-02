@@ -167,6 +167,8 @@ new SLTextBox { UseSystemPasswordChar = true, Suffix = new SLIconButton { IconNa
 ```
 * `SLField` = label (13px, red `*` if `Required`) + optional `Hint` (12px muted) + 6px gap + input + `Error` (12px red).
 * `SLTextBox`: 32/38/44px (`FieldSize`), white, `#D0D5DD` border, radius 6, indigo border + ring on focus, red when invalid, grey when `ReadOnly`/disabled.
+* **Existing designer TextBox?** `new SLTextBox(usernameTextBox)` wraps it in place: same object, same handlers,
+  restyled. Use this when other code already reads the field.
   `PrefixIcon`, `Suffix` (any control), `Unit`, `Mono`, `Multiline`. The real `TextBox` is `.Inner`.
 
 ### Select → `SLField` + `SLComboBox`
@@ -286,6 +288,17 @@ tabs.SelectedIndexChanged += (s, e) => Reload(tabs.SelectedItem);
 ```
 * `#F1F3F7` track, 3px padding, 4px gaps; selected item white with a soft shadow, heading ink, 600.
 * ←/→ keys move the selection. AutoSize: do not set Width.
+
+### Anything else in a field box → `SLFrame`
+
+`new SLFrame(productComboBox)` / `new SLFrame(numericUpDown)` / `new SLFrame(checkedListBox) { Height = 96 }`:
+a stock control the library has no version of (editable ComboBox, NumericUpDown, list boxes) sits in
+the standard field box. Use it when the control must stay stock because code depends on its type.
+
+### Replacing a designer Button
+
+`button_x = ReplaceButton(button_x, button_x_Click, new SLButton { ... })` (Form1) moves the handler
+across; the field then points at the SL button, so `Enabled`/`Text`/`PerformClick` keep working.
 
 ### Prompt → `SLPrompt`
 

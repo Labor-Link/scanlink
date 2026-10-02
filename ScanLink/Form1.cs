@@ -1045,7 +1045,7 @@ namespace ScanLink
             }
 
             loginButton.Enabled = false;
-            loginButton.Text = "Logging in...";
+            loginButton.Text = "Signing in…";
             loginStatusLabel.Text = "Authenticating...";
             loginStatusLabel.ForeColor = Color.Orange;
 
@@ -1185,7 +1185,7 @@ namespace ScanLink
                     loadingProgressBar.Visible = true;
                     loadingStatusLabel.Visible = true;
                     loginButton.Enabled = false;
-                    loginButton.Text = "Login";
+                    loginButton.Text = "Sign in";
 
                     // Run scanner system initialization asynchronously
                     bool initSuccess = await InitializeScannerSystemAsync();
@@ -1251,18 +1251,18 @@ namespace ScanLink
             finally
             {
                 loginButton.Enabled = true;
-                loginButton.Text = "Login";
+                loginButton.Text = "Sign in";
             }
         }
 
         private void InitializeLoginPlaceholders()
         {
             // Initialize username placeholder
-            usernameTextBox.Text = "Type your Email...";
+            usernameTextBox.Text = "you@packhouse.co";
             usernameTextBox.ForeColor = Color.Gray;
             
             // Initialize password placeholder
-            passwordTextBox.Text = "Type your Password...";
+            passwordTextBox.Text = "Your password";
             passwordTextBox.ForeColor = Color.Gray;
             passwordTextBox.PasswordChar = '\0';
         }
@@ -1270,7 +1270,7 @@ namespace ScanLink
         private void passwordToggleButton_Click(object sender, EventArgs e)
         {
             // Don't toggle if placeholder text is showing
-            if (passwordTextBox.Text == "Type your Password...")
+            if (passwordTextBox.Text == "Your password")
                 return;
                 
             if (passwordTextBox.PasswordChar == '●')
@@ -1287,38 +1287,18 @@ namespace ScanLink
             }
         }
 
-        /// <summary>
-        /// Sets the reveal-password icon to match the field's state. Both branches of the
-        /// toggle previously set the same glyph, so the control gave no feedback at all —
-        /// you could not tell whether the password was visible. eye means "click to reveal",
-        /// eye-off means "click to hide". Falls back to the original glyph if the icons were
-        /// not embedded.
-        /// </summary>
-        private void SetPasswordToggleIcon(bool revealed)
-        {
-            if (passwordToggleButton == null) return;
-
-            string icon = revealed ? "eye-off" : "eye";
-            passwordToggleButton.Text = string.Empty;
-            if (!ScanLink.Themed.IconSet.ApplyTo(passwordToggleButton, icon, 16, ScanLink.Themed.IconSet.Tint.Dark))
-            {
-                passwordToggleButton.Image = null;
-                passwordToggleButton.Text = "👁️";
-            }
-        }
-
         private bool ValidateLoginFields()
         {
             bool isValid = true;
             
             // Validate username/email
-            if (string.IsNullOrWhiteSpace(usernameTextBox.Text) || usernameTextBox.Text == "Type your Email...")
+            if (string.IsNullOrWhiteSpace(usernameTextBox.Text) || usernameTextBox.Text == "you@packhouse.co")
             {
                 isValid = false;
             }
             
             // Validate password
-            if (string.IsNullOrWhiteSpace(passwordTextBox.Text) || passwordTextBox.Text == "Type your Password...")
+            if (string.IsNullOrWhiteSpace(passwordTextBox.Text) || passwordTextBox.Text == "Your password")
             {
                 isValid = false;
             }
@@ -1328,7 +1308,7 @@ namespace ScanLink
 
         private void usernameTextBox_Enter(object sender, EventArgs e)
         {
-            if (usernameTextBox.Text == "Type your Email...")
+            if (usernameTextBox.Text == "you@packhouse.co")
             {
                 usernameTextBox.Text = "";
                 usernameTextBox.ForeColor = Color.Black;
@@ -1339,14 +1319,14 @@ namespace ScanLink
         {
             if (string.IsNullOrWhiteSpace(usernameTextBox.Text))
             {
-                usernameTextBox.Text = "Type your Email...";
+                usernameTextBox.Text = "you@packhouse.co";
                 usernameTextBox.ForeColor = Color.Gray;
             }
         }
 
         private void usernameTextBox_TextChanged(object sender, EventArgs e)
         {
-            if (usernameTextBox.Text != "Type your Email...")
+            if (usernameTextBox.Text != "you@packhouse.co")
             {
                 usernameTextBox.ForeColor = Color.Black;
             }
@@ -1362,7 +1342,7 @@ namespace ScanLink
 
         private void passwordTextBox_Enter(object sender, EventArgs e)
         {
-            if (passwordTextBox.Text == "Type your Password...")
+            if (passwordTextBox.Text == "Your password")
             {
                 passwordTextBox.Text = "";
                 passwordTextBox.ForeColor = Color.Black;
@@ -1374,7 +1354,7 @@ namespace ScanLink
         {
             if (string.IsNullOrWhiteSpace(passwordTextBox.Text))
             {
-                passwordTextBox.Text = "Type your Password...";
+                passwordTextBox.Text = "Your password";
                 passwordTextBox.ForeColor = Color.Gray;
                 passwordTextBox.PasswordChar = '\0';
             }
@@ -1382,7 +1362,7 @@ namespace ScanLink
 
         private void passwordTextBox_TextChanged(object sender, EventArgs e)
         {
-            if (passwordTextBox.Text != "Type your Password...")
+            if (passwordTextBox.Text != "Your password")
             {
                 passwordTextBox.ForeColor = Color.Black;
                 if (passwordTextBox.PasswordChar == '\0')
@@ -5733,7 +5713,7 @@ namespace ScanLink
             
             // Reset login button
             loginButton.Enabled = true;
-            loginButton.Text = "Login";
+            loginButton.Text = "Sign in";
         }
 
         private async void Form1_Shown(object sender, EventArgs e)

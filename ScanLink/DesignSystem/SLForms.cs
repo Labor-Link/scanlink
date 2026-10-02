@@ -189,15 +189,26 @@ namespace ScanLink.DesignSystem
         private Control _suffix;
         private bool _invalid, _mono, _hover;
 
-        public SLTextBox()
+        public SLTextBox() : this(new TextBox()) { }
+
+        /// <summary>
+        /// Wraps an EXISTING TextBox (e.g. a designer field that other code reads and writes):
+        /// it is moved into this frame and restyled, but stays the same object, so its handlers
+        /// and every reference to it keep working. Legacy colours set on it (Gray placeholder
+        /// text, Black input) are mapped to the design system's.
+        /// </summary>
+        public SLTextBox(TextBox existing)
         {
-            Box = new TextBox
-            {
-                BorderStyle = BorderStyle.None,
-                Font = Theme.FontMd,
-                BackColor = Theme.N0,
-                ForeColor = Theme.TextBody
-            };
+            Box = existing;
+            if (Box.Parent != null) Box.Parent.Controls.Remove(Box);
+            Box.BorderStyle = BorderStyle.None;
+            Box.Dock = DockStyle.None;
+            Box.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            Box.Margin = Padding.Empty;
+            Box.Font = Theme.FontMd;
+            Box.BackColor = Theme.N0;
+            Box.ForeColor = MapInk(Box.ForeColor);
+            Box.Visible = true;
             Controls.Add(Box);
             Box.GotFocus += (s, e) => Invalidate();
             Box.LostFocus += (s, e) => Invalidate();
@@ -207,8 +218,22 @@ namespace ScanLink.DesignSystem
             Box.MouseEnter += (s, e) => { _hover = true; Invalidate(); };
             Box.MouseLeave += (s, e) => { _hover = false; Invalidate(); };
             Box.HandleCreated += (s, e) => ApplyPlaceholder();
+            Box.ForeColorChanged += (s, e) =>
+            {
+                Color mapped = MapInk(Box.ForeColor);
+                if (mapped != Box.ForeColor) Box.ForeColor = mapped;
+            };
             Cursor = Cursors.IBeam;
             Height = Theme.HeightMd;
+        }
+
+        /// <summary>Legacy greys/blacks -> placeholder and body ink.</summary>
+        private static Color MapInk(Color c)
+        {
+            int argb = c.ToArgb();
+            if (argb == Color.Gray.ToArgb() || argb == Color.DarkGray.ToArgb() || argb == SystemColors.GrayText.ToArgb()) return Theme.N400;
+            if (argb == Color.Black.ToArgb() || argb == SystemColors.WindowText.ToArgb()) return Theme.TextBody;
+            return c;
         }
 
         /// <summary>The underlying TextBox, for events and properties not forwarded.</summary>
@@ -613,42 +638,87 @@ namespace ScanLink.DesignSystem
     }
 
     /// <summary>
-    /// Field box around a control that has no SL version (CheckedListBox, ListBox, ListView):
-    /// same white box, border, radius and focus colour as SLTextBox. The child loses its own
-    /// border and is inset 4px.
-    ///   new SLFrame(new CheckedListBox { CheckOnClick = true }) { Height = 96 }
+    /// Field box around a control that has no SL version, so it reads like the other fields:
+    /// same white box, #D0D5DD border, radius 6, indigo when focused.
+    ///   ListBox / CheckedListBox / ListView: border removed, inset 4px (set Height, e.g. 96).
+    ///   Editable ComboBox (DropDown style), NumericUpDown, single-line TextBox: 38px high,
+    ///   vertically centred, 12px side padding; a stock combo's own flat border is clipped away.
+    ///   new SLFrame(productCombo)       new SLFrame(new CheckedListBox()) { Height = 96 }
     /// </summary>
     [DesignerCategory("Code")]
     internal class SLFrame : SLControl
     {
         private readonly Control _child;
+        private readonly Panel _clip;   // hides a stock ComboBox's own 1px border
 
         public SLFrame(Control child)
         {
             _child = child;
+            if (child.Parent != null) child.Parent.Controls.Remove(child);
+            child.Dock = DockStyle.None;
+            child.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            child.Margin = Padding.Empty;
+            child.Visible = true;
+            child.BackColor = Theme.N0;
+            child.ForeColor = Theme.TextBody;
+
             ListBox list = child as ListBox;
             if (list != null) { list.BorderStyle = BorderStyle.None; list.IntegralHeight = false; list.Font = Theme.FontSm; }
             ListView view = child as ListView;
             if (view != null) view.BorderStyle = BorderStyle.None;
-            child.BackColor = Theme.N0;
-            child.ForeColor = Theme.TextBody;
+            NumericUpDown number = child as NumericUpDown;
+            if (number != null) { number.BorderStyle = BorderStyle.None; number.Font = Theme.FontMd; }
+            TextBox text = child as TextBox;
+            if (text != null && !text.Multiline) { text.BorderStyle = BorderStyle.None; text.Font = Theme.FontMd; }
+
+            ComboBox combo = child as ComboBox;
+            if (combo != null && !(combo is SLComboBox))
+            {
+                combo.FlatStyle = FlatStyle.Flat;
+                combo.Font = Theme.FontMd;
+                _clip = new Panel { BackColor = Theme.N0 };
+                _clip.Controls.Add(combo);
+                Controls.Add(_clip);
+            }
+            else Controls.Add(child);
+
             child.GotFocus += (s, e) => Invalidate();
             child.LostFocus += (s, e) => Invalidate();
-            Controls.Add(child);
-            Height = 96;
+            Height = IsSingleLine ? Theme.HeightMd : 96;
         }
 
         public Control Child { get { return _child; } }
 
+        private bool IsSingleLine
+        {
+            get
+            {
+                TextBox t = _child as TextBox;
+                return _child is ComboBox || _child is NumericUpDown || (t != null && !t.Multiline);
+            }
+        }
+
         protected override void OnLayout(LayoutEventArgs e)
         {
             base.OnLayout(e);
-            _child.SetBounds(5, 5, Math.Max(0, Width - 10), Math.Max(0, Height - 10));
+            if (_clip != null)
+            {
+                int h = _child.Height;
+                int inner = Math.Max(4, h - 2);
+                _clip.SetBounds(11, (Height - inner) / 2, Math.Max(10, Width - 14), inner);
+                _child.SetBounds(-1, -1, _clip.Width + 2, h);
+            }
+            else if (IsSingleLine)
+            {
+                int h = _child.Height;
+                _child.SetBounds(12, (Height - h) / 2, Math.Max(10, Width - 16), h);
+            }
+            else _child.SetBounds(5, 5, Math.Max(0, Width - 10), Math.Max(0, Height - 10));
         }
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            SLFieldBox.Paint(e.Graphics, ClientRectangle, _child.Focused, false, !Enabled, false);
+            SLFieldBox.Paint(e.Graphics, ClientRectangle, _child.ContainsFocus, false, !Enabled, false);
         }
     }
 }

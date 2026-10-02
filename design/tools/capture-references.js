@@ -17,8 +17,10 @@ const outArg = process.argv.indexOf('--out');
 const OUT = outArg > 0 ? path.resolve(process.argv[outArg + 1]) : path.join(ROOT, 'reference', 'png');
 
 async function launch() {
-  if (process.env.CHROME_PATH) return chromium.launch({ executablePath: process.env.CHROME_PATH });
-  return chromium.launch({ channel: 'chrome' });
+  // The gallery loads the mockup's screen scripts from disk through Babel (XHR over file://).
+  const args = ['--allow-file-access-from-files'];
+  if (process.env.CHROME_PATH) return chromium.launch({ executablePath: process.env.CHROME_PATH, args });
+  return chromium.launch({ channel: 'chrome', args });
 }
 
 (async () => {

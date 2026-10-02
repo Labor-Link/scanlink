@@ -18,17 +18,21 @@ namespace ScanLink.Themed
     /// zero in WinForms — the children size against the parent while the parent sizes
     /// against the children. That rendered every card as an empty white rectangle.
     /// </summary>
-    internal class CardPanel : Panel
+    internal class CardPanel : Panel, ScanLink.DesignSystem.ISLSurface
     {
+        // Card.js header: padding 16/20, title 16px/600 line 1.3 (21px), 2px gap, subtitle
+        // 13px line 1.5 (20px), 1px divider. Painted to match SLCard exactly.
         private const int HeaderPadTop = Theme.S4;
-        private const int TitleHeight = 24;
+        private const int HeaderPadBottom = Theme.S4;
+        private const int TitleHeight = 21;
+        private const int TitleGap = 2;
         private const int SubtitleHeight = 20;
 
         /// <summary>Header height for a card with both a title and a subtitle, and the
         /// vertical body padding. Callers that set an explicit Height have to budget for
         /// both — a card sized without them silently clips its own body, which is how the
         /// step cards lost their buttons.</summary>
-        public const int TitledHeaderHeight = HeaderPadTop + Theme.S3 + TitleHeight + SubtitleHeight;
+        public const int TitledHeaderHeight = HeaderPadTop + TitleHeight + TitleGap + SubtitleHeight + HeaderPadBottom + 1;
         public const int BodyPaddingV = Theme.S4 * 2;
 
         private readonly Panel _header;
@@ -83,7 +87,7 @@ namespace ScanLink.Themed
                 Dock = DockStyle.Bottom,
                 Height = 56,
                 BackColor = Color.Transparent,
-                Padding = new Padding(Theme.S5, Theme.S2, Theme.S5, Theme.S2),
+                Padding = new Padding(Theme.S5, Theme.S3, Theme.S5, Theme.S3),
                 Visible = false
             };
 
@@ -138,8 +142,9 @@ namespace ScanLink.Themed
                 return;
             }
 
-            int height = HeaderPadTop + Theme.S3;
+            int height = HeaderPadTop + HeaderPadBottom + 1;
             if (hasTitle) height += TitleHeight;
+            if (hasTitle && hasSubtitle) height += TitleGap;
             if (hasSubtitle) height += SubtitleHeight;
             if (!hasTitle && !hasSubtitle) height = 52;
 
@@ -157,21 +162,23 @@ namespace ScanLink.Themed
             int width = Math.Max(40, right - Theme.S5);
             int top = HeaderPadTop;
 
-            const TextFormatFlags flags =
-                TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis;
-
             if (!string.IsNullOrEmpty(_title))
             {
-                TextRenderer.DrawText(g, _title, Theme.FontLgBold,
-                    new Rectangle(Theme.S5, top, width, TitleHeight), Theme.TextHeading, flags);
-                top += TitleHeight;
+                ScanLink.DesignSystem.SLPaint.TextEllipsis(g, _title, Theme.FontLgSemibold,
+                    new Rectangle(Theme.S5, top, width, TitleHeight), Theme.TextHeading, TextFormatFlags.Left);
+                top += TitleHeight + TitleGap;
             }
             if (!string.IsNullOrEmpty(_subtitle))
             {
-                TextRenderer.DrawText(g, _subtitle, Theme.FontSm,
-                    new Rectangle(Theme.S5, top, width, SubtitleHeight), Theme.TextMuted, flags);
+                ScanLink.DesignSystem.SLPaint.TextEllipsis(g, _subtitle, Theme.FontSm,
+                    new Rectangle(Theme.S5, top, width, SubtitleHeight), Theme.TextMuted, TextFormatFlags.Left);
             }
+            ScanLink.DesignSystem.SLPaint.HLine(g, Theme.BorderSubtle, 1, Width - 1, _header.Bottom - 1);
         }
+
+        /// <summary>SL controls inside a card blend their corners into white (body) or the
+        /// footer band.</summary>
+        public Color SurfaceFor(Control child) { return child == _footer ? Theme.N25 : Theme.SurfaceCard; }
 
         protected override void OnControlAdded(ControlEventArgs e)
         {
@@ -194,16 +201,20 @@ namespace ScanLink.Themed
             if (Width < 2 || Height < 2) return;
 
             Graphics g = e.Graphics;
-            g.SmoothingMode = SmoothingMode.AntiAlias;
+            ScanLink.DesignSystem.SLPaint.Box(g, ClientRectangle, Theme.RadiusLg, Theme.SurfaceCard, Theme.BorderDefault);
 
-            // Inset by 1px so the border draws inside the bounds rather than being clipped.
-            Rectangle bounds = new Rectangle(0, 0, Width - 1, Height - 1);
-            using (GraphicsPath path = Theme.RoundedPath(bounds, Theme.RadiusLg))
-            using (SolidBrush fill = new SolidBrush(Theme.SurfaceCard))
-            using (Pen border = new Pen(Theme.BorderDefault, 1f))
+            if (_footer.Visible && _footer.Height > 0)
             {
-                g.FillPath(fill, path);
-                g.DrawPath(border, path);
+                // Footer band (#FCFCFD) clipped to the card's rounded inner shape, top divider.
+                Rectangle band = new Rectangle(1, _footer.Top, Width - 2, Height - 1 - _footer.Top);
+                using (GraphicsPath inner = ScanLink.DesignSystem.SLPaint.RoundedRect(new RectangleF(1, 1, Width - 2, Height - 2), Theme.RadiusLg - 1))
+                using (Region clip = new Region(inner))
+                {
+                    clip.Intersect(band);
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    using (SolidBrush b = new SolidBrush(Theme.N25)) g.FillRegion(b, clip);
+                }
+                ScanLink.DesignSystem.SLPaint.HLine(g, Theme.BorderSubtle, 1, Width - 1, _footer.Top);
             }
 
             PaintHeaderText(g);

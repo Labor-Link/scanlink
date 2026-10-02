@@ -16,12 +16,12 @@ contents, then page layout. The shell (sidebar, top bar) already exists in `V2Sh
 | Labels → "What are you labelling?" pattern | `AddCombinationDialog.cs` | ✅ on `SLDialog` + `SLFieldSet` |
 | Input prompts | `SLPrompt` (replaces VB `InputBox` in AddCombinationDialog) | ✅ — Form1's LAN prompt still uses `InputBox` |
 | All tables | `ThemeStyles.Grid` → `SLTableStyle` | ✅ painted to spec |
-| Scans | `V2ScansPage.cs` (rehosts Form1 controls) | ⏳ filters/cards use `Themed/*`; move to `SLCard` + `SLTextBox`/`SLComboBox` |
-| Labels | `V2PrintPage.cs`, `V2PrintSurfaces.cs` | ⏳ |
+| Scans | `V2ScansPage.cs` (rehosts Form1 controls) | ✅ Live badge + Sync/Print header, filter bar (`SLTextBox` search, `SLSegmentedControl`, `SLComboBox` crop, count), ghost disclosures, `SLButton` pager. Needs a real-machine check (Form1 can't render in CI) |
+| Labels | `V2PrintPage.cs`, `V2PrintSurfaces.cs` | ✅ mockup step chips, `SLFieldSet` steps with footer buttons, key/value summary, sticker preview. Needs a real-machine check |
 | Devices → scanners | `ScannerManagementForm.cs` (embedded page) | ✅ on `SLDialog`: offline banner, `SLTable` with badges + trash action, remove/help dialogs, log behind a toggle |
 | Crops & products | `SetupDialog.cs` (embedded page) | ✅ on `SLDialog`: `SLSegmentedControl` tabs, filter fields, `SLTable` in an `SLCard` |
 | Employee picker | `EmployeeSelectionDialog.cs` | ✅ on `SLDialog` + `SLTable` in an `SLCard` with pager footer |
-| Login | `V2LoginScreen.cs` | ⏳ inputs/buttons → `SLField`/`SLTextBox`/`SLButton` |
+| Login | `V2LoginScreen.cs` (`LoginLayout`) | ✅ scored against the mockup as scene `screen-login` |
 | Site selection | `Themed/SiteTileButton.cs` | ⏳ |
 | Overview, People | — | not in the app (no functionality to attach) |
 
