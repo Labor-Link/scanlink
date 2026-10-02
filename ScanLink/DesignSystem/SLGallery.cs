@@ -71,6 +71,7 @@ namespace ScanLink.DesignSystem
                 h = root.MeasureHeight(scene.Width);
                 host.ClientSize = new Size(scene.Width, h);
                 root.SetBounds(0, 0, scene.Width, h);
+                host.ActiveControl = null; // references are unfocused; a focused TextBox selects its text
                 Application.DoEvents();
                 host.Refresh();
 
@@ -89,6 +90,7 @@ namespace ScanLink.DesignSystem
                 dialog.Location = new Point(-20000, -20000);
                 dialog.Show();
                 dialog.PerformLayout();
+                dialog.ActiveControl = null;
                 Application.DoEvents();
                 dialog.Refresh();
                 Bitmap bmp = new Bitmap(dialog.Width, dialog.Height, PixelFormat.Format32bppArgb);
@@ -254,7 +256,7 @@ namespace ScanLink.DesignSystem
             foreach (string[] r in rows)
             {
                 SLStack text = Column(1,
-                    new SLText(r[0], SLTextStyle.BodySm) { LineHeight = 1.3f },
+                    new SLText(r[0], SLTextStyle.BodySmMedium) { LineHeight = 1.3f },
                     new SLText(r[1], SLTextStyle.MonoCaption));
                 SLStack row = Row(12, text, new SLBadge(r[2], r[3] == "s" ? SLTone.Success : SLTone.Error, true));
                 row.Padding = new Padding(12, 10, 12, 10);
@@ -277,7 +279,7 @@ namespace ScanLink.DesignSystem
 
         private static Control ScansTable()
         {
-            SLTable table = new SLTable { Height = SLTableStyle.HeaderHeight + 4 * SLTableStyle.RowHeight };
+            SLTable table = new SLTable { Height = SLTableStyle.HeaderHeight + 4 * SLTableStyle.BadgeRowHeight };
             DataTable data = new DataTable();
             foreach (string c in new[] { "Serial", "Time", "Block", "Picked by", "Status" }) data.Columns.Add(c);
             data.Rows.Add("SC-0093-AA", "07:14", "14", "J. Mokoena", "Synced");

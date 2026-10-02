@@ -30,8 +30,8 @@ folder turns it into something a C# developer — or a coding agent — can matc
   `SelectedValue`, `CheckedChanged` all still work, so migrating a form changes its look, not its logic.
 * **Icons are vectors.** All 1,737 Lucide icons (the mockup's icon set), any size, any colour:
   `IconName = "cloud-upload"`.
-* **Font weights match Chrome on Windows.** CSS 600 → `Segoe UI Semibold`; CSS 500 → Regular
-  (Segoe UI has no 500, so Chrome falls back to 400 too).
+* **Font weights match Chrome on Windows.** CSS 500 and 600 → `Segoe UI Semibold` (Chrome picks
+  Semibold for 500 — confirmed by the CI report); 700 → Bold; 400 → Regular.
 
 ## Checking fidelity
 

@@ -48,6 +48,8 @@ namespace ScanLink
             AddAction(buttonOK);
             AcceptButton = buttonOK;
             CancelButton = buttonOK;
+            // Focus OK, not the log: a focused TextBox selects all its text on open.
+            ActiveControl = buttonOK;
         }
 
         private void ButtonCopy_Click(object sender, EventArgs e)

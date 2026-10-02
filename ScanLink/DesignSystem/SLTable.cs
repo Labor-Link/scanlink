@@ -12,7 +12,7 @@ namespace ScanLink.DesignSystem
     /// SLTableStyle.Apply(grid) (ThemeStyles.Grid does this) — it paints every cell itself.
     ///
     ///   Header  37px, #F7F8FA, 12px/600 UPPERCASE muted ink, 16px side padding, 1px #E4E7EC bottom.
-    ///   Rows    43px, white; hover #F7F8FA; selected #EFEFFD; 13px body ink; 16px side padding;
+    ///   Rows    43px (49px when there is a badge column), white; hover #F7F8FA; selected #EFEFFD; 13px body ink; 16px side padding;
     ///           1px #F1F3F7 divider. No zebra striping.
     ///   Columns SetMono (Consolas — serials), SetMuted (grey — times), SetBadge (status pill).
     ///   Empty   set EmptyState; it replaces the rows when the grid has none.
@@ -48,6 +48,8 @@ namespace ScanLink.DesignSystem
     {
         public const int HeaderHeight = 37;
         public const int RowHeight = 43;
+        /// <summary>Rows in a table with a badge column: the 24px pill sets the height.</summary>
+        public const int BadgeRowHeight = 49;
         public const int CellPadX = 16;
 
         private sealed class State
@@ -80,7 +82,7 @@ namespace ScanLink.DesignSystem
             grid.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
             grid.ColumnHeadersHeight = HeaderHeight;
-            grid.RowTemplate.Height = RowHeight;
+            grid.RowTemplate.Height = RowHeightOf(grid);
             grid.AllowUserToResizeRows = false;
 
             grid.ColumnHeadersDefaultCellStyle.BackColor = Theme.N50;
@@ -99,7 +101,7 @@ namespace ScanLink.DesignSystem
             grid.AlternatingRowsDefaultCellStyle.SelectionBackColor = Theme.Indigo50;
             grid.AlternatingRowsDefaultCellStyle.SelectionForeColor = Theme.TextBody;
 
-            foreach (DataGridViewRow row in grid.Rows) row.Height = RowHeight;
+            foreach (DataGridViewRow row in grid.Rows) row.Height = RowHeightOf(grid);
 
             if (already) return;
             grid.CellPainting += OnCellPainting;
@@ -107,7 +109,7 @@ namespace ScanLink.DesignSystem
             grid.MouseLeave += OnMouseLeave;
             grid.RowsAdded += (s, e) => { SyncEmpty(grid); };
             grid.RowsRemoved += (s, e) => SyncEmpty(grid);
-            grid.DataBindingComplete += (s, e) => { foreach (DataGridViewRow row in grid.Rows) row.Height = RowHeight; SyncEmpty(grid); };
+            grid.DataBindingComplete += (s, e) => { ApplyRowHeight(grid); SyncEmpty(grid); };
             grid.Resize += (s, e) => SyncEmpty(grid);
             EnableDoubleBuffering(grid);
         }
@@ -130,7 +132,22 @@ namespace ScanLink.DesignSystem
             State st = S(g);
             st.Badges[column] = toneFor ?? (o => SLTone.Neutral);
             if (!dot) st.BadgeNoDot.Add(column); else st.BadgeNoDot.Remove(column);
+            ApplyRowHeight(g);
             g.Invalidate();
+        }
+
+        /// <summary>43px, or 49px when a badge column is present (as DataTable.js lays out).</summary>
+        public static int RowHeightOf(DataGridView g)
+        {
+            State st;
+            return States.TryGetValue(g, out st) && st.Badges.Count > 0 ? BadgeRowHeight : RowHeight;
+        }
+
+        private static void ApplyRowHeight(DataGridView g)
+        {
+            int h = RowHeightOf(g);
+            g.RowTemplate.Height = h;
+            foreach (DataGridViewRow row in g.Rows) row.Height = h;
         }
 
         public static SLEmptyState GetEmpty(DataGridView g) { return S(g).Empty; }

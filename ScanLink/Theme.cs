@@ -148,9 +148,10 @@ namespace ScanLink
         public static readonly Font FontMono = Mono(9.0f);
         public static readonly Font FontMonoSm = Mono(8.25f);
 
-        // Weight mapping, matching what Chrome does with Segoe UI on Windows:
+        // Weight mapping, matching what Chrome renders with Segoe UI on Windows (verified in the
+        // CI fidelity report — Chrome picks Semibold for 500, not Regular):
+        //   CSS 500 -> "Segoe UI Semibold"  (the *Medium aliases below)
         //   CSS 600 -> "Segoe UI Semibold"  (use these, NOT the *Bold fonts above, for v2 UI)
-        //   CSS 500 -> Segoe UI Regular     (Segoe UI has no 500; CSS falls back down to 400)
         //   CSS 700 -> FontStyle.Bold
         private const string FamilySemibold = "Segoe UI Semibold";
 
@@ -162,6 +163,9 @@ namespace ScanLink
         public static readonly Font Font2XlSemibold = Semi(15.0f);  // 20px / 600
         public static readonly Font Font3XlSemibold = Semi(18.0f);  // 24px / 600
         public static readonly Font Font4XlSemibold = Semi(22.5f);  // 30px / 600
+        // CSS 500. Same face as Semibold on Windows; separate names keep the mockup's intent readable.
+        public static readonly Font FontSmMedium = FontSmSemibold;  // 13px / 500
+        public static readonly Font FontMdMedium = FontMdSemibold;  // 14px / 500
         public static readonly Font FontMonoMd = Mono(10.5f);       // 14px, mono text fields
         public static readonly Font FontMonoXs = Mono(9.0f);        // 12px, serials under names
         public static readonly Font FontMonoBody = Mono(9.75f);     // 13px, mono table cells

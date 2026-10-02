@@ -45,7 +45,19 @@ async function launch() {
       : `[data-scene="${scene.id}"]`;
     const el = await page.$(selector);
     if (!el) { console.warn('missing scene element', scene.id); continue; }
-    await el.screenshot({ path: path.join(OUT, scene.id + '.png') });
+    // CSS line-heights produce fractional heights (e.g. 249.4px); an element screenshot then
+    // includes a half-covered row of the grey page behind. Round the scene up to whole pixels.
+    await el.evaluate((node) => {
+      const h = node.getBoundingClientRect().height;
+      if (h !== Math.round(h)) node.style.height = Math.ceil(h) + 'px';
+    });
+    // Clip on whole pixels: a centred dialog can sit on a half pixel, and an element
+    // screenshot would then include a row of whatever is behind it.
+    const box = await el.boundingBox();
+    await page.screenshot({
+      path: path.join(OUT, scene.id + '.png'),
+      clip: { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) }
+    });
     console.log('captured', scene.id);
   }
   await browser.close();

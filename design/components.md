@@ -23,7 +23,8 @@ there is a component or token for it — find it here first.
 | `--r-sm/md/lg` | `Theme.RadiusSm` 6 / `RadiusMd` 8 / `RadiusLg` 12 | |
 | `--h-sm/md/lg` | `Theme.HeightSm` 32 / `HeightMd` 38 / `HeightLg` 44 | |
 | `font: 600 …` | `Theme.Font*Semibold` | **never** `FontStyle.Bold` for 600 |
-| `font: 500 …` / `400 …` | `Theme.FontSm`, `Theme.FontMd`, … | 500 renders as Regular on Windows |
+| `font: 500 …` | `Theme.FontSmMedium`, `Theme.FontMdMedium` | Chrome on Windows renders 500 as Segoe UI Semibold (verified in CI) |
+| `font: 400 …` | `Theme.FontSm`, `Theme.FontMd`, … | Regular |
 | `--font-mono` | `Theme.FontMonoBody` (13px), `FontMonoMd` (14px), `FontMonoXs` (12px) | Consolas |
 
 Text should normally go through `SLText` with a role instead of a font token (below).
@@ -88,6 +89,7 @@ Replace `Label` with `SLText` and pick a role. Wraps to its width, keeps CSS lin
 | `Body` | 14px/400 body | lead paragraphs |
 | `BodySm` | 13px/400 body | default UI text |
 | `BodySmStrong` | 13px/600 body | emphasis |
+| `BodySmMedium` | 13px/500 body | names in lists, key/value values |
 | `Muted` | 13px/400 muted | subtitles, descriptions |
 | `Caption` | 12px/400 muted | hints, footnotes |
 | `Label` | 13px label ink | form labels (usually via `SLField`) |
@@ -287,7 +289,7 @@ if (name == null) return; // cancelled
 ```csharp
 var kv = new SLKeyValueList(); kv.Add("Time", "07:14"); kv.Add("Picked by", "J. Mokoena");
 ```
-Muted keys, body values, 10px rows, 20px column gap (the scan-detail dialog).
+Muted keys, 500-weight body values, 10px rows, 20px column gap (the scan-detail dialog).
 
 ---
 
@@ -306,7 +308,7 @@ table.SetMuted("Time");
 table.SetBadge("Status", v => (string)v == "Synced" ? SLTone.Success : SLTone.Warning);
 table.EmptyState = new SLEmptyState { IconName = "search-x", Title = "No scans match that search", Description = "…" };
 ```
-* Header 37px `#F7F8FA`, 12px/600 UPPERCASE muted, 1px bottom border. Rows 43px, 16px padding,
+* Header 37px `#F7F8FA`, 12px/600 UPPERCASE muted, 1px bottom border. Rows 43px (49px once a badge column is set), 16px padding,
   hover `#F7F8FA`, selected indigo-50, `#F1F3F7` dividers, no zebra stripes.
 * Existing grids: `ThemeStyles.Grid(grid)` (or `SLTableStyle.Apply(grid)`) gives the same look without changing type.
 * Put tables in an `SLCard` with `BodyPadding = Padding.Empty`.

@@ -141,17 +141,37 @@ namespace ScanLink.DesignSystem
             TextRenderer.DrawText(g, text, font, rect, color, Wrapped);
         }
 
+        // Measuring goes through a device context: the MeasureText overloads WITHOUT one ignore
+        // NoPadding and add ~6px of overhang padding, which made every button, badge and
+        // label-to-asterisk gap 6px wider than the mockup (seen in the CI fidelity report).
+        private static Bitmap _measureBitmap;
+        private static Graphics _measureGraphics;
+
+        private static Graphics MeasureSurface
+        {
+            get
+            {
+                if (_measureGraphics == null)
+                {
+                    _measureBitmap = new Bitmap(1, 1);
+                    _measureGraphics = Graphics.FromImage(_measureBitmap);
+                }
+                return _measureGraphics;
+            }
+        }
+
         public static Size Measure(string text, Font font)
         {
             if (string.IsNullOrEmpty(text)) return Size.Empty;
-            return TextRenderer.MeasureText(text, font, new Size(int.MaxValue, int.MaxValue), SingleLine);
+            return TextRenderer.MeasureText(MeasureSurface, text, font, new Size(int.MaxValue, int.MaxValue),
+                TextFormatFlags.NoPadding | TextFormatFlags.SingleLine | TextFormatFlags.NoPrefix);
         }
 
         /// <summary>Height of text wrapped to width, matching Paragraph.</summary>
         public static int MeasureHeight(string text, Font font, int width)
         {
             if (string.IsNullOrEmpty(text) || width <= 0) return 0;
-            return TextRenderer.MeasureText(text, font, new Size(width, int.MaxValue), Wrapped).Height;
+            return TextRenderer.MeasureText(MeasureSurface, text, font, new Size(width, int.MaxValue), Wrapped).Height;
         }
 
         /// <summary>
@@ -160,8 +180,14 @@ namespace ScanLink.DesignSystem
         /// </summary>
         public static int LineBox(Font font, float lineHeight)
         {
-            float px = font.SizeInPoints * 96f / 72f;
-            return (int)Math.Round(px * lineHeight);
+            return (int)Math.Round(LineBoxF(font, lineHeight));
+        }
+
+        /// <summary>Exact CSS line box (13px * 1.5 = 19.5). Stacked lines accumulate this and
+        /// round once, as the browser does, instead of rounding every line.</summary>
+        public static float LineBoxF(Font font, float lineHeight)
+        {
+            return font.SizeInPoints * 96f / 72f * lineHeight;
         }
 
         public static void HLine(Graphics g, Color color, int x1, int x2, int y)

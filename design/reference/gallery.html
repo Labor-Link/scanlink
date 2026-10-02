@@ -17,10 +17,14 @@
 <link rel="stylesheet" href="../mockup/tokens.css">
 <style>
   body { margin: 0; padding: 24px; background: #E9EBF0; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
-  .scene { box-sizing: border-box; padding: 24px; }
+  /* Flex column, not block: a lone inline-flex Button in a block box sits on a text line box,
+     which adds ~1px of strut below it that the WinForms side (rightly) does not have. */
+  .scene { box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; }
+  .scene.inline { align-items: flex-start; }
   .scene.app { background: var(--surface-app); }
   .scene.card { background: var(--surface-card); }
-  .label { font: 11px/1.4 monospace; color: #667085; margin-bottom: 4px; }
+  /* Whole-pixel height: a fractional label (11px * 1.4) puts every scene on a half pixel. */
+  .label { font: 11px/16px monospace; height: 16px; color: #667085; margin-bottom: 4px; }
   /* Dialog scenes: the Dialog component is position:fixed; contain it in its scene box. */
   .dialog-host { position: relative; transform: translateZ(0); }
 </style>
@@ -53,12 +57,13 @@ const COLS = [
 
 // id -> { width, bg: "app" | "card", dialog?: true, render }
 // Keep ids, widths and content identical to SLGallery.cs.
+// inline: true = the content is an inline control (a lone Button) that must not stretch.
 const SCENES = {
-  "button-primary":     { width: 240, bg: "card", render: () => <Button variant="primary" icon={<Icon name="printer" size={16} />}>Print labels</Button> },
-  "button-secondary":   { width: 240, bg: "card", render: () => <Button variant="secondary" icon={<Icon name="cloud-upload" size={16} />}>Sync now</Button> },
-  "button-ghost-sm":    { width: 240, bg: "card", render: () => <Button variant="ghost" size="sm" iconEnd={<Icon name="arrow-right" size={16} />}>See all scans</Button> },
-  "button-danger":      { width: 240, bg: "card", render: () => <Button variant="danger">Remove scanner</Button> },
-  "button-disabled":    { width: 240, bg: "card", render: () => <Button variant="primary" disabled>Next</Button> },
+  "button-primary":     { width: 240, bg: "card", inline: true, render: () => <Button variant="primary" icon={<Icon name="printer" size={16} />}>Print labels</Button> },
+  "button-secondary":   { width: 240, bg: "card", inline: true, render: () => <Button variant="secondary" icon={<Icon name="cloud-upload" size={16} />}>Sync now</Button> },
+  "button-ghost-sm":    { width: 240, bg: "card", inline: true, render: () => <Button variant="ghost" size="sm" iconEnd={<Icon name="arrow-right" size={16} />}>See all scans</Button> },
+  "button-danger":      { width: 240, bg: "card", inline: true, render: () => <Button variant="danger">Remove scanner</Button> },
+  "button-disabled":    { width: 240, bg: "card", inline: true, render: () => <Button variant="primary" disabled>Next</Button> },
   "button-variants":    { width: 520, bg: "card", render: () => (
       <div style={{ display: "flex", gap: "8px" }}>
         <Button variant="navy">Navy</Button><Button variant="success">Success</Button><Button variant="dangerQuiet">Clean up</Button>
@@ -166,7 +171,7 @@ function Scene({ id, spec }) {
   return (
     <div>
       <div className="label">{id}</div>
-      <div className={"scene " + spec.bg} data-scene={id} data-capture style={{ width: spec.width + "px" }}>{spec.render()}</div>
+      <div className={"scene " + spec.bg + (spec.inline ? " inline" : "")} data-scene={id} data-capture style={{ width: spec.width + "px" }}>{spec.render()}</div>
     </div>);
 }
 

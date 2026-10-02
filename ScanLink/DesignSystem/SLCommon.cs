@@ -36,11 +36,13 @@ namespace ScanLink.DesignSystem
         BodySm,
         /// <summary>13px / 600 / 1.4, body ink.</summary>
         BodySmStrong,
+        /// <summary>13px / 500 / 1.4, body ink. Names in lists, key/value values.</summary>
+        BodySmMedium,
         /// <summary>13px / 400 / 1.5, muted ink. Subtitles and descriptions.</summary>
         Muted,
         /// <summary>12px / 400 / 1.4, muted ink. Hints and captions.</summary>
         Caption,
-        /// <summary>13px / 400 (500 in CSS) / 1.2, label ink. Form field labels.</summary>
+        /// <summary>13px / 500 / 1.2, label ink. Form field labels.</summary>
         Label,
         /// <summary>13px Consolas, body ink. Serials, ports, addresses.</summary>
         Mono,
@@ -60,6 +62,7 @@ namespace ScanLink.DesignSystem
         }
 
         public int LineBox { get { return SLPaint.LineBox(Font, LineHeight); } }
+        public float LineBoxF { get { return SLPaint.LineBoxF(Font, LineHeight); } }
     }
 
     internal static class SLType
@@ -77,7 +80,8 @@ namespace ScanLink.DesignSystem
                 case SLTextStyle.BodySmStrong: return new SLTypeSpec(Theme.FontSmSemibold, Theme.TextBody, 1.4f);
                 case SLTextStyle.Muted: return new SLTypeSpec(Theme.FontSm, Theme.TextMuted, 1.5f);
                 case SLTextStyle.Caption: return new SLTypeSpec(Theme.FontXs, Theme.TextMuted, 1.4f);
-                case SLTextStyle.Label: return new SLTypeSpec(Theme.FontSm, Theme.TextLabel, 1.2f);
+                case SLTextStyle.BodySmMedium: return new SLTypeSpec(Theme.FontSmMedium, Theme.TextBody, 1.4f);
+                case SLTextStyle.Label: return new SLTypeSpec(Theme.FontSmMedium, Theme.TextLabel, 1.2f);
                 case SLTextStyle.Mono: return new SLTypeSpec(Theme.FontMonoBody, Theme.TextBody, 1.4f);
                 case SLTextStyle.MonoCaption: return new SLTypeSpec(Theme.FontMonoXs, Theme.TextMuted, 1.3f);
                 default: return new SLTypeSpec(Theme.FontSm, Theme.TextBody, 1.5f);
@@ -164,25 +168,25 @@ namespace ScanLink.DesignSystem
         /// <summary>Draws wrapped text with CSS line-height rhythm; returns the height used.</summary>
         public static int DrawWrapped(Graphics g, string text, SLTypeSpec spec, Rectangle area, TextFormatFlags align)
         {
-            return DrawWrapped(g, text, spec.Font, spec.Color, spec.LineBox, area, align);
+            return DrawWrapped(g, text, spec.Font, spec.Color, spec.LineBoxF, area, align);
         }
 
-        public static int DrawWrapped(Graphics g, string text, Font font, Color color, int lineBox, Rectangle area, TextFormatFlags align)
+        public static int DrawWrapped(Graphics g, string text, Font font, Color color, float lineBox, Rectangle area, TextFormatFlags align)
         {
             List<string> lines = Wrap(text, font, area.Width);
-            int y = area.Y;
-            foreach (string line in lines)
+            for (int i = 0; i < lines.Count; i++)
             {
-                SLPaint.Text(g, line, font, new Rectangle(area.X, y, area.Width, lineBox), color, align);
-                y += lineBox;
+                int top = area.Y + (int)Math.Round(i * lineBox);
+                int bottom = area.Y + (int)Math.Round((i + 1) * lineBox);
+                SLPaint.Text(g, lines[i], font, new Rectangle(area.X, top, area.Width, bottom - top), color, align);
             }
-            return y - area.Y;
+            return (int)Math.Round(lines.Count * lineBox);
         }
 
         public static int WrappedHeight(string text, SLTypeSpec spec, int width)
         {
             if (string.IsNullOrEmpty(text)) return 0;
-            return Wrap(text, spec.Font, width).Count * spec.LineBox;
+            return (int)Math.Round(Wrap(text, spec.Font, width).Count * spec.LineBoxF);
         }
     }
 

@@ -350,7 +350,7 @@ namespace ScanLink.DesignSystem
 
     /// <summary>
     /// Two-column label/value list (the scan-detail grid: "auto 1fr", gap 10px 20px).
-    /// Keys 13px muted, values 13px body ink, line-height 1.4.
+    /// Keys 13px muted, values 13px/500 body ink, line-height 1.4.
     ///   var kv = new SLKeyValueList(); kv.Add("Time", "07:14"); kv.Add("Block", "14");
     /// </summary>
     [DesignerCategory("Code")]
@@ -358,7 +358,7 @@ namespace ScanLink.DesignSystem
     {
         private readonly System.Collections.Generic.List<string[]> _rows = new System.Collections.Generic.List<string[]>();
         private static readonly SLTypeSpec KeySpec = new SLTypeSpec(Theme.FontSm, Theme.TextMuted, 1.4f);
-        private static readonly SLTypeSpec ValueSpec = new SLTypeSpec(Theme.FontSm, Theme.TextBody, 1.4f);
+        private static readonly SLTypeSpec ValueSpec = new SLTypeSpec(Theme.FontSmMedium, Theme.TextBody, 1.4f);
 
         public void Add(string key, string value)
         {

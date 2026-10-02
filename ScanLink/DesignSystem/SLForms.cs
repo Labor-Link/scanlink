@@ -443,8 +443,10 @@ namespace ScanLink.DesignSystem
             bool empty = SelectedIndex < 0;
             string text = empty ? (_placeholder ?? "") : GetItemText(SelectedItem);
             Color ink = !Enabled ? Theme.N400 : empty ? Theme.N400 : Theme.TextBody;
-            SLPaint.Text(g, text, Font, new Rectangle(12, 0, Width - 12 - 36, Height), ink, TextFormatFlags.Left);
-            SLIcon.Draw(g, "chevron-down", new Rectangle(Width - 12 - 16, (Height - 16) / 2, 16, 16), Enabled ? Theme.N500 : Theme.N300);
+            // Chrome's native <select> adds ~4px inside the 12px padding and draws a small dark
+            // arrow close to the right edge (measured from the CI fidelity report).
+            SLPaint.Text(g, text, Font, new Rectangle(16, 0, Width - 16 - 28, Height), ink, TextFormatFlags.Left);
+            SLIcon.Draw(g, "chevron-down", new Rectangle(Width - 15, (Height - 14) / 2, 14, 14), Enabled ? Theme.N800 : Theme.N300, 2.4f);
         }
 
         protected override void OnDrawItem(DrawItemEventArgs e)
@@ -455,14 +457,15 @@ namespace ScanLink.DesignSystem
             using (SolidBrush b = new SolidBrush(selected ? Theme.Indigo50 : Theme.N0))
                 e.Graphics.FillRectangle(b, e.Bounds);
             string text = GetItemText(Items[e.Index]);
-            Rectangle r = new Rectangle(e.Bounds.X + 12, e.Bounds.Y, e.Bounds.Width - 24, e.Bounds.Height);
+            Rectangle r = new Rectangle(e.Bounds.X + 16, e.Bounds.Y, e.Bounds.Width - 28, e.Bounds.Height);
             SLPaint.Text(e.Graphics, text, Font, r, selected ? Theme.TextHeading : Theme.TextBody, TextFormatFlags.Left);
         }
     }
 
     /// <summary>
-    /// Checkbox.js: 16px box (indigo when checked), 10px gap, 14px label, optional 12px muted
-    /// Description below. Subclasses CheckBox, so Checked / CheckedChanged are unchanged.
+    /// Checkbox.js: 16px box (indigo when checked), 14px/500 label, optional 12px muted
+    /// Description below. The box keeps the browser's default checkbox margin (4px left, 3px
+    /// right/bottom), so the text starts 33px in. Subclasses CheckBox (Checked / CheckedChanged).
     /// </summary>
     [DesignerCategory("Code")]
     internal class SLCheckBox : CheckBox, ISLMeasure
@@ -483,20 +486,21 @@ namespace ScanLink.DesignSystem
 
         public string Description { get { return _description; } set { _description = value; if (Parent != null) Parent.PerformLayout(this, "Bounds"); Invalidate(); } }
 
-        private static readonly SLTypeSpec LabelSpec = new SLTypeSpec(Theme.FontMd, Theme.TextBody, 1.3f);
+        private static readonly SLTypeSpec LabelSpec = new SLTypeSpec(Theme.FontMdMedium, Theme.TextBody, 1.3f);
+        private const int BoxX = 4, TextX = 33; // 4px margin + 16px box + 3px margin + 10px gap
 
         public override Size GetPreferredSize(Size proposedSize)
         {
-            int w = 26 + Math.Max(SLPaint.Measure(Text, LabelSpec.Font).Width,
-                                  string.IsNullOrEmpty(_description) ? 0 : SLPaint.Measure(_description, Theme.FontXs).Width) + 1;
+            int w = TextX + Math.Max(SLPaint.Measure(Text, LabelSpec.Font).Width,
+                                     string.IsNullOrEmpty(_description) ? 0 : SLPaint.Measure(_description, Theme.FontXs).Width) + 1;
             return new Size(w, MeasureHeight(w));
         }
 
         public int MeasureHeight(int width)
         {
             int h = LabelSpec.LineBox;
-            if (!string.IsNullOrEmpty(_description)) h += 2 + SLLayout.WrappedHeight(_description, SLType.Of(SLTextStyle.Caption), Math.Max(10, width - 26));
-            return Math.Max(h, 17);
+            if (!string.IsNullOrEmpty(_description)) h += 2 + SLLayout.WrappedHeight(_description, SLType.Of(SLTextStyle.Caption), Math.Max(10, width - TextX));
+            return Math.Max(h, 20); // 1px top margin + 16px box + 3px bottom margin
         }
 
         protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
@@ -512,7 +516,7 @@ namespace ScanLink.DesignSystem
         {
             Graphics g = e.Graphics;
             OnPaintBackground(e);
-            Rectangle box = new Rectangle(0, 1, 16, 16);
+            Rectangle box = new Rectangle(BoxX, 1, 16, 16);
             if (Checked)
             {
                 Color fill = Enabled ? (_hover ? Theme.ActionPrimaryHover : Theme.ActionPrimary) : Theme.N300;
@@ -521,15 +525,16 @@ namespace ScanLink.DesignSystem
             }
             else
             {
-                SLPaint.Box(g, box, 3, Enabled ? Theme.N0 : Theme.N50, Enabled ? (_hover ? Theme.N500 : Theme.N400) : Theme.N200);
+                // Chrome's unchecked box: white with a mid-grey 1px border.
+                SLPaint.Box(g, box, 3, Enabled ? Theme.N0 : Theme.N50, Enabled ? (_hover ? Theme.N600 : Theme.N500) : Theme.N200);
             }
             if (Focused && ShowFocusCues) SLPaint.FocusRing(g, Rectangle.Inflate(box, -1, -1), 3);
 
             SLTypeSpec label = LabelSpec;
             if (!Enabled) label.Color = Theme.N400;
-            SLPaint.Text(g, Text, label.Font, new Rectangle(26, 0, Width - 26, label.LineBox), label.Color, TextFormatFlags.Left);
+            SLPaint.Text(g, Text, label.Font, new Rectangle(TextX, 0, Width - TextX, label.LineBox), label.Color, TextFormatFlags.Left);
             if (!string.IsNullOrEmpty(_description))
-                SLLayout.DrawWrapped(g, _description, SLType.Of(SLTextStyle.Caption), new Rectangle(26, label.LineBox + 2, Width - 26, 1000), TextFormatFlags.Left);
+                SLLayout.DrawWrapped(g, _description, SLType.Of(SLTextStyle.Caption), new Rectangle(TextX, label.LineBox + 2, Width - TextX, 1000), TextFormatFlags.Left);
         }
     }
 
@@ -555,7 +560,7 @@ namespace ScanLink.DesignSystem
 
         public string Description { get { return _description; } set { _description = value; if (Parent != null) Parent.PerformLayout(this, "Bounds"); Invalidate(); } }
 
-        private static readonly SLTypeSpec LabelSpec = new SLTypeSpec(Theme.FontMd, Theme.TextBody, 1.3f);
+        private static readonly SLTypeSpec LabelSpec = new SLTypeSpec(Theme.FontMdMedium, Theme.TextBody, 1.3f);
 
         private int TextHeight(int width)
         {
