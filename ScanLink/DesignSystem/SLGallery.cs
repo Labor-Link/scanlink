@@ -225,6 +225,11 @@ namespace ScanLink.DesignSystem
                     new SLToggle { Text = "Open ScanLink on this page", Description = "Otherwise ScanLink opens on Scans.", Checked = true },
                     new SLToggle { Text = "Advanced settings" })
             };
+            yield return new Scene
+            {
+                Id = "segmented", Width = 520,
+                Build = () => Row(0, new SLSegmentedControl("Today", "Last 7 days", "This season", "Custom"))
+            };
             yield return new Scene { Id = "card-equipment", Width = 440, AppBackground = true, Build = EquipmentCard };
             yield return new Scene { Id = "card-form", Width = 640, AppBackground = true, Build = FormCard };
             yield return new Scene
@@ -244,6 +249,7 @@ namespace ScanLink.DesignSystem
 
             // C#-only scenes (no mockup counterpart): rendered for review, not scored.
             yield return new Scene { Id = "app-add-combination", BuildDialog = () => new AddCombinationDialog(new ProductCombinationsService(new ApiAuthService())) };
+            yield return new Scene { Id = "app-setup-dialog", BuildDialog = () => new SetupDialog(new ProductCombinationsService(new ApiAuthService())) };
             yield return new Scene { Id = "app-error-dialog", BuildDialog = () => ErrorDialog.Create("Upload failed", "System.Net.WebException: The remote name could not be resolved: 'api.scanlink.app'\r\n   at ScanLogUploadService.UploadAsync()") };
         }
 

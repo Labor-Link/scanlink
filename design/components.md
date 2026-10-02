@@ -276,6 +276,17 @@ internal class RemoveScannerDialog : SLDialog
 * Embedded as a page (`EmbeddedFormHost`): drawn as a card on the page, no ✕, no backdrop.
 * Inherit from it for **every** dialog. Never `FormBorderStyle.FixedDialog` + hand-placed controls.
 
+### Segmented switch → `SLSegmentedControl`
+
+The range picker on the mockup's Scans screen (Today / Last 7 days / This season / Custom). Use it
+for a few mutually exclusive views or filters, e.g. tabs over a table.
+```csharp
+var tabs = new SLSegmentedControl("Today", "Last 7 days", "This season", "Custom");
+tabs.SelectedIndexChanged += (s, e) => Reload(tabs.SelectedItem);
+```
+* `#F1F3F7` track, 3px padding, 4px gaps; selected item white with a soft shadow, heading ink, 600.
+* ←/→ keys move the selection. AutoSize: do not set Width.
+
 ### Prompt → `SLPrompt`
 
 Instead of `Microsoft.VisualBasic.Interaction.InputBox` or ad-hoc input forms:
@@ -318,7 +329,9 @@ table.EmptyState = new SLEmptyState { IconName = "search-x", Title = "No scans m
 ## Not yet in the library
 
 From the mockup but not ported yet: `Pagination`, `StatTile` (v1 exists as `Themed/StatTile.cs`),
-`SiteTile` (`Themed/SiteTileButton.cs`), `SearchField` (`Themed/SearchField.cs`), `DateField`,
+`SiteTile` (`Themed/SiteTileButton.cs`), `SearchField` (`Themed/SearchField.cs`; or `SLTextBox` with
+`PrefixIcon = "search"`), `DateField`,
 `Slider`, `ProgressBar`, `StatusBar`, `Sidebar` / `TopBar` (`Themed/SidebarNav.cs`, `Themed/TopBar.cs`).
+`Themed/SegmentedControl.cs` is superseded by `SLSegmentedControl`.
 The `Themed/*` versions predate this library and restyle stock controls; when you touch them, port
 them to SL controls (read the mockup source file, then follow the patterns above) and add a gallery scene.

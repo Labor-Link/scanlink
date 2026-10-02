@@ -102,6 +102,20 @@ const SCENES = {
         <Toggle label="Open ScanLink on this page" description="Otherwise ScanLink opens on Scans." checked={true} onChange={() => {}} />
         <Toggle label="Advanced settings" checked={false} onChange={() => {}} />
       </div>) },
+  // Inline markup copied from design/mockup/screens/ScansScreen.js (the range switch).
+  "segmented":          { width: 520, bg: "card", render: () => (
+      <div style={{ display: "flex" }}>
+        <div style={{ display: "flex", gap: "4px", padding: "3px", background: "var(--n-100)", borderRadius: "var(--r-sm)" }}>
+          {["Today", "Last 7 days", "This season", "Custom"].map((r) => (
+            <button key={r} type="button"
+              style={{ padding: "6px 12px", border: "none", borderRadius: "var(--r-xs)", cursor: "pointer",
+                background: r === "Today" ? "var(--surface-card)" : "transparent",
+                boxShadow: r === "Today" ? "var(--e-1)" : "none",
+                color: r === "Today" ? "var(--text-heading)" : "var(--text-muted)",
+                font: `${r === "Today" ? 600 : 500} var(--f-sm)/1 var(--font-ui)` }}>{r}</button>
+          ))}
+        </div>
+      </div>) },
   "card-equipment":     { width: 440, bg: "app", render: () => (
       <Card title="Equipment" subtitle="Green means it's sending data right now." padding="8px"
         actions={<Button size="sm" variant="ghost">Manage</Button>}>

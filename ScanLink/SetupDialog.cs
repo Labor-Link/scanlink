@@ -7,160 +7,81 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using ScanLink.DesignSystem;
 
 namespace ScanLink
 {
-    public partial class SetupDialog : Form
+    /// <summary>
+    /// Crops &amp; products: the reference lists ScanLink prints from, one tab per list.
+    /// Built on SLDialog (also used as a page through EmbeddedFormHost):
+    ///   SLSegmentedControl tabs + row count
+    ///   Crop / Variety filters (Combinations tab only)
+    ///   SLCard with an edge-to-edge SLTable
+    /// </summary>
+    [DesignerCategory("Code")]
+    internal partial class SetupDialog : SLDialog
     {
+        // Tab label shown -> key the loaders switch on.
+        private static readonly string[][] Tabs =
+        {
+            new[] { "Combinations", "Combination Table" },
+            new[] { "Crops", "Crops" },
+            new[] { "Products", "Products" },
+            new[] { "Varieties", "Variety" },
+            new[] { "Grades", "Grade" },
+            new[] { "Counts", "Count" }
+        };
+
         private ProductCombinationsService _productCombinationsService;
-        private Button _selectedButton;
-        private DataGridView _currentDataGridView;
-        private ComboBox _cropFilterComboBox;
-        private Label _cropFilterLabel;
-        private ComboBox _varietyFilterComboBox;
-        private Label _varietyFilterLabel;
-        private Panel _filterPanel;
+        private SLSegmentedControl _tabs;
+        private SLText _rowCount;
+        private SLCard _tableCard;
+        private SLTable _currentDataGridView;
+        private SLComboBox _cropFilterComboBox;
+        private SLComboBox _varietyFilterComboBox;
+        private SLStack _filterPanel;
 
         public SetupDialog(ProductCombinationsService productCombinationsService)
         {
             InitializeComponent();
             _productCombinationsService = productCombinationsService;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.Size = new Size(800, 600);
-
             InitializeDialog();
         }
 
         private void InitializeDialog()
         {
-            // Create button panel at top
-            Panel buttonPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 50,
-                // This row is a tab strip, not an action row, so it takes the
-                // segmented-control treatment — sunken track, selected tab lifted to white.
-                BackColor = Theme.SurfaceSunken,
-                Padding = new Padding(Theme.S2, Theme.S2, Theme.S2, 0)
-            };
+            Title = "Crops & products";
+            Description = "The reference lists ScanLink prints from. They come from the Labour Link dashboard and are read-only here.";
+            DialogWidth = 960;
+            BodyHeight = 520;
 
-            // Create buttons
-            Button combinationTableButton = CreateButton("Combination Table", 0);
-            Button cropsButton = CreateButton("Crops", 1);
-            Button productsButton = CreateButton("Products", 2);
-            Button varietyButton = CreateButton("Variety", 3);
-            Button gradeButton = CreateButton("Grade", 4);
-            Button countButton = CreateButton("Count", 5);
+            _tabs = new SLSegmentedControl(Array.ConvertAll(Tabs, t => t[0]));
+            _tabs.SelectedIndexChanged += (s, e) => ShowTable(Tabs[_tabs.SelectedIndex][1]);
+            _rowCount = new SLText("", SLTextStyle.Muted) { SingleLine = true };
+            var header = new SLStack(SLOrientation.Horizontal, 12) { Align = SLAlign.Center, Justify = SLJustify.SpaceBetween };
+            header.AddRange(_tabs, _rowCount);
+            Body.Controls.Add(header);
 
-            buttonPanel.Controls.AddRange(new Control[] {
-                combinationTableButton, cropsButton, productsButton,
-                varietyButton, gradeButton, countButton
-            });
-
-            // Create filter panel (initially hidden)
-            _filterPanel = new Panel
-            {
-                Dock = DockStyle.Top,
-                Height = 40,
-                BackColor = Theme.SurfaceCard,
-                Visible = false // Hidden by default
-            };
-
-            // Create filter controls
+            _filterPanel = new SLStack(SLOrientation.Horizontal, 12) { Align = SLAlign.Start };
             CreateFilterControls();
+            Body.Controls.Add(_filterPanel);
 
-            // Create main panel for tables
-            Panel mainPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(10)
-            };
+            _tableCard = new SLCard { BodyPadding = Padding.Empty };
+            Body.Controls.Add(_tableCard);
+            Body.SetGrow(_tableCard);
 
-            // Create DataGridViews for each table
-            CreateCombinationTable();
-            CreateIndividualTables();
+            // Opened modeless (Show) by the legacy button, where DialogResult does not close.
+            var close = new SLButton { Text = "Close", Variant = SLVariant.Secondary, DialogResult = DialogResult.Cancel };
+            close.Click += (s, e) => Close();
+            AddAction(close);
 
-            mainPanel.Controls.Add(_currentDataGridView);
-
-            this.Controls.Add(mainPanel);
-            this.Controls.Add(_filterPanel);
-            this.Controls.Add(buttonPanel);
-
-            // Default selection - set Combination Table as selected
-            _selectedButton = combinationTableButton;
-            StyleTab(_selectedButton, true);
             ShowTable("Combination Table");
-
-            // Applied last so every grid and input built above is already in the tree.
-            ScanLink.Themed.ThemeStyles.DialogChrome(this);
-        }
-
-        /// <summary>
-        /// Segmented-control tab: the selected tab lifts to the card surface with heading
-        /// ink, the rest stay flat on the sunken track. Selection is carried by surface and
-        /// weight rather than the old LightBlue fill, which read as a disabled control
-        /// rather than a chosen one.
-        /// </summary>
-        private void StyleTab(Button button, bool selected)
-        {
-            if (button == null) return;
-
-            button.BackColor = selected ? Theme.SurfaceCard : Theme.SurfaceSunken;
-            button.ForeColor = selected ? Theme.TextHeading : Theme.TextMuted;
-            button.Font = selected ? Theme.FontSmBold : Theme.FontSm;
-            button.FlatAppearance.MouseOverBackColor = selected ? Theme.SurfaceCard : Theme.N200;
-            button.FlatAppearance.MouseDownBackColor = Theme.N200;
-            button.UseVisualStyleBackColor = false;
-            ScanLink.Themed.ThemeStyles.RoundedCorners(button, Theme.RadiusSm);
-        }
-
-        private Button CreateButton(string text, int index)
-        {
-            Button button = new Button
-            {
-                Text = text,
-                Size = new Size(120, 36),
-                Location = new Point(index * 125 + 10, 7),
-                FlatStyle = FlatStyle.Flat,
-                Tag = text,
-                UseMnemonic = false
-            };
-            button.FlatAppearance.BorderSize = 0;
-            StyleTab(button, false);
-
-            button.Click += Button_Click;
-            return button;
-        }
-
-        private void Button_Click(object sender, EventArgs e)
-        {
-            Button clickedButton = (Button)sender;
-
-            // Unselect previous button
-            if (_selectedButton != null)
-            {
-                StyleTab(_selectedButton, false);
-            }
-
-            // Select new button
-            _selectedButton = clickedButton;
-            StyleTab(_selectedButton, true);
-
-            // Show corresponding table
-            ShowTable(clickedButton.Text);
         }
 
         private void ShowTable(string tableType)
         {
-            // Add new table
-            Panel mainPanel = (Panel)this.Controls[0]; // Main panel is the first control
-            mainPanel.Controls.Clear();
-
-            // Show/hide filter panel based on table type
-            _filterPanel.Visible = (tableType == "Combination Table");
+            _tableCard.Body.Controls.Clear();
+            SLVisibility.Set(_filterPanel, tableType == "Combination Table");
 
             switch (tableType)
             {
@@ -184,30 +105,23 @@ namespace ScanLink
                     break;
             }
 
-            mainPanel.Controls.Add(_currentDataGridView);
+            _tableCard.Body.Controls.Add(_currentDataGridView);
+            _tableCard.Body.SetGrow(_currentDataGridView);
             LoadTableData(tableType);
+            UpdateRowCount();
+        }
+
+        private void UpdateRowCount()
+        {
+            int n = _currentDataGridView == null ? 0 : _currentDataGridView.Rows.Count;
+            _rowCount.Text = n + (n == 1 ? " row" : " rows");
+            if (_rowCount.Parent != null) _rowCount.Parent.PerformLayout();
         }
 
         private void CreateFilterControls()
         {
-            // Crop filter controls
-            _cropFilterLabel = new Label
-            {
-                Text = "Crop:",
-                Location = new Point(10, 10),
-                AutoSize = true,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold)
-            };
-
-            _cropFilterComboBox = new ComboBox
-            {
-                Location = new Point(45, 7),
-                Size = new Size(180, 25),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Populate crop filter dropdown
-            _cropFilterComboBox.Items.Add("All Crops");
+            _cropFilterComboBox = new SLComboBox { Width = 240 };
+            _cropFilterComboBox.Items.Add("All crops");
             if (_productCombinationsService != null && _productCombinationsService.HasCachedData())
             {
                 var crops = _productCombinationsService.GetUniqueCrops();
@@ -216,41 +130,23 @@ namespace ScanLink
                     _cropFilterComboBox.Items.Add($"{crop.crop_id} - {crop.crop_name}");
                 }
             }
-            _cropFilterComboBox.SelectedIndex = 0; // Default to "All Crops"
+            _cropFilterComboBox.SelectedIndex = 0;
 
-            // Variety filter controls
-            _varietyFilterLabel = new Label
-            {
-                Text = "Variety:",
-                Location = new Point(250, 10),
-                AutoSize = true,
-                Font = new Font("Segoe UI", 9, FontStyle.Bold)
-            };
-
-            _varietyFilterComboBox = new ComboBox
-            {
-                Location = new Point(300, 7),
-                Size = new Size(180, 25),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-
-            // Initially populate variety filter dropdown with all varieties
+            _varietyFilterComboBox = new SLComboBox { Width = 240 };
             PopulateVarietyDropdown();
 
-            // Event handlers
             _cropFilterComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
             _varietyFilterComboBox.SelectedIndexChanged += FilterComboBox_SelectedIndexChanged;
 
-            _filterPanel.Controls.Add(_cropFilterLabel);
-            _filterPanel.Controls.Add(_cropFilterComboBox);
-            _filterPanel.Controls.Add(_varietyFilterLabel);
-            _filterPanel.Controls.Add(_varietyFilterComboBox);
+            _filterPanel.AddRange(
+                new SLField("Crop", _cropFilterComboBox) { Width = 240 },
+                new SLField("Variety", _varietyFilterComboBox) { Width = 240 });
         }
 
         private void PopulateVarietyDropdown()
         {
             _varietyFilterComboBox.Items.Clear();
-            _varietyFilterComboBox.Items.Add("All Varieties");
+            _varietyFilterComboBox.Items.Add("All varieties");
 
             if (_productCombinationsService != null && _productCombinationsService.HasCachedData())
             {
@@ -305,30 +201,38 @@ namespace ScanLink
 
             // Reload combination data with current filters
             LoadCombinationData();
+            UpdateRowCount();
         }
 
         private void CreateCombinationTable()
         {
-            DataGridView dataGridView = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ScrollBars = ScrollBars.Both
-            };
-
+            SLTable dataGridView = NewTable();
             dataGridView.Columns.Add("id", "ID");
-            dataGridView.Columns.Add("crop_id", "Crop ID");
+            dataGridView.Columns.Add("crop_id", "Crop");
             dataGridView.Columns.Add("product_id", "Product ID");
-            dataGridView.Columns.Add("variety_id", "Variety ID");
-            dataGridView.Columns.Add("grade_id", "Grade ID");
-            dataGridView.Columns.Add("count_id", "Count ID");
-            dataGridView.Columns.Add("carton_type", "Carton Type");
-            dataGridView.Columns.Add("avg_weight_kg", "Avg Weight (KG)");
+            dataGridView.Columns.Add("variety_id", "Variety");
+            dataGridView.Columns.Add("grade_id", "Grade");
+            dataGridView.Columns.Add("count_id", "Count");
+            dataGridView.Columns.Add("carton_type", "Carton type");
+            dataGridView.Columns.Add("avg_weight_kg", "Avg weight (kg)");
+            dataGridView.Columns["avg_weight_kg"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dataGridView.SetMono("id");
+            dataGridView.SetMono("product_id");
 
             _currentDataGridView = dataGridView;
+        }
+
+        private SLTable NewTable()
+        {
+            var table = new SLTable { Height = 200, ScrollBars = ScrollBars.Both };
+            table.EmptyState = new SLEmptyState
+            {
+                Compact = true,
+                IconName = "database",
+                Title = "Nothing here yet",
+                Description = "Product lists load when ScanLink connects to Labour Link. Check the connection, then reopen this page."
+            };
+            return table;
         }
 
         private void CreateIndividualTables()
@@ -338,43 +242,36 @@ namespace ScanLink
 
         private void CreateCropsTable()
         {
-            CreateIndividualTable("Crop ID", "Crop Name");
+            CreateIndividualTable("Crop ID", "Crop name");
         }
 
         private void CreateProductsTable()
         {
-            CreateIndividualTable("Product ID", "Product Name");
+            CreateIndividualTable("Product ID", "Product name");
         }
 
         private void CreateVarietyTable()
         {
-            CreateIndividualTable("Variety ID", "Variety Name");
+            CreateIndividualTable("Variety ID", "Variety name");
         }
 
         private void CreateGradeTable()
         {
-            CreateIndividualTable("Grade ID", "Grade Name");
+            CreateIndividualTable("Grade ID", "Grade name");
         }
 
         private void CreateCountTable()
         {
-            CreateIndividualTable("Count ID", "Count Name");
+            CreateIndividualTable("Count ID", "Count name");
         }
 
         private void CreateIndividualTable(string idColumnName, string nameColumnName)
         {
-            DataGridView dataGridView = new DataGridView
-            {
-                Dock = DockStyle.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                ScrollBars = ScrollBars.Both
-            };
-
+            SLTable dataGridView = NewTable();
             dataGridView.Columns.Add("id", idColumnName);
             dataGridView.Columns.Add("name", nameColumnName);
+            dataGridView.Columns["id"].FillWeight = 30;
+            dataGridView.SetMono("id");
 
             _currentDataGridView = dataGridView;
         }
@@ -595,8 +492,7 @@ namespace ScanLink
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Text = "Setup - Data Tables";
+            this.Text = "Crops & products";
         }
 
         #endregion
