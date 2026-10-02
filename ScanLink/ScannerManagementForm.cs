@@ -535,6 +535,26 @@ namespace ScanLink
             PopulateDataGridView();
         }
 
+        /// <summary>Design-gallery constructor: shows the given scanners without running
+        /// hardware detection (which needs PowerShell, WMI and real devices).</summary>
+        private ScannerManagementForm(List<ScannerInfo> preview)
+        {
+            InitializeComponent();
+            detectedScanners = preview;
+            PopulateDataGridView();
+        }
+
+        /// <summary>Sample page for SLGallery: one connected, one offline, one HID scanner.</summary>
+        internal static ScannerManagementForm CreatePreview()
+        {
+            return new ScannerManagementForm(new List<ScannerInfo>
+            {
+                new ScannerInfo { SerialNumber = "SL-HH-02", PNPDeviceID = @"USB\VID_05F9&PID_4204\S/N:G21L00213", ComPort = "COM3", LineID = "3", BlockID = "14", Supplier = "Rooidraai", Status = "Connected", IsCurrentlyConnected = true },
+                new ScannerInfo { SerialNumber = "SL-HH-11", PNPDeviceID = @"USB\VID_05F9&PID_4204\S/N:G21L00488", ComPort = "COM7", LineID = "2", BlockID = "07", Supplier = "Kleinbos", Status = "Not Connected", IsCurrentlyConnected = false },
+                new ScannerInfo { SerialNumber = "SL-HH-05", PNPDeviceID = @"HID\VID_05F9&PID_2214\7&1C2A", ConnectionType = "USB-HID-KEYBOARD", LineID = "1", BlockID = "21", Supplier = "Vaalkop", Status = "Connected", IsCurrentlyConnected = true }
+            });
+        }
+
         // Layout:
         //   [Error banner: a scanner isn't answering  (Look again)]
         //   [Result banner: saved / removed / failed]

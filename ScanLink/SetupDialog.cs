@@ -216,6 +216,8 @@ namespace ScanLink
             dataGridView.Columns.Add("carton_type", "Carton type");
             dataGridView.Columns.Add("avg_weight_kg", "Avg weight (kg)");
             dataGridView.Columns["avg_weight_kg"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dataGridView.Columns["avg_weight_kg"].FillWeight = 140;   // header needs room for "AVG WEIGHT (KG)"
+            dataGridView.Columns["carton_type"].FillWeight = 120;
             dataGridView.SetMono("id");
             dataGridView.SetMono("product_id");
 

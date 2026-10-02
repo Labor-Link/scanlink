@@ -249,6 +249,7 @@ namespace ScanLink.DesignSystem
 
             // C#-only scenes (no mockup counterpart): rendered for review, not scored.
             yield return new Scene { Id = "app-add-combination", BuildDialog = () => new AddCombinationDialog(new ProductCombinationsService(new ApiAuthService())) };
+            yield return new Scene { Id = "app-scanner-management", BuildDialog = () => ScannerManagementForm.CreatePreview() };
             yield return new Scene { Id = "app-setup-dialog", BuildDialog = () => new SetupDialog(new ProductCombinationsService(new ApiAuthService())) };
             yield return new Scene { Id = "app-error-dialog", BuildDialog = () => ErrorDialog.Create("Upload failed", "System.Net.WebException: The remote name could not be resolved: 'api.scanlink.app'\r\n   at ScanLogUploadService.UploadAsync()") };
         }

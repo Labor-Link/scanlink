@@ -80,7 +80,7 @@ function main() {
     `Mean match **${mean.toFixed(1)}%** across ${rows.length} scenes${MIN ? ` (minimum ${MIN}%)` : ''}.`, '',
     '| Scene | Match | Notes |', '|---|---:|---|',
     ...rows.map((r) => `| ${r.id} | ${r.score ? r.score.toFixed(1) + '%' : '—'} | ${r.note || ''} |`),
-    ...(extras.length ? ['', 'Rendered without a reference (review by eye): ' + extras.map((f) => f.replace(/\.png$/, '')).join(', ')] : [])
+    ...(extras.length ? ['', '**App screens** (no mockup reference, review by eye in report.html): ' + extras.map((f) => f.replace(/\.png$/, '').replace(/^app-/, '')).join(', ')] : [])
   ].join('\n');
   fs.writeFileSync(path.join(OUT, 'summary.md'), md + '\n');
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
@@ -89,13 +89,19 @@ function main() {
   const html = `<!doctype html><meta charset="utf-8"><title>ScanLink fidelity report</title>
 <style>body{font:13px/1.5 "Segoe UI",system-ui,sans-serif;margin:24px;color:#1D2939;background:#F7F8FA}
 table{border-collapse:collapse;background:#fff}td,th{border:1px solid #E4E7EC;padding:8px;vertical-align:top;text-align:left}
-th{background:#F7F8FA;font-weight:600}img{display:block;max-width:560px;image-rendering:pixelated}
+th{background:#F7F8FA;font-weight:600}img{display:block;max-width:560px;image-rendering:pixelated}h2{margin-top:32px}
 .score{font:600 15px "Segoe UI",sans-serif}.low{color:#B42318}.ok{color:#0C6944}</style>
-<h1>WinForms vs mockup</h1><p>Mean match <b>${mean.toFixed(1)}%</b>. Left: mockup reference. Middle: WinForms. Right: differing pixels in red.</p>
+<h1>WinForms vs mockup</h1>
+<p>Mean match <b>${mean.toFixed(1)}%</b> across ${rows.length} component scenes.</p>
+${extras.length ? `<h2>App screens</h2><p>Real ScanLink screens rendered by the WinForms app. The mockup has no
+pixel reference for these, so review them by eye.</p>
+<table><tr><th>Screen</th><th>WinForms</th></tr>
+${extras.map((f) => { const id = f.replace(/\.png$/, ''); return `<tr><td><b>${id.replace(/^app-/, '')}</b></td>${cell(id + '.actual.png').replace('max-width:560px', '')}</tr>`; }).join('\n')}
+</table>` : ''}
+<h2>Component scenes</h2><p>Left: mockup reference. Middle: WinForms. Right: differing pixels in red.</p>
 <table><tr><th>Scene</th><th>Mockup</th><th>WinForms</th><th>Diff</th></tr>
 ${rows.map((r) => `<tr><td><b>${r.id}</b><div class="score ${r.score >= 90 ? 'ok' : 'low'}">${r.score ? r.score.toFixed(1) + '%' : '—'}</div><div>${r.note || ''}</div></td>
 ${cell(r.id + '.ref.png')}${cell(r.id + '.actual.png')}${cell(r.id + '.diff.png')}</tr>`).join('\n')}
-${extras.map((f) => { const id = f.replace(/\.png$/, ''); return `<tr><td><b>${id}</b><div>no reference</div></td><td>—</td>${cell(id + '.actual.png')}<td>—</td></tr>`; }).join('\n')}
 </table>`;
   fs.writeFileSync(path.join(OUT, 'report.html'), html);
 

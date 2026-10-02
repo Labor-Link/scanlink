@@ -81,6 +81,7 @@ namespace ScanLink.DesignSystem
             S(grid);
 
             grid.BackgroundColor = Theme.SurfaceCard;
+            grid.BackColor = Theme.SurfaceCard;   // children (the empty state) sit on this
             grid.BorderStyle = BorderStyle.None;
             grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             grid.GridColor = Theme.BorderSubtle;

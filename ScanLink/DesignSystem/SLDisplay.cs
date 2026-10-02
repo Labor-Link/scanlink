@@ -319,7 +319,10 @@ namespace ScanLink.DesignSystem
 
         protected override void OnPaintBackground(PaintEventArgs e)
         {
-            using (SolidBrush b = new SolidBrush(SLPaint.BackdropOf(this)))
+            // Inside a table the grid's own BackColor is the Windows default grey, so an empty
+            // state given an opaque BackColor (SLTableStyle sets white) paints that instead.
+            Color bg = BackColor.A == 255 ? BackColor : SLPaint.BackdropOf(this);
+            using (SolidBrush b = new SolidBrush(bg))
                 e.Graphics.FillRectangle(b, ClientRectangle);
         }
 
