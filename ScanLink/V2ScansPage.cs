@@ -254,17 +254,42 @@ namespace ScanLink
             // created reports zero items however many rows its DataSource has, and the
             // SelectedIndex = 0 in PopulateProductIdComboBox then threw out of LoadScansData.
             // Staying visible at zero height keeps the subtree in the created hierarchy.
-            _moreFiltersFullHeight = Math.Max(filtersPanel.Height, 34) + Theme.S3;
+            // The original row's inputs are moved into labelled SL fields (same controls, same
+            // handlers); the old fourteen-column TableLayoutPanel with its wrapping labels
+            // ("Fro m:", "BlockNumb er:") is left empty and hidden.
+            SLStack advanced = new SLStack(SLOrientation.Horizontal, Theme.S3)
+            {
+                Dock = DockStyle.Fill,
+                Align = SLAlign.End,
+                Padding = new Padding(0, Theme.S3, 0, 0)
+            };
+            if (dateFromPicker != null) advanced.Controls.Add(new SLField("From", new SLFrame(dateFromPicker)) { Width = 150 });
+            if (dateToPicker != null) advanced.Controls.Add(new SLField("To", new SLFrame(dateToPicker)) { Width = 150 });
+            if (blockNumberTextBox != null) advanced.Controls.Add(new SLField("Block", new SLTextBox(blockNumberTextBox)) { Width = 100 });
+            if (lineNumberTextBox != null) advanced.Controls.Add(new SLField("Line", new SLTextBox(lineNumberTextBox)) { Width = 100 });
+            if (productIdComboBox != null)
+            {
+                SLField product = new SLField("Product", new SLFrame(productIdComboBox)) { Width = 220 };
+                advanced.Controls.Add(product);
+                advanced.SetGrow(product);
+            }
+            applyFiltersButton = ReplaceButton(applyFiltersButton, applyFiltersButton_Click,
+                new SLButton { Text = "Apply", Variant = SLVariant.Secondary, IconName = "check" });
+            clearFiltersButton = ReplaceButton(clearFiltersButton, clearFiltersButton_Click,
+                new SLButton { Text = "Clear", Variant = SLVariant.Ghost });
+            advanced.AddRange(applyFiltersButton, clearFiltersButton);
+
+            filtersPanel.Visible = false;   // only its old labels remain in it
+
+            // Label (16) + gap (6) + field (38), plus the 12px gap above the row.
+            _moreFiltersFullHeight = Theme.S3 + 16 + 6 + Theme.HeightMd;
             _moreFiltersHost = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 0,
-                BackColor = Color.Transparent,
-                Padding = new Padding(0, Theme.S3, 0, 0)
+                BackColor = Theme.SurfaceCard
             };
-            filtersPanel.Dock = DockStyle.Fill;
-            filtersPanel.BackColor = Color.Transparent;
-            _moreFiltersHost.Controls.Add(filtersPanel);
+            _moreFiltersHost.Controls.Add(advanced);
 
             // --- the v2 bar (ScansScreen.js): search 300 · range switch · crop 160 · count ---
             SLStack bar = new SLStack(SLOrientation.Horizontal, Theme.S3)
@@ -648,10 +673,26 @@ namespace ScanLink
         /// identifier and reads as one in a monospaced face, and the numeric columns are
         /// narrow enough to be worth pinning so the wide text columns take the slack.
         /// </summary>
+        /// <summary>Readable headers for the scan log's raw field names.</summary>
+        private static readonly string[][] ScanHeaders =
+        {
+            new[] { "SerialNumber", "Serial" },
+            new[] { "BlockNumber", "Block" },
+            new[] { "LineNumber", "Line" },
+            new[] { "Crops", "Crop" },
+            new[] { "Products", "Product" },
+            new[] { "ParsedInfo", "Picker" }
+        };
+
         private void StyleScanColumns()
         {
             try
             {
+                foreach (string[] h in ScanHeaders)
+                {
+                    if (scannerDataGridView.Columns.Contains(h[0]))
+                        scannerDataGridView.Columns[h[0]].HeaderText = SLTableStyle.DisplayHeader(h[1]);
+                }
                 SetColumnStyle("SerialNumber", null, 150);
                 SLTableStyle.SetMono(scannerDataGridView, "SerialNumber");
                 SLTableStyle.SetMuted(scannerDataGridView, "Time");

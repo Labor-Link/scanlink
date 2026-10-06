@@ -432,6 +432,11 @@ namespace ScanLink
             comboBox_emulation.Text = "PPLB";
             comboBox_emulation.SelectedIndexChanged += comboBox_emulation_SelectedIndexChanged;
 
+            // The handler above fills Test Mode and Barcode Type; it is skipped here, and only
+            // a saved-settings file used to fill them later. On a PC with no saved settings both
+            // stayed empty and every print failed with "Index was outside the bounds of the array".
+            EnsurePrinterFunctionLists();
+
             // Initialize advanced settings with defaults and tooltips
             InitializeAdvancedSettings();
             
@@ -4394,6 +4399,7 @@ namespace ScanLink
                     statusLabel.Text += $"\n📏 Size: {numericUpDown_width.Value}x{numericUpDown_height.Value}, 🌑 Darkness: {trackBar_darkness.Value}";
                 }
 
+                EnsurePrinterFunctionLists();
                 switch (comboBox_emulation.Text)
                 {
                     case "PPLB":

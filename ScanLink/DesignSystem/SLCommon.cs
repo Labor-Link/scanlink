@@ -123,6 +123,10 @@ namespace ScanLink.DesignSystem
         /// <summary>Width a child wants when not stretched.</summary>
         public static int WidthOf(Control child)
         {
+            // A nested horizontal stack (e.g. a pager's buttons) is as wide as its content;
+            // trusting Width gave it the Panel default of 200px and clipped "Next".
+            SLStack stack = child as SLStack;
+            if (stack != null && stack.Orientation == SLOrientation.Horizontal) return stack.GetPreferredSize(Size.Empty).Width;
             if (child.AutoSize) return child.GetPreferredSize(Size.Empty).Width;
             return child.Width;
         }

@@ -79,7 +79,7 @@ namespace ScanLink.DesignSystem
             // Combo columns show plain text until edited (painted with a chevron above).
             foreach (DataGridViewColumn c in grid.Columns)
             {
-                if (c.HeaderText != null) c.HeaderText = c.HeaderText.ToUpperInvariant();
+                c.HeaderText = DisplayHeader(c.HeaderText);
                 DataGridViewComboBoxColumn cc = c as DataGridViewComboBoxColumn;
                 if (cc != null) { cc.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing; cc.FlatStyle = FlatStyle.Flat; }
             }
@@ -123,7 +123,7 @@ namespace ScanLink.DesignSystem
             {
                 // Headers are painted UPPERCASE; store them that way so auto-sized columns
                 // measure the text that is actually drawn.
-                if (e.Column.HeaderText != null) e.Column.HeaderText = e.Column.HeaderText.ToUpperInvariant();
+                e.Column.HeaderText = DisplayHeader(e.Column.HeaderText);
                 DataGridViewComboBoxColumn cc = e.Column as DataGridViewComboBoxColumn;
                 if (cc != null) { cc.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing; cc.FlatStyle = FlatStyle.Flat; }
             };
@@ -145,6 +145,25 @@ namespace ScanLink.DesignSystem
                     .SetValue(grid, true, null);
             }
             catch (Exception) { }
+        }
+
+        /// <summary>
+        /// Header text as painted: words split ("SerialNumber" -> "Serial Number") and then
+        /// uppercased. Uppercasing first lost the word boundaries ("SERIALNUMBER").
+        /// </summary>
+        public static string DisplayHeader(string header)
+        {
+            if (string.IsNullOrEmpty(header)) return header;
+            System.Text.StringBuilder sb = new System.Text.StringBuilder(header.Length + 8);
+            for (int i = 0; i < header.Length; i++)
+            {
+                char ch = header[i];
+                bool boundary = i > 0 && char.IsUpper(ch) && header[i - 1] != ' '
+                    && (char.IsLower(header[i - 1]) || (i + 1 < header.Length && char.IsLower(header[i + 1])));
+                if (boundary) sb.Append(' ');
+                sb.Append(ch == '_' ? ' ' : ch);
+            }
+            return sb.ToString().ToUpperInvariant();
         }
 
         public static void SetMono(DataGridView g, string column) { S(g).Mono.Add(column); g.Invalidate(); }

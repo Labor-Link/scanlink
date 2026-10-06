@@ -652,7 +652,8 @@ namespace ScanLink.DesignSystem
     internal class SLFrame : SLControl, ISLSurface
     {
         private readonly Control _child;
-        private readonly Panel _clip;   // hides a stock ComboBox's own 1px border
+        private readonly Panel _clip;   // hides a stock ComboBox's / DateTimePicker's own border
+        private readonly int _clipInset;
 
         public SLFrame(Control child)
         {
@@ -675,12 +676,13 @@ namespace ScanLink.DesignSystem
             if (text != null && !text.Multiline) { text.BorderStyle = BorderStyle.None; text.Font = Theme.FontMd; }
 
             ComboBox combo = child as ComboBox;
-            if (combo != null && !(combo is SLComboBox))
+            DateTimePicker date = child as DateTimePicker;
+            if ((combo != null && !(combo is SLComboBox)) || date != null)
             {
-                combo.FlatStyle = FlatStyle.Flat;
-                combo.Font = Theme.FontMd;
+                if (combo != null) { combo.FlatStyle = FlatStyle.Flat; combo.Font = Theme.FontMd; _clipInset = 1; }
+                if (date != null) { date.Font = Theme.FontMd; date.CalendarFont = Theme.FontSm; _clipInset = 2; }
                 _clip = new Panel { BackColor = Theme.N0 };
-                _clip.Controls.Add(combo);
+                _clip.Controls.Add(child);
                 Controls.Add(_clip);
             }
             else Controls.Add(child);
@@ -699,7 +701,7 @@ namespace ScanLink.DesignSystem
             get
             {
                 TextBox t = _child as TextBox;
-                return _child is ComboBox || _child is NumericUpDown || (t != null && !t.Multiline);
+                return _child is ComboBox || _child is NumericUpDown || _child is DateTimePicker || (t != null && !t.Multiline);
             }
         }
 
@@ -709,12 +711,15 @@ namespace ScanLink.DesignSystem
             if (_clip != null)
             {
                 int h = _child.Height;
-                int inner = Math.Max(4, h - 2);
+                int inner = Math.Max(4, h - 2 * _clipInset);
                 _clip.SetBounds(11, (Height - inner) / 2, Math.Max(10, Width - 14), inner);
-                _child.SetBounds(-1, -1, _clip.Width + 2, h);
+                _child.SetBounds(-_clipInset, -_clipInset, _clip.Width + 2 * _clipInset, h);
             }
             else if (IsSingleLine)
             {
+                // Global restyling (ThemeStyles.Inputs) gives spinners a border back.
+                NumericUpDown n = _child as NumericUpDown;
+                if (n != null && n.BorderStyle != BorderStyle.None) n.BorderStyle = BorderStyle.None;
                 int h = _child.Height;
                 _child.SetBounds(12, (Height - h) / 2, Math.Max(10, Width - 16), h);
             }

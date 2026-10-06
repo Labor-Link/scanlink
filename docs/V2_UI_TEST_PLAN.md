@@ -11,6 +11,11 @@ so most checks below are "does it still work", not "does it look right".
 2. Download the **scanlink-test-build** artifact and unzip it to a folder on a Windows PC.
 3. Run `ScanLink.exe`. Keep the `.ps1` scripts and `.dll` next to the exe.
 
+The test build contains the application only. Scanners in COM mode need the **Datalogic USB-COM
+driver**, which the production installer installs. On a PC that has never had ScanLink, run the
+current production installer once first (or install `DATALOGIC_USBCOM_v7.1.1` by hand), then use
+the test build. The Argox printer driver is installed separately, as for production.
+
 Test on at least one **small screen (1366×768 or 1280×720)** and one normal screen (1920×1080).
 Report bugs with a screenshot, the screen name below and the steps.
 
@@ -48,13 +53,13 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 2.3 | Today / Last 7 days / This season | Table and scan count update to that range. |
 | 2.4 | Custom | Opens "More filters" with the date pickers; picking dates filters. |
 | 2.5 | Crop select | Filters by crop; list fills after sign-in. |
-| 2.6 | More filters / Fewer filters | Shows/hides block, line, product and date filters; Apply/Clear still work. |
+| 2.6 | More filters / Fewer filters | Shows/hides a row of labelled From, To, Block, Line, Product fields with Apply and Clear; labels not broken across lines; Apply/Clear still filter. |
 | 2.7 | Page opens | Filter card, then the **scans table** in a card with "Page x of y" and Previous / Next in its footer. The Daily Stats Logger and Connected Scanners panels are **hidden**. |
 | 2.8 | Show details / Hide details | Shows/hides the scanner console, the totals, and the Daily Stats Logger + Connected Scanners cards; the console keeps logging while hidden. |
 | 2.9 | Daily Stats Logger (details shown) | "Date Selected" label not clipped; entering values and Save still work. |
 | 2.10 | Connected Scanners (details shown) | Editing Line / Block / Supplier and the save icon on a row still update that scanner. |
 | 2.11 | Previous / Next | Pages through scans; disabled on first/last page; "Page x of y" correct. |
-| 2.12 | Table | Serial in monospace, time in grey; hover highlights a row; selected row light indigo. |
+| 2.12 | Table | Headers read DATE, TIME, SERIAL, BLOCK, LINE, SUPPLIER, CROP, PRODUCT, PICKER; serial in monospace, time in grey; hover highlights a row; selected row light indigo. |
 | 2.13 | No scans for the filters | "No scans to show" message in the table instead of a blank box. |
 
 ## 3. Print labels
@@ -66,12 +71,14 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 3.3 | Step 1: Product | Typing to search and picking from the list both still work; "This combination prints as" fills in. |
 | 3.4 | Step 1: Who is picking? / Find picker | Typing works; **Find picker** opens the employee picker (see 7). |
 | 3.5 | Step 1: Add combination | Opens "Add product combination" (see 6). |
-| 3.6 | Step 2: Number of labels | Arrow keys / wheel change it; preview updates. Back returns to step 1. |
+| 3.6 | Step 2: Number of labels | Single box (no double border); arrow keys / wheel change it; preview updates. Back returns to step 1. |
 | 3.7 | Step 3: summary | Crop, Product, Picker, Labels and Barcode listed correctly. |
 | 3.8 | Generate barcode | Barcode appears in the summary and preview; **Start printing** enables and turns **green**. |
 | 3.9 | Open full preview | Opens the existing full preview. |
-| 3.10 | Start printing | Prints the right number of labels; progress bar runs; button text follows the job. |
-| 3.11 | Printer settings → Show / Hide | Expands/collapses the advanced printer settings; changes still apply to the next print. |
+| 3.10 | Start printing | Prints the right number of labels; progress bar runs; button text follows the job. If the printer is not set up, configure it first under **Printer** ("No USB device selected" means no USB printer was picked there). |
+| 3.11 | Printer settings → Show / Hide | Expands/collapses the advanced printer settings and scrolls them into view. |
+| 3.11a | Printer settings on a **fresh PC** (never printed before) | Test Mode and Barcode Type are filled (not empty); printing works without opening settings first. |
+| 3.11b | Sticker layout diagram | Shown **below** the settings (not cut off on the right); changing width / height / X / gap / "two stickers" updates it; the next print uses the new values. |
 | 3.12 | Preview card | Grey tray with a white label showing product, picker, barcode and serial. |
 
 ## 4. Scanners
@@ -118,7 +125,7 @@ Open from the sidebar (Scanners).
 | 7.1 | Open via Find picker | Loads employees and departments. |
 | 7.2 | Search by name / ID, press Enter or **Search** | Filters the list. |
 | 7.3 | Departments | Ticking departments filters results. |
-| 7.4 | Previous / Next | Paging works; page text and total update. |
+| 7.4 | Previous / Next | Paging works; "Page x of y" and both buttons fully visible; total updates. |
 | 7.5 | Double-click a row or **Select employee** | Fills "Who is picking?" and closes. |
 
 ## 8. Crops & products

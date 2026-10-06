@@ -95,11 +95,40 @@ namespace ScanLink
             GoToStep(StepIdentify);
         }
 
+        /// <summary>
+        /// Fills Test Mode and Barcode Type for the selected printer language when they are
+        /// empty, and selects the first entry when nothing is selected. Their change handlers
+        /// are held off while doing so: they save settings, and saving defaults here would
+        /// overwrite the operator's saved settings before they are loaded.
+        /// </summary>
+        private void EnsurePrinterFunctionLists()
+        {
+            if (comboBox_test == null || comboBox_barcode == null) return;
+            if (comboBox_emulation != null && comboBox_emulation.Text != "PPLB") return; // the only language wired up
+            comboBox_test.SelectedIndexChanged -= comboBox_test_SelectedIndexChanged;
+            comboBox_barcode.SelectedIndexChanged -= comboBox_barcode_SelectedIndexChanged;
+            try
+            {
+                if (comboBox_test.Items.Count == 0)
+                    foreach (FunctionData item in PPLB_ItemList) comboBox_test.Items.Add(item.Descration);
+                if (comboBox_barcode.Items.Count == 0)
+                    foreach (string str in PPLB_BarcodeList) comboBox_barcode.Items.Add(str);
+                if (comboBox_test.SelectedIndex < 0 && comboBox_test.Items.Count > 0) comboBox_test.SelectedIndex = 0;
+                if (comboBox_barcode.SelectedIndex < 0 && comboBox_barcode.Items.Count > 0) comboBox_barcode.SelectedIndex = 0;
+            }
+            finally
+            {
+                comboBox_test.SelectedIndexChanged += comboBox_test_SelectedIndexChanged;
+                comboBox_barcode.SelectedIndexChanged += comboBox_barcode_SelectedIndexChanged;
+            }
+        }
+
         /// <summary>Runs on every navigation to the page.</summary>
         private void OnPrintPageActivated()
         {
             try
             {
+                EnsurePrinterFunctionLists();
                 // The two-up visualisation is drawn by the advanced panel and only knows to
                 // show itself once its host is on screen.
                 UpdatePictureBoxVisibility();
@@ -438,16 +467,46 @@ namespace ScanLink
         /// accident, so the whole advanced panel starts collapsed. Nothing is removed —
         /// every control inside is still constructed, wired and applied when a job prints.
         /// </summary>
-        /// <summary>The designer height of advancedPanel; its contents are hand-placed to
-        /// this size, so it neither grows nor shrinks usefully.</summary>
-        private const int AdvancedPanelHeight = 470;
+        /// <summary>
+        /// The advanced panel was laid out for a wide popup: three settings sections down the
+        /// left and the sticker layout diagram (550x350) at x=650. In the steps column that
+        /// diagram fell off the right edge, so the sticker layout could not be seen. Here the
+        /// sections keep their place and the diagrams move underneath them.
+        /// </summary>
+        private int ArrangeAdvancedPanel()
+        {
+            if (advancedPanel == null || advancedGroupBox == null) return 470;
+
+            int sectionsBottom = 0;
+            foreach (Control c in new Control[] { printerConfigPanel, dimensionsPanel, qualityPanel })
+                if (c != null) sectionsBottom = Math.Max(sectionsBottom, c.Bottom);
+            if (sectionsBottom == 0) sectionsBottom = 400;
+
+            int diagramTop = sectionsBottom + Theme.S4;
+            int diagramH = 0;
+            foreach (PictureBox diagram in new[] { dimensionVisualizationPictureBox, dimensionVisualizationPictureBox_TwoUp })
+            {
+                if (diagram == null) continue;
+                diagram.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                diagram.Location = new Point(advancedGroupBox.Padding.Left + Theme.S4, diagramTop);
+                diagramH = Math.Max(diagramH, diagram.Height);
+            }
+
+            int height = diagramTop + diagramH + Theme.S5;
+            advancedGroupBox.AutoSize = false;     // AutoSize + Dock collapses (docs/V2_MIGRATION_STATUS.md)
+            advancedGroupBox.Height = height;
+            advancedPanel.AutoSize = false;
+            advancedPanel.Height = height;
+            advancedPanel.MinimumSize = new Size(600, height);
+            return height;
+        }
 
         private CardPanel BuildPrinterSettingsCard()
         {
             CardPanel card = new CardPanel
             {
                 Title = "Printer settings",
-                Subtitle = "Most people never need to change these.",
+                Subtitle = "Label size, position on the sticker, darkness and speed. Most people never need to change these.",
                 Dock = DockStyle.Top,
                 Margin = new Padding(0, 0, 0, Theme.S4)
             };
@@ -459,23 +518,20 @@ namespace ScanLink
             Panel settingsHost = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.Transparent,
-                AutoScroll = true,
+                BackColor = Theme.SurfaceCard,
+                AutoScroll = true,   // horizontal scroll only when the column is narrower than the diagram
                 Visible = false
             };
 
+            int panelHeight = 470;
             if (advancedPanel != null)
             {
                 if (advancedPanel.Parent != null) advancedPanel.Parent.Controls.Remove(advancedPanel);
-                // AutoSize off, explicit height, docked to the top of a scrolling host. The
-                // panel ships as AutoSize=GrowAndShrink around a Top-docked group box, which
-                // in a Fill dock is the WinForms collapse-to-zero case that rendered the
-                // print surfaces as empty boxes in the first pass.
-                advancedPanel.AutoSize = false;
                 advancedPanel.Dock = DockStyle.Top;
-                advancedPanel.Height = AdvancedPanelHeight;
                 advancedPanel.Visible = true;
-                advancedPanel.BackColor = Color.Transparent;
+                advancedPanel.BackColor = Theme.SurfaceCard;
+                if (advancedGroupBox != null) advancedGroupBox.BackColor = Theme.SurfaceCard;
+                panelHeight = ArrangeAdvancedPanel();
                 settingsHost.Controls.Add(advancedPanel);
             }
 
@@ -487,9 +543,16 @@ namespace ScanLink
                 toggle.Text = expanded ? "Hide" : "Show";
                 toggle.IconName = expanded ? "chevron-up" : "chevron-down";
                 card.Height = expanded
-                    ? CardPanel.TitledHeaderHeight + CardPanel.BodyPaddingV + AdvancedPanelHeight
+                    ? CardPanel.TitledHeaderHeight + CardPanel.BodyPaddingV + panelHeight + SystemInformation.HorizontalScrollBarHeight
                     : CardPanel.TitledHeaderHeight;
-                if (expanded) UpdatePictureBoxVisibility();
+                if (expanded)
+                {
+                    EnsurePrinterFunctionLists();
+                    UpdatePictureBoxVisibility();
+                    // Bring the opened settings into view; they sit below the step card.
+                    ScrollableControl column = card.Parent as ScrollableControl;
+                    if (column != null) column.ScrollControlIntoView(card);
+                }
             };
 
             card.Actions.Controls.Add(toggle);
