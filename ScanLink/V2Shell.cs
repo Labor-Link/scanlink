@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Drawing;
 using System.Windows.Forms;
 using ScanLink.Themed;
@@ -169,7 +170,8 @@ namespace ScanLink
                 BackColor = Color.Transparent,
                 UseMnemonic = false
             };
-            signOut.Click += (s, e) => { if (logoutButton != null) logoutButton.PerformClick(); };
+            // Called directly: logoutButton is hidden, and PerformClick on a hidden button does nothing.
+            signOut.Click += (s, e) => logoutButton_Click(logoutButton, EventArgs.Empty);
 
             _sidebar.Footer.Controls.Add(signOut);
             _sidebar.Footer.Controls.Add(_siteTile);
@@ -275,6 +277,25 @@ namespace ScanLink
             statusLabel.TextChanged += (s, e) => SyncStatusBar();
             statusLabel.ForeColorChanged += (s, e) => SyncStatusBar();
             SyncStatusBar();
+        }
+
+        /// <summary>
+        /// The scanner / printer connection readouts (lblDashboard*Status, refreshed every 2s)
+        /// lived in the old header, which the shell hides. Their text is shown on the right of
+        /// the status bar instead. Called once InitDashboardStatusUI has created them.
+        /// </summary>
+        private void MirrorConnectionStatus()
+        {
+            if (_statusBar == null) return;
+            EventHandler sync = (s, e) =>
+            {
+                string scanners = lblDashboardScannerStatus != null ? lblDashboardScannerStatus.Text : "";
+                string printer = lblDashboardPrinterStatus != null ? lblDashboardPrinterStatus.Text : "";
+                _statusBar.RightText = string.Join("  ·  ", new[] { scanners, printer }.Where(t => !string.IsNullOrWhiteSpace(t)));
+            };
+            if (lblDashboardScannerStatus != null) lblDashboardScannerStatus.TextChanged += sync;
+            if (lblDashboardPrinterStatus != null) lblDashboardPrinterStatus.TextChanged += sync;
+            sync(null, EventArgs.Empty);
         }
 
         private void SyncStatusBar()

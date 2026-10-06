@@ -655,10 +655,17 @@ namespace ScanLink
             SLVisibility.Set(resultBanner, true);
         }
 
+        /// <summary>Debug stand-ins from older builds ("Test Scanner", "No scanners detected").</summary>
+        private static bool IsPlaceholder(ScannerInfo sc)
+        {
+            string serial = sc.SerialNumber ?? "";
+            return sc.PNPDeviceID == "N/A" || serial.StartsWith("Test Scanner", StringComparison.Ordinal) || serial == "No scanners detected";
+        }
+
         /// <summary>The mockup's "Line 2 scanner isn't answering" banner, for every scanner that is not connected.</summary>
         private void UpdateConnectionBanner()
         {
-            int offline = detectedScanners == null ? 0 : detectedScanners.Count(sc => !sc.IsCurrentlyConnected);
+            int offline = detectedScanners == null ? 0 : detectedScanners.Count(sc => !sc.IsCurrentlyConnected && !IsPlaceholder(sc));
             if (offline == 0) { SLVisibility.Set(connectionBanner, false); return; }
             connectionBanner.Title = offline == 1 ? "1 scanner isn't answering" : offline + " scanners aren't answering";
             connectionBanner.Message = "Check that it's plugged in and switched on, then look again. Scans already saved are not affected.";
@@ -698,6 +705,7 @@ namespace ScanLink
 
         private void LoadDetectedScanners()
         {
+            if (resultBanner != null) SLVisibility.Set(resultBanner, false);   // results of the last run no longer apply
             detectedScanners = new List<ScannerInfo>();
             
             // Clear and log to debug panel
@@ -867,16 +875,8 @@ namespace ScanLink
                 if (assignments.Count == 0 && detectedScanners.Count == 0)
                 {
                     System.Diagnostics.Debug.WriteLine("No historical scanners found, adding test entry");
-                    detectedScanners.Add(new ScannerInfo
-                    {
-                        SerialNumber = "Test Scanner",
-                        PNPDeviceID = "USB\\VID_05F9&PID_2216\\S/N_G24HD1690",
-                        LineID = "5",
-                        BlockID = "9",
-                        Supplier = "",
-                        Status = "Not Connected",
-                        IsCurrentlyConnected = false
-                    });
+                    // (placeholder row removed: an empty list shows the "No scanners found yet" state, and a fake
+                    //  row was saved into scanner_assignments.txt if the operator pressed Save)
                 }
             }
             catch (Exception ex)
@@ -885,16 +885,8 @@ namespace ScanLink
                 ShowResult(SLTone.Warning, "Saved scanner assignments couldn't be read", ex.Message);
                 
                 // Add a test entry even if there's an error
-                detectedScanners.Add(new ScannerInfo
-                {
-                    SerialNumber = "Test Scanner (Error Fallback)",
-                    PNPDeviceID = "USB\\VID_05F9&PID_2216\\S/N_G24HD1690",
-                    LineID = "5",
-                    BlockID = "9",
-                    Supplier = "",
-                    Status = "Not Connected",
-                    IsCurrentlyConnected = false
-                });
+                // (placeholder row removed: an empty list shows the "No scanners found yet" state, and a fake
+                //  row was saved into scanner_assignments.txt if the operator pressed Save)
             }
         }
 
@@ -996,17 +988,8 @@ namespace ScanLink
 
             if (!detectedScanners.Any())
             {
-                detectedScanners.Add(new ScannerInfo
-                {
-                    SerialNumber = "No scanners detected",
-                    PNPDeviceID = "N/A",
-                    ConnectionType = "USB-COM",
-                    LineID = "",
-                    BlockID = "",
-                    Supplier = "",
-                    Status = "Not Connected",
-                    IsCurrentlyConnected = false
-                });
+                // (placeholder row removed: an empty list shows the "No scanners found yet" state, and a fake
+                //  row was saved into scanner_assignments.txt if the operator pressed Save)
             }
         }
 
@@ -1243,10 +1226,13 @@ namespace ScanLink
                         LogDebug($"Deleting scanner: {scanner.PNPDeviceID}");
 
                         // Remove from list
+                        string removedKey = scanner.AssignmentKey;
                         detectedScanners.RemoveAt(e.RowIndex);
 
-                        // Save updated configuration immediately
-                        SaveScannersToFile();
+                        // Save updated configuration immediately. Save merges with the file, so
+                        // the removed assignment must be dropped from it explicitly or it is
+                        // written straight back.
+                        SaveScannersToFile(removedKey);
                         ScannersSaved?.Invoke(this, EventArgs.Empty);
 
                         // Refresh the grid
@@ -1257,6 +1243,13 @@ namespace ScanLink
                     }
                 }
             }
+        }
+
+        /// <summary>Re-detects scanners (the page calls this on every revisit).</summary>
+        internal void RefreshScanners()
+        {
+            LoadDetectedScanners();
+            PopulateDataGridView();
         }
 
         private void refreshButton_Click(object sender, EventArgs e)
@@ -1304,6 +1297,7 @@ namespace ScanLink
 
         private void saveButton_Click(object sender, EventArgs e)
         {
+            SLVisibility.Set(resultBanner, false);
             try
             {
                 // Commit any in-progress cell edit so the latest typed value is read below. Without
@@ -1346,7 +1340,7 @@ namespace ScanLink
             }
         }
 
-        private void SaveScannersToFile()
+        private void SaveScannersToFile(string removedAssignmentKey = null)
         {
             try
             {
@@ -1362,11 +1356,12 @@ namespace ScanLink
                     string[] existingLines = File.ReadAllLines(savePath);
                     existingAssignments = ParseAssignmentsFile(existingLines);
                 }
+                if (!string.IsNullOrEmpty(removedAssignmentKey)) existingAssignments.Remove(removedAssignmentKey);
                 
                 // Update or add new scanner assignments
                 foreach (var scanner in detectedScanners)
                 {
-                    if (string.IsNullOrWhiteSpace(scanner.PNPDeviceID) || scanner.PNPDeviceID == "N/A")
+                    if (string.IsNullOrWhiteSpace(scanner.PNPDeviceID) || scanner.PNPDeviceID == "N/A" || IsPlaceholder(scanner))
                     {
                         continue;
                     }

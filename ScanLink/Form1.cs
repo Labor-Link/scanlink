@@ -1450,6 +1450,9 @@ namespace ScanLink
                     _cropOptionsCache = null;
                     PopulateProductIdComboBox();
                     PopulateCropIdComboBox();
+                    // The Print page's crop / product lists come from the same cache; reload them
+                    // now instead of on the next visit to the page.
+                    var reload = EnsureCropOptionsLoadedAsync(updateStatusLabel: false);
 
                     if (statusLabel != null)
                     {
@@ -3471,7 +3474,7 @@ namespace ScanLink
             _pendingPrinterProductSelection = selectedValue;
 
             // Only update statusLabel if it's accessible (not in popup context)
-            if (statusLabel != null && !statusLabel.IsDisposed && statusLabel.Parent != null)
+            if (statusLabel != null && !statusLabel.IsDisposed)
             {
                 string message = string.IsNullOrEmpty(displayText)
                     ? "Product selection cleared."
@@ -3617,7 +3620,7 @@ namespace ScanLink
             UpdateProductOptionsForSelectedCrop();
 
             // Only update statusLabel if it's accessible (not in popup context)
-            if (statusLabel != null && !statusLabel.IsDisposed && statusLabel.Parent != null)
+            if (statusLabel != null && !statusLabel.IsDisposed)
             {
                 string message = string.IsNullOrEmpty(displayText)
                     ? "Crop selection cleared."
@@ -4381,6 +4384,7 @@ namespace ScanLink
             }
 
             // Show progress and update UI
+            _printerWriteFailed = false;
             button_send.Enabled = false;
             button_send.Text = "Processing...";
             progressBar.Visible = true; // keep visible as a thin status strip
@@ -4410,6 +4414,11 @@ namespace ScanLink
                     //     break;
                 }
 
+                // The presets return quietly when the printer could not be reached; report that
+                // as a failure instead of "completed successfully".
+                if (_printerWriteFailed)
+                    throw new Exception("the label printer could not be reached. Check Printer in the sidebar, then try again.");
+
                 // Success feedback with generated barcode summary
                 string successMessage = $"✅ Print job completed successfully!\n🎯 Barcode used: {_generatedBarcode}";
                 statusLabel.Text = successMessage;
@@ -4418,7 +4427,7 @@ namespace ScanLink
                 // Reset barcode generation state after successful print
                 _barcodeGenerated = false;
                 _generatedBarcode = "";
-                button_send.Text = "Generate Barcode";
+                button_send.Text = "Start printing";
                 button_send.BackColor = System.Drawing.Color.FromArgb(100, 100, 100); // Gray out permanently
             }
             catch (Exception ex)
@@ -4437,8 +4446,13 @@ namespace ScanLink
             }
         }
 
+        /// <summary>True when the last __createPrn call could not reach the printer (it shows
+        /// its own error and returns false; the print presets then just return).</summary>
+        private bool _printerWriteFailed;
+
         private bool __createPrn(string additionalname, int index)
         {
+            _printerWriteFailed = true;
             IPrinterConnection fs = null;
             try
             {
@@ -4453,7 +4467,7 @@ namespace ScanLink
                     case "USB":
                         if (string.IsNullOrWhiteSpace(m_USBDevicePath))
                         {
-                            throw new Exception("No USB device selected. Please click 'Printer Setup' or 'Configure' and select your printer from the list first.");
+                            throw new Exception("No USB device selected. Open Printer in the sidebar, choose USB cable, then click 'Configure connection' and select your printer.");
                         }
                         fs = new USBConnection(m_USBDevicePath);
                         break;
@@ -4478,6 +4492,7 @@ namespace ScanLink
                     //     BarcodePrinter.AddEmulation(PPLZEmulation);
                     //     break;
                 }
+                _printerWriteFailed = false;
                 return true;
             }
             catch (Exception ex)
@@ -7168,6 +7183,7 @@ namespace ScanLink
             {
                 nextPageButton.Enabled = currentPage < totalPages;
             }
+            UpdateScanCountLabel();   // v2 count readout follows every reload, not only DataSource changes
         }
 
         private void InitializePagination(DataTable data)
@@ -7261,6 +7277,7 @@ namespace ScanLink
             filterCropId = "";
             filterSearchText = "";
             if (_searchField != null) _searchField.Clear();
+            if (_periodSegments != null) _periodSegments.SelectSilently(Array.IndexOf(PeriodKeys, PeriodCustom));
 
             // Clear UI controls
             dateFromPicker.Checked = false;
@@ -7674,8 +7691,16 @@ namespace ScanLink
             }
         }
 
+        /// <summary>Set while saved settings are being applied: control changes during the load
+        /// fire handlers that save, which wrote half-loaded values (CropID=000) over the file.</summary>
+        private bool _loadingSettings;
+
+        /// <summary>Saves now (the printer connection changed).</summary>
+        internal void SavePrinterConnection() { SaveAdvancedSettings(); }
+
         private void SaveAdvancedSettings()
         {
+            if (_loadingSettings) return;
             try
             {
                 string settingsFile = GetSettingsFilePath();
@@ -7697,7 +7722,14 @@ namespace ScanLink
                     ["Gap"] = numericUpDown_gap?.Value.ToString() ?? "2",
                     ["Darkness"] = trackBar_darkness?.Value.ToString() ?? "5",
                     ["PrintSpeed"] = comboBox_speed?.SelectedItem?.ToString() ?? "5 - Medium",
-                    ["DPI"] = numericUpDown_dpi?.Value.ToString() ?? "203"
+                    ["DPI"] = numericUpDown_dpi?.Value.ToString() ?? "203",
+                    // Printer connection: without these the app forgot the printer on every
+                    // restart and the first print failed with "No USB device selected".
+                    ["ConnectionType"] = CurrentConnectionType ?? "USB",
+                    ["UsbDevicePath"] = m_USBDevicePath ?? "",
+                    ["TcpAddress"] = m_TCPAddress ?? "",
+                    ["TcpPort"] = m_TCPPort.ToString(),
+                    ["OutputFolder"] = strFolder ?? ""
                 };
 
 
@@ -7744,7 +7776,9 @@ namespace ScanLink
                 }
 
                 // Apply loaded settings to controls
-                ApplySettingsToControls(settings);
+                _loadingSettings = true;
+                try { ApplySettingsToControls(settings); }
+                finally { _loadingSettings = false; }
             }
             catch (Exception ex)
             {
@@ -7947,6 +7981,13 @@ namespace ScanLink
                         numericUpDown_dpi.Value = Math.Max(numericUpDown_dpi.Minimum, Math.Min(numericUpDown_dpi.Maximum, dpi));
                     }
                 }
+                // Printer connection (older settings files have none of these keys).
+                string v;
+                if (settings.TryGetValue("ConnectionType", out v) && !string.IsNullOrWhiteSpace(v)) CurrentConnectionType = v;
+                if (settings.TryGetValue("UsbDevicePath", out v) && !string.IsNullOrWhiteSpace(v)) m_USBDevicePath = v;
+                if (settings.TryGetValue("TcpAddress", out v) && !string.IsNullOrWhiteSpace(v)) m_TCPAddress = v;
+                if (settings.TryGetValue("TcpPort", out v) && int.TryParse(v, out int tcpPort)) m_TCPPort = tcpPort;
+                if (settings.TryGetValue("OutputFolder", out v) && !string.IsNullOrWhiteSpace(v)) strFolder = v;
             }
             catch (Exception ex)
             {
@@ -8292,7 +8333,7 @@ namespace ScanLink
                 case "USB":
                     if (string.IsNullOrWhiteSpace(this.m_USBDevicePath))
                     {
-                        textBox.Text = "🔌 USB: Click Configure to select device";
+                        textBox.Text = "🔌 USB: click Configure connection to select the printer";
                         statusLabel.Text = "Status: USB device not configured";
                         statusLabel.ForeColor = Theme.Warn500;
                         // Update main status bar with connection status
@@ -8353,7 +8394,12 @@ namespace ScanLink
                     // row, so choosing a different printer can leave the first one selected too
                     // and OK returns that first one. Force single-select so the click sticks.
                     ForceUsbDialogSingleSelect(USBsetdlg);
-                    if (DialogResult.OK == USBsetdlg.ShowDialog(ownerForm))
+                    // The printer page may be embedded (not a top-level window); a child window
+                    // cannot own a dialog, so the picker could open behind the app. Use its window.
+                    IWin32Window usbOwner = (ownerForm != null && !ownerForm.TopLevel)
+                        ? (IWin32Window)(ownerForm.TopLevelControl ?? this)
+                        : (ownerForm ?? (IWin32Window)this);
+                    if (DialogResult.OK == USBsetdlg.ShowDialog(usbOwner))
                     {
                         // setting USB Device.
                         this.m_USBDevicePath = USBsetdlg.DevicePath;

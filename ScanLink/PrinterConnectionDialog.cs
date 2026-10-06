@@ -75,11 +75,13 @@ namespace ScanLink
             if (_mainForm == null || comboBox_port.SelectedIndex < 0) return;
             _mainForm.CurrentConnectionType = SelectedKey;
             _mainForm.UpdateConnectionUI(SelectedKey, textBox_port.Inner, _statusProxy);
+            _mainForm.SavePrinterConnection();   // remembered across restarts
         }
 
         private void button_setting_Click(object sender, EventArgs e)
         {
             _mainForm.HandleConnectionConfigure(SelectedKey, this);
+            _mainForm.SavePrinterConnection();   // keep the chosen USB device / address / folder
             UpdateConnectionUI();
         }
 

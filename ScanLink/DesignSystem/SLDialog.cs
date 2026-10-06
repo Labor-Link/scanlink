@@ -233,6 +233,16 @@ namespace ScanLink.DesignSystem
             if (CloseVisible && CloseRect.Contains(e.Location)) { DialogResult = DialogResult.Cancel; Close(); }
         }
 
+        /// <summary>
+        /// Embedded as a page, Escape must not "cancel" the page: Form.ProcessDialogKey would
+        /// click the CancelButton (e.g. Close), which navigates away from the page.
+        /// </summary>
+        protected override bool ProcessDialogKey(Keys keyData)
+        {
+            if (Embedded && (keyData & Keys.KeyCode) == Keys.Escape) return true;
+            return base.ProcessDialogKey(keyData);
+        }
+
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
             if (keyData == Keys.Escape && CancelButton == null && !Embedded) { DialogResult = DialogResult.Cancel; Close(); return true; }

@@ -105,6 +105,10 @@ namespace ScanLink
             page.Root.Visible = true;
             page.Root.BringToFront();
 
+            // A keyboard-mode scanner types into the focused control and ends with Enter: keep
+            // focus off the search box and the header buttons on the Scans page.
+            if (key == NavScans && scannerDataGridView != null && scannerDataGridView.CanFocus) scannerDataGridView.Focus();
+
             _sidebar.SetActive(key);
             _topBar.SetPage(page.Title, page.Subtitle);
             ApplyTopBarActions(page);
@@ -204,6 +208,14 @@ namespace ScanLink
             V2Page scanners = AddPage(NavScanners, "Scanners", "Detect, name and assign the scanners on this site.",
                 scannersRoot, coverOnly: false);
             scanners.Build = () => EmbedScannerManagement(scannersRoot);
+            // The old Scanner Setup window re-detected on every open; the page does the same on
+            // every visit after the first (the first build already detected).
+            bool scannersFirstVisit = true;
+            scanners.Activated = () =>
+            {
+                if (scannersFirstVisit) { scannersFirstVisit = false; return; }
+                if (_scannerManagementPage != null && !_scannerManagementPage.IsDisposed) _scannerManagementPage.RefreshScanners();
+            };
 
             // --- Printer ---
             Panel printerRoot = NewPagePanel();
@@ -224,9 +236,12 @@ namespace ScanLink
             reports.Build = () => BuildReportsPage(reportsRoot);
         }
 
+        private ScannerManagementForm _scannerManagementPage;
+
         private void EmbedScannerManagement(Panel host)
         {
             ScannerManagementForm form = new ScannerManagementForm();
+            _scannerManagementPage = form;
 
             // The same wiring scannerSetupButton_Click performed. It used ShowDialog, so the
             // reinitialise ran after the window closed; as a page it runs on Save, which is
@@ -298,7 +313,8 @@ namespace ScanLink
             Button open = new Button { Text = "Open reports", Width = 180 };
             ThemeStyles.Primary(open);
             open.Location = new Point(0, 58);
-            open.Click += (s, e) => { if (reportsButton != null) reportsButton.PerformClick(); };
+            // Called directly: reportsButton is hidden, and PerformClick on a hidden button does nothing.
+            open.Click += (s, e) => reportsButton_Click(reportsButton, EventArgs.Empty);
 
             body.Controls.Add(detail);
             body.Controls.Add(open);

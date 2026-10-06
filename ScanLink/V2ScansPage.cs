@@ -93,7 +93,7 @@ namespace ScanLink
 
         private Control BuildScansSyncAction()
         {
-            SLButton sync = new SLButton { Text = "Sync now", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "cloud-upload" };
+            SLButton sync = new SLButton { Text = "Sync now", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "cloud-upload", TabStop = false };
             // Same action as the console's "Sync logs to API", promoted to the page header
             // because it is the one thing an operator reaches for when the count looks wrong.
             sync.Click += (s, e) => { if (button_manualUpload != null) button_manualUpload.PerformClick(); };
@@ -102,7 +102,7 @@ namespace ScanLink
 
         private Control BuildScansPrintAction()
         {
-            SLButton print = new SLButton { Text = "Print labels", ButtonSize = SLSize.Sm, IconName = "printer" };
+            SLButton print = new SLButton { Text = "Print labels", ButtonSize = SLSize.Sm, IconName = "printer", TabStop = false };
             print.Click += (s, e) => NavigateTo(NavPrint);
             return print;
         }
@@ -464,6 +464,7 @@ namespace ScanLink
                     SLTableStyle.SetIconAction(dgvActiveScanners, "Action", "save", false);
                 }
                 ApplyDetailsDisclosure();
+                MirrorConnectionStatus();
             }
             catch (Exception ex)
             {

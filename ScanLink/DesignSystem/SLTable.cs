@@ -128,6 +128,14 @@ namespace ScanLink.DesignSystem
                 if (cc != null) { cc.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing; cc.FlatStyle = FlatStyle.Flat; }
             };
             grid.CellPainting += OnCellPainting;
+            // Drop-down cells read as text until edited, so one click must also open the list
+            // (otherwise the first click only starts editing and a second opens it).
+            grid.EditingControlShowing += (s, e) =>
+            {
+                ComboBox editor = e.Control as ComboBox;
+                if (editor == null || !grid.IsHandleCreated) return;
+                grid.BeginInvoke((Action)(() => { if (!editor.IsDisposed && editor.Visible) editor.DroppedDown = true; }));
+            };
             grid.CellMouseEnter += OnCellMouseEnter;
             grid.MouseLeave += OnMouseLeave;
             grid.RowsAdded += (s, e) => { SyncEmpty(grid); };

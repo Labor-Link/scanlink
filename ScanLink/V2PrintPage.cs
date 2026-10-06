@@ -197,7 +197,9 @@ namespace ScanLink
         private bool IsIdentifyStepComplete()
         {
             bool crop = comboBox_CropID != null && comboBox_CropID.SelectedIndex >= 0;
-            bool product = comboBox_ProductID != null && !string.IsNullOrWhiteSpace(comboBox_ProductID.Text);
+            // A real list entry, not half-typed search text (that encodes product "000").
+            ProductComboItem chosen = comboBox_ProductID != null ? comboBox_ProductID.SelectedItem as ProductComboItem : null;
+            bool product = chosen != null && !chosen.IsHeader;
             bool picker = textBox_EmployeeID != null && !string.IsNullOrWhiteSpace(textBox_EmployeeID.Text);
             return crop && product && picker;
         }
@@ -330,7 +332,7 @@ namespace ScanLink
             {
                 if (label_ProductDetail.Parent != null) label_ProductDetail.Parent.Controls.Remove(label_ProductDetail);
                 label_ProductDetail.AutoSize = false;
-                label_ProductDetail.Height = 40;
+                label_ProductDetail.Height = 56;   // up to three lines (grade, count, carton, weight)
                 label_ProductDetail.Font = Theme.FontSmSemibold;
                 label_ProductDetail.ForeColor = Theme.Indigo700;
                 label_ProductDetail.BackColor = Color.Transparent;
@@ -346,7 +348,7 @@ namespace ScanLink
             SLFieldSet fields = new SLFieldSet { Columns = 2 };
             fields.Add(new SLField("Crop", comboBox_CropID) { Required = true });
             fields.Add(new SLField("Product", product) { Required = true });
-            fields.Add(new SLField("Who is picking?", picker) { Required = true, Hint = "Start typing a number or a name." });
+            fields.Add(new SLField("Who is picking?", picker) { Required = true, Hint = "Employee number, or use Find picker." });
             fields.Add(new SLField("This combination prints as", printsAs));
 
             _stepValidation = new SLBanner { Tone = SLTone.Error, IconName = "circle-alert" };
@@ -390,7 +392,7 @@ namespace ScanLink
 
             button_generateBarcode = ReplaceButton(button_generateBarcode, button_generateBarcode_Click,
                 new SLButton { Text = "Generate barcode", Variant = SLVariant.Navy, IconName = "barcode" });
-            button_generateBarcode.Click += (s, e) => { UpdatePrintSummary(); RefreshLabelPreview(); };
+            button_generateBarcode.Click += (s, e) => { SnapshotBarcodeInputs(); UpdatePrintSummary(); RefreshLabelPreview(); };
 
             button_preview = ReplaceButton(button_preview, button_preview_Click,
                 new SLButton { Text = "Open full preview", Variant = SLVariant.Secondary, IconName = "eye" });
@@ -401,6 +403,7 @@ namespace ScanLink
             bool wasEnabled = button_send == null || button_send.Enabled;
             button_send = ReplaceButton(button_send, button_send_Click, send);
             send.Enabled = wasEnabled;
+            send.Click += (s, e) => { UpdatePrintSummary(); RefreshLabelPreview(); };   // after the print handler
             bool mapping = false;
             send.BackColorChanged += (s, e) =>
             {
@@ -710,7 +713,7 @@ namespace ScanLink
 
             // Attached after the app handlers so the preview repaints against the list and
             // the detail line they have just updated, not the previous ones.
-            EventHandler refresh = (s, e) => { RefreshLabelPreview(); UpdateStepAvailability(); UpdatePrintSummary(); };
+            EventHandler refresh = (s, e) => { InvalidateBarcodeIfInputsChanged(); RefreshLabelPreview(); UpdateStepAvailability(); UpdatePrintSummary(); };
 
             if (comboBox_CropID != null) comboBox_CropID.SelectedIndexChanged += refresh;
             if (comboBox_ProductID != null)
@@ -720,6 +723,47 @@ namespace ScanLink
             }
             if (textBox_EmployeeID != null) textBox_EmployeeID.TextChanged += refresh;
             if (numericUpDown_count != null) numericUpDown_count.ValueChanged += refresh;
+        }
+
+        // ---------------------------------------------------------------- barcode freshness
+
+        /// <summary>Crop / product / picker the current barcode was generated from.</summary>
+        private string _barcodeInputs;
+
+        private string CurrentBarcodeInputs()
+        {
+            return string.Join("|",
+                comboBox_CropID != null ? Convert.ToString(comboBox_CropID.SelectedValue) : "",
+                comboBox_ProductID != null ? Convert.ToString(comboBox_ProductID.SelectedValue) : "",
+                textBox_EmployeeID != null ? textBox_EmployeeID.Text.Trim() : "");
+        }
+
+        private void SnapshotBarcodeInputs()
+        {
+            if (_barcodeGenerated) _barcodeInputs = CurrentBarcodeInputs();
+        }
+
+        /// <summary>
+        /// The wizard invites going back to change crop, product or picker after generating.
+        /// The old barcode digits must not then print with the new product's text: when those
+        /// inputs change, the barcode is dropped and Start printing waits for a new one.
+        /// (The label count is not part of the barcode and does not invalidate it.)
+        /// </summary>
+        private void InvalidateBarcodeIfInputsChanged()
+        {
+            if (!_barcodeGenerated || _barcodeInputs == null) return;
+            if (CurrentBarcodeInputs() == _barcodeInputs) return;
+            _barcodeGenerated = false;
+            _generatedBarcode = "";
+            _barcodeInputs = null;
+            if (button_send != null)
+            {
+                button_send.Enabled = false;
+                button_send.Text = "Start printing";
+                button_send.BackColor = Color.FromArgb(100, 100, 100);
+            }
+            statusLabel.Text = "Crop, product or picker changed — generate the barcode again before printing.";
+            statusLabel.ForeColor = Theme.Warn500;
         }
 
         private void RefreshLabelPreview()

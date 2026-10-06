@@ -72,6 +72,10 @@ namespace ScanLink
                 loadingStatusLabel.VisibleChanged += (s, e) => SyncLoginMessages();
                 loginButton.TextChanged += (s, e) => ((SLButton)loginButton).Loading = loginButton.Text.StartsWith("Signing in", StringComparison.Ordinal);
                 SyncLoginMessages();
+
+                // ThemeStyles.Inputs ran earlier in the constructor and recoloured the
+                // placeholder text as if it were typed; put the placeholder state back.
+                InitializeLoginPlaceholders();
             }
             catch (Exception ex)
             {
@@ -99,7 +103,8 @@ namespace ScanLink
             string status = IconSet.StripLeadingGlyph(loginStatusLabel.Text ?? "");
             int ink = loginStatusLabel.ForeColor.ToArgb();
             bool error = ink == Color.Red.ToArgb() || ink == Theme.Err500.ToArgb() || ink == Theme.Err700.ToArgb();
-            bool info = ink == Color.Orange.ToArgb() || ink == Theme.Info500.ToArgb() || ink == Theme.Warn500.ToArgb();
+            bool info = ink == Color.Orange.ToArgb() || ink == Color.FromArgb(255, 152, 0).ToArgb()   // ResetToLogin's orange
+                        || ink == Theme.Info500.ToArgb() || ink == Theme.Warn500.ToArgb();
             bool showStatus = loginStatusLabel.Visible && status.Length > 0 && (error || info);
             _login.ShowStatus(showStatus, error ? SLTone.Error : SLTone.Info, status);
 

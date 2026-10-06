@@ -33,6 +33,15 @@ Report bugs with a screenshot, the screen name below and the steps.
 
 ---
 
+## 0. Shell
+
+| # | Check | Expected |
+|---|---|---|
+| 0.1 | Sidebar **Sign out** | Returns to the Sign in screen; signing in again works. |
+| 0.2 | Reports → Open reports | Opens the web dashboard in the browser. |
+| 0.3 | Status bar, right side | Shows "N Scanners Connected · 1 Printer Connected" and updates within ~2 s of plugging/unplugging. |
+| 0.4 | Keyboard-mode (HID) scanner on the Scans page right after sign-in | Scans do not type into the search box or click header buttons. |
+
 ## 1. Login
 
 | # | Check | Expected |
@@ -46,6 +55,8 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 1.7 | Placeholders | Email shows grey "you@packhouse.co", password shows grey "Your password"; both clear when you click in. |
 | 1.8 | Site selection after sign-in, then cancel it | Red banner explaining the cancel; can sign in again. |
 | 1.9 | Restart the app while signed in | Info banner "Restoring session…" then the app opens without signing in. |
+| 1.10 | Session expired / restore failed | The message shows as a banner on the Sign in screen (it used to be dropped). |
+| 1.11 | Placeholders on a fresh start | "you@packhouse.co" and "Your password" are grey, not black like typed text. |
 
 ## 2. Scans page
 
@@ -64,6 +75,8 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 2.11 | Previous / Next | Pages through scans; disabled on first/last page; "Page x of y" correct. |
 | 2.12 | Table | Headers read DATE, TIME, SERIAL, BLOCK, LINE, SUPPLIER, CROP, PRODUCT, PICKER; serial in monospace, time in grey; hover highlights a row; selected row light indigo. |
 | 2.13 | No scans for the filters | "No scans to show" message in the table instead of a blank box. |
+| 2.14 | Clear filters after picking "Today" | The range switch returns to Custom; clicking Today again re-applies it. |
+| 2.15 | Scan count | "N scans" next to the filters is correct after paging, filtering and clearing. |
 
 ## 3. Print labels
 
@@ -83,6 +96,11 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 3.11a | Printer settings on a **fresh PC** (never printed before) | Test Mode and Barcode Type are filled (not empty); printing works without opening settings first. |
 | 3.11c | Printer settings look | No "Advanced Print Settings" frame inside the card; labels in grey field-label style; drop-downs (Printer language, Test mode, Barcode type, Speed) open and save their choice; "Print two stickers horizontally" checkbox works. |
 | 3.11b | Sticker layout diagram | Shown **below** the settings (not cut off on the right); changing width / height / X / gap / "two stickers" updates it; the next print uses the new values. |
+| 3.10a | Printer switched off / unplugged, then Start printing | Status bar shows red "Print failed: the label printer could not be reached…" — never "completed successfully"; Start printing stays enabled to retry. |
+| 3.10b | Generate barcode, go Back and change product or picker | Start printing greys out; status asks to generate again; the old barcode can never print with the new product. Changing only the count keeps the barcode. |
+| 3.10c | Half-type a product name, then Next | Not allowed until a product is picked from the list. |
+| 3.10d | After a successful print | Summary and preview update; Start printing reads "Start printing" (greyed until the next Generate). |
+| 3.5a | Add combination, then look at the Product list | The new combination is there without leaving the page. |
 | 3.12 | Preview card | Grey tray with a white label showing product, picker, barcode and serial. |
 
 ## 4. Scanners
@@ -101,6 +119,11 @@ Open from the sidebar (Scanners).
 | 4.8 | **COM mode help** | Help dialog with the setup steps; **Got it** closes it. |
 | 4.9 | **Show detection log** toggle | Shows/hides the detection log. |
 | 4.10 | Small screen | Whole table fits without a horizontal scrollbar; status and trash visible. |
+| 4.11 | Remove a scanner, then **Look for scanners** (and restart the app) | It stays removed (it used to come back). |
+| 4.12 | Plug / unplug a scanner, go to another page and back to Scanners | The table and banner reflect the change without restarting. |
+| 4.13 | PC with no scanners | "No scanners found yet" (no "Test Scanner" row, no "1 scanner isn't answering"); Save writes no fake scanner. |
+| 4.14 | Baud / Parity / Data / Stop cell | One click opens the drop-down list. |
+| 4.15 | Esc on the Scanners or Printer page | Nothing happens (does not jump to Scans). |
 
 ## 5. Printer (connection)
 
@@ -111,6 +134,8 @@ Open from the sidebar (Scanners).
 | 5.3 | **Configure connection** | Opens the same configuration as before for the chosen type (folder picker, COM settings, USB device, IP). |
 | 5.4 | Status badge | Green when configured, amber when USB not configured, blue for serial/network. |
 | 5.5 | Close | Hides the dialog (or returns to Scans when used as a page); reopening keeps the settings. |
+| 5.6 | USB cable → Configure connection | The printer picker opens **in front of** ScanLink. |
+| 5.7 | Configure USB (or LAN / File), then **restart the app** and print | The connection is remembered; no "No USB device selected" error. |
 
 ## 6. Add product combination
 
