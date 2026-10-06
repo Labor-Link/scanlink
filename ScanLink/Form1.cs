@@ -1572,8 +1572,8 @@ namespace ScanLink
         private void InitializeAdvancedSettings()
         {
             // Advanced settings are always visible now
-            statusLabel.Text = "Advanced settings enabled. Configure barcode dimensions and quality.";
-            statusLabel.ForeColor = Theme.Info500;
+            statusLabel.Text = "Ready";
+            statusLabel.ForeColor = Theme.TextMuted;
 
             // Set up tooltips for better user experience
             toolTip.SetToolTip(textBox_EmployeeID, "Enter the text/data to encode in the barcode");

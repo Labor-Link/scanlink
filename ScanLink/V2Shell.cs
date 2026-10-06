@@ -64,7 +64,8 @@ namespace ScanLink
             {
                 if (scannerContentPanel != null) scannerContentPanel.Controls.Remove(statusPanel);
                 statusPanel.Dock = DockStyle.Bottom;
-                statusPanel.Height = Theme.StatusBarHeight;
+                statusPanel.Height = ScanLink.DesignSystem.SLStatusBar.BarHeight;
+                BuildV2StatusBar();
             }
 
             if (scannerContentPanel != null)
@@ -255,6 +256,43 @@ namespace ScanLink
         private void Sidebar_ItemSelected(object sender, string key)
         {
             NavigateTo(key);
+        }
+
+        private ScanLink.DesignSystem.SLStatusBar _statusBar;
+
+        /// <summary>
+        /// The mockup's StatusBar along the bottom of every page. statusLabel stays Form1's
+        /// message channel (55+ call sites set its Text and ForeColor) but is no longer shown;
+        /// its colour picks the tone and its text is tidied to one line.
+        /// </summary>
+        private void BuildV2StatusBar()
+        {
+            if (statusPanel == null || statusLabel == null) return;
+            if (statusLabel.Parent != null) statusLabel.Parent.Controls.Remove(statusLabel);
+            statusPanel.Padding = Padding.Empty;
+            _statusBar = new ScanLink.DesignSystem.SLStatusBar { Dock = DockStyle.Fill };
+            statusPanel.Controls.Add(_statusBar);
+            statusLabel.TextChanged += (s, e) => SyncStatusBar();
+            statusLabel.ForeColorChanged += (s, e) => SyncStatusBar();
+            SyncStatusBar();
+        }
+
+        private void SyncStatusBar()
+        {
+            if (_statusBar == null) return;
+            string text = (statusLabel.Text ?? "").Replace("\r", "").Replace("\n", " · ").Trim();
+            text = ScanLink.Themed.IconSet.StripLeadingGlyph(text);
+            if (text.StartsWith("Status:", StringComparison.OrdinalIgnoreCase)) text = text.Substring(7).Trim();
+            if (text.StartsWith("✕") || text.StartsWith("✓")) text = text.Substring(1).Trim();
+            _statusBar.Text = text.Length == 0 ? "Ready" : text;
+
+            int c = statusLabel.ForeColor.ToArgb();
+            ScanLink.DesignSystem.SLTone tone = ScanLink.DesignSystem.SLTone.Neutral;
+            if (c == Theme.Ok500.ToArgb() || c == Theme.Ok700.ToArgb() || c == Color.Green.ToArgb()) tone = ScanLink.DesignSystem.SLTone.Success;
+            else if (c == Theme.Err500.ToArgb() || c == Theme.Err700.ToArgb() || c == Color.Red.ToArgb()) tone = ScanLink.DesignSystem.SLTone.Error;
+            else if (c == Theme.Warn500.ToArgb() || c == Theme.Warn700.ToArgb() || c == Color.Orange.ToArgb()) tone = ScanLink.DesignSystem.SLTone.Warning;
+            else if (c == Theme.Info500.ToArgb() || c == Color.Blue.ToArgb()) tone = ScanLink.DesignSystem.SLTone.Info;
+            _statusBar.Tone = tone;
         }
     }
 }

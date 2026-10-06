@@ -136,6 +136,12 @@ new SLBanner {
   not `MessageBox`, not a red `Label`.
 * Show/hide with `SLVisibility.Set(banner, bool)`.
 
+### StatusBar → `SLStatusBar`
+
+The quiet 36px footer strip (StatusBar.js): white, top border, 7px tone dot, 12px text, optional
+muted `RightText`. Ambient state only; anything the user must act on goes in an `SLBanner`.
+In the app it sits under every page and mirrors Form1's `statusLabel` (V2Shell.cs, `SyncStatusBar`).
+
 ### EmptyState → `SLEmptyState`
 
 ```csharp
@@ -345,7 +351,7 @@ table.EmptyState = new SLEmptyState { IconName = "search-x", Title = "No scans m
 From the mockup but not ported yet: `Pagination`, `StatTile` (v1 exists as `Themed/StatTile.cs`),
 `SiteTile` (`Themed/SiteTileButton.cs`), `SearchField` (`Themed/SearchField.cs`; or `SLTextBox` with
 `PrefixIcon = "search"`), `DateField`,
-`Slider`, `ProgressBar`, `StatusBar`, `Sidebar` / `TopBar` (`Themed/SidebarNav.cs`, `Themed/TopBar.cs`).
+`Slider`, `ProgressBar`, `Sidebar` / `TopBar` (`Themed/SidebarNav.cs`, `Themed/TopBar.cs`).
 `Themed/SegmentedControl.cs` is superseded by `SLSegmentedControl`.
 The `Themed/*` versions predate this library and restyle stock controls; when you touch them, port
 them to SL controls (read the mockup source file, then follow the patterns above) and add a gallery scene.

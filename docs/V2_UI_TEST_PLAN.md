@@ -27,6 +27,9 @@ Report bugs with a screenshot, the screen name below and the steps.
 - Buttons show hover and pressed states; disabled buttons look grey and do nothing.
 - Text fields show an indigo border when focused; **Tab** moves through fields in order.
 - No Windows pop-up message boxes where a screen now shows an in-page banner (see below).
+- **Status bar** along the bottom of every page: a coloured dot and one line of text — grey "Ready"
+  at start, green for success (e.g. "Labels sent"), red for errors (e.g. a failed print), blue for
+  progress. Long or multi-line messages stay on one line.
 
 ---
 
@@ -78,6 +81,7 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 3.10 | Start printing | Prints the right number of labels; progress bar runs; button text follows the job. If the printer is not set up, configure it first under **Printer** ("No USB device selected" means no USB printer was picked there). |
 | 3.11 | Printer settings → Show / Hide | Expands/collapses the advanced printer settings and scrolls them into view. |
 | 3.11a | Printer settings on a **fresh PC** (never printed before) | Test Mode and Barcode Type are filled (not empty); printing works without opening settings first. |
+| 3.11c | Printer settings look | No "Advanced Print Settings" frame inside the card; labels in grey field-label style; drop-downs (Printer language, Test mode, Barcode type, Speed) open and save their choice; "Print two stickers horizontally" checkbox works. |
 | 3.11b | Sticker layout diagram | Shown **below** the settings (not cut off on the right); changing width / height / X / gap / "two stickers" updates it; the next print uses the new values. |
 | 3.12 | Preview card | Grey tray with a white label showing product, picker, barcode and serial. |
 

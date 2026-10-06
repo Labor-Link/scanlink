@@ -475,12 +475,12 @@ namespace ScanLink
         /// </summary>
         private int ArrangeAdvancedPanel()
         {
-            if (advancedPanel == null || advancedGroupBox == null) return 470;
+            if (advancedPanel == null) return 470;
 
-            int sectionsBottom = 0;
+            // The three settings sections dock to the top of the panel (their designer heights).
+            int sectionsBottom = advancedPanel.Padding.Top;
             foreach (Control c in new Control[] { printerConfigPanel, dimensionsPanel, qualityPanel })
-                if (c != null) sectionsBottom = Math.Max(sectionsBottom, c.Bottom);
-            if (sectionsBottom == 0) sectionsBottom = 400;
+                if (c != null) sectionsBottom += c.Height;
 
             int diagramTop = sectionsBottom + Theme.S4;
             int diagramH = 0;
@@ -488,17 +488,100 @@ namespace ScanLink
             {
                 if (diagram == null) continue;
                 diagram.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-                diagram.Location = new Point(advancedGroupBox.Padding.Left + Theme.S4, diagramTop);
+                diagram.Location = new Point(0, diagramTop);
                 diagramH = Math.Max(diagramH, diagram.Height);
             }
 
-            int height = diagramTop + diagramH + Theme.S5;
-            advancedGroupBox.AutoSize = false;     // AutoSize + Dock collapses (docs/V2_MIGRATION_STATUS.md)
-            advancedGroupBox.Height = height;
-            advancedPanel.AutoSize = false;
+            int height = diagramTop + diagramH + Theme.S2;
+            advancedPanel.AutoSize = false;     // AutoSize + Dock collapses (docs/V2_MIGRATION_STATUS.md)
             advancedPanel.Height = height;
             advancedPanel.MinimumSize = new Size(600, height);
             return height;
+        }
+
+        /// <summary>
+        /// Takes the three settings sections and the diagrams out of the "Advanced Print
+        /// Settings" group box (the card already titles them) and restyles their contents:
+        /// field-label type, muted units, SL drop-downs (small, to keep the designer's row
+        /// spacing) and an SL checkbox. Handlers and selections move with each swapped control.
+        /// </summary>
+        private void RestyleAdvancedSettings()
+        {
+            if (advancedPanel == null || advancedGroupBox == null) return;
+
+            // Same relative order, so the docked sections stack as before.
+            System.Collections.Generic.List<Control> children = new System.Collections.Generic.List<Control>();
+            foreach (Control c in advancedGroupBox.Controls) children.Add(c);
+            foreach (Control c in children) advancedPanel.Controls.Add(c);
+            advancedGroupBox.Visible = false;
+            advancedPanel.Padding = Padding.Empty;
+            advancedPanel.BackColor = Theme.SurfaceCard;
+
+            foreach (Panel section in new[] { printerConfigPanel, dimensionsPanel, qualityPanel })
+            {
+                if (section == null) continue;
+                section.BackColor = Theme.SurfaceCard;
+                foreach (Control c in section.Controls)
+                {
+                    Label label = c as Label;
+                    if (label != null)
+                    {
+                        bool unit = label.Name.StartsWith("label_px", StringComparison.Ordinal) ||
+                                    label.Name.StartsWith("label_mm", StringComparison.Ordinal) ||
+                                    label.Name == "label_darknessValue";
+                        label.Font = unit ? Theme.FontSm : Theme.FontSmMedium;
+                        label.ForeColor = unit ? Theme.TextMuted : Theme.TextLabel;
+                        label.BackColor = Color.Transparent;
+                        label.UseMnemonic = false;
+                        continue;
+                    }
+                    NumericUpDown number = c as NumericUpDown;
+                    if (number != null) { number.Font = Theme.FontMd; number.BorderStyle = BorderStyle.FixedSingle; continue; }
+                    TrackBar track = c as TrackBar;
+                    if (track != null) track.BackColor = Theme.SurfaceCard;
+                }
+            }
+
+            comboBox_emulation = ReplaceCombo(comboBox_emulation, comboBox_emulation_SelectedIndexChanged);
+            comboBox_test = ReplaceCombo(comboBox_test, comboBox_test_SelectedIndexChanged);
+            comboBox_barcode = ReplaceCombo(comboBox_barcode, comboBox_barcode_SelectedIndexChanged);
+            comboBox_speed = ReplaceCombo(comboBox_speed, comboBox_speed_SelectedIndexChanged);
+
+            if (checkBox_twoUp != null && !(checkBox_twoUp is SLCheckBox))
+            {
+                CheckBox old = checkBox_twoUp;
+                SLCheckBox twoUp = new SLCheckBox
+                {
+                    Name = old.Name,
+                    Text = old.Text,
+                    Checked = old.Checked,
+                    Enabled = old.Enabled,
+                    Location = old.Location
+                };
+                old.CheckedChanged -= checkBox_twoUp_CheckedChanged;
+                Control parent = old.Parent;
+                if (parent != null) { parent.Controls.Remove(old); parent.Controls.Add(twoUp); }
+                twoUp.CheckedChanged += checkBox_twoUp_CheckedChanged;
+                checkBox_twoUp = twoUp;
+            }
+        }
+
+        /// <summary>Swaps a designer drop-down list for a small SLComboBox in place: items,
+        /// selection, position and handler move across; the new one is centred on the old row.</summary>
+        private static ComboBox ReplaceCombo(ComboBox old, EventHandler handler)
+        {
+            if (old == null || old is SLComboBox) return old;
+            SLComboBox combo = new SLComboBox { Name = old.Name, FieldSize = SLSize.Sm, Enabled = old.Enabled };
+            foreach (object item in old.Items) combo.Items.Add(item);
+            combo.SelectedIndex = old.SelectedIndex;
+            combo.Width = old.Width;
+            combo.Location = new Point(old.Left, Math.Max(0, old.Top + (old.Height - combo.Height) / 2));
+
+            old.SelectedIndexChanged -= handler;
+            Control parent = old.Parent;
+            if (parent != null) { parent.Controls.Remove(old); parent.Controls.Add(combo); }
+            combo.SelectedIndexChanged += handler;
+            return combo;
         }
 
         private CardPanel BuildPrinterSettingsCard()
@@ -529,8 +612,7 @@ namespace ScanLink
                 if (advancedPanel.Parent != null) advancedPanel.Parent.Controls.Remove(advancedPanel);
                 advancedPanel.Dock = DockStyle.Top;
                 advancedPanel.Visible = true;
-                advancedPanel.BackColor = Theme.SurfaceCard;
-                if (advancedGroupBox != null) advancedGroupBox.BackColor = Theme.SurfaceCard;
+                RestyleAdvancedSettings();
                 panelHeight = ArrangeAdvancedPanel();
                 settingsHost.Controls.Add(advancedPanel);
             }
