@@ -134,6 +134,7 @@ namespace ScanLink.DesignSystem
             {
                 ComboBox editor = e.Control as ComboBox;
                 if (editor == null || !grid.IsHandleCreated) return;
+                if ((Control.MouseButtons & MouseButtons.Left) == 0) return;   // keyboard entry: leave it closed
                 grid.BeginInvoke((Action)(() => { if (!editor.IsDisposed && editor.Visible) editor.DroppedDown = true; }));
             };
             grid.CellMouseEnter += OnCellMouseEnter;

@@ -20,6 +20,17 @@ namespace ScanLink
                 return DesignSystem.SLGallery.Run(outDir);
             }
 
+            // Anything not handled where it happens is shown in ScanLink's error dialog (with a
+            // Copy button for support) instead of the raw .NET crash dialog, and the app keeps running.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (s, e) =>
+            {
+                try { ErrorDialog.ShowError("Something went wrong", e.Exception.ToString()); }
+                catch (Exception) { /* never let the handler itself crash the app */ }
+            };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+                System.Diagnostics.Debug.WriteLine("[FATAL] " + e.ExceptionObject);
+
             Application.Run(new Form1());
             return 0;
         }

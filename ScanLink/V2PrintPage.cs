@@ -751,7 +751,10 @@ namespace ScanLink
         /// </summary>
         private void InvalidateBarcodeIfInputsChanged()
         {
-            if (!_barcodeGenerated || _barcodeInputs == null) return;
+            // The product list empties and refills itself (on returning to the page, after the
+            // drop-down closes, after a crop reload) under _suppressProductSearch; that churn is
+            // not the operator changing anything and must not drop the barcode.
+            if (!_barcodeGenerated || _barcodeInputs == null || _suppressProductSearch) return;
             if (CurrentBarcodeInputs() == _barcodeInputs) return;
             _barcodeGenerated = false;
             _generatedBarcode = "";

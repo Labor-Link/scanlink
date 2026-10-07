@@ -3677,7 +3677,7 @@ namespace ScanLink
                 // Mark as generated and enable start printing button
                 _barcodeGenerated = true;
                 button_send.Enabled = true;
-                button_send.Text = "Start Printing";
+                button_send.Text = "Start printing";
                 button_send.BackColor = System.Drawing.Color.FromArgb(46, 125, 50); // Green color
 
                 // Update status
@@ -4437,7 +4437,7 @@ namespace ScanLink
                 statusLabel.ForeColor = Theme.Err500;
                 // Re-enable button on failure so user can try again
                 button_send.Enabled = true;
-                button_send.Text = "Start Printing";
+                button_send.Text = "Start printing";
                 button_send.BackColor = System.Drawing.Color.FromArgb(46, 125, 50);
             }
             finally
@@ -4497,7 +4497,20 @@ namespace ScanLink
             }
             catch (Exception ex)
             {
-                ShowException.Show(this.Name, "__createPrn", ex);
+                if (string.Equals(CurrentConnectionType, "USB", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(m_USBDevicePath))
+                {
+                    // The saved USB device path is per port: a printer moved to another USB port
+                    // or reinstalled is no longer found there.
+                    ErrorDialog.ShowError("The USB printer could not be opened",
+                        "ScanLink could not open the label printer on its saved USB connection.\r\n\r\n" +
+                        "If the printer was moved to another USB port, switched off, or reinstalled: switch it on, " +
+                        "open Printer in the sidebar, choose USB cable, click 'Configure connection' and select it again.\r\n\r\n" +
+                        "Details: " + ex.Message, this);
+                }
+                else
+                {
+                    ShowException.Show(this.Name, "__createPrn", ex);
+                }
             }
             return false;
         }
@@ -4514,6 +4527,7 @@ namespace ScanLink
             }
             catch (Exception ex) 
             { 
+                _printerWriteFailed = true;   // reported by button_send_Click as a failed print
                 ShowException.Show(this.Name, "__testPPLB_calibrate", ex); 
             }
             finally 
@@ -4533,6 +4547,7 @@ namespace ScanLink
             }
             catch (Exception ex) 
             { 
+                _printerWriteFailed = true;   // reported by button_send_Click as a failed print
                 ShowException.Show(this.Name, "__testPPLB_set1", ex); 
             }
             finally 
@@ -4563,10 +4578,12 @@ namespace ScanLink
                     // Apply advanced settings (always enabled)
                     {
                         // Apply darkness setting (convert from 1-30 to 0-30 range)
-                        PPLBEmulation.SetUtil.SetDarkness(trackBar_darkness.Value - 1);
+                        // The SDK accepts darkness 0-15 and speed 1-8 (BarcodePrinter_API docs);
+                        // the slider goes to 30 and the list to 9, which threw on print.
+                        PPLBEmulation.SetUtil.SetDarkness(Math.Max(0, Math.Min(15, trackBar_darkness.Value - 1)));
                         
                         // Apply print speed (convert from 1-9 to actual speed)
-                        int speedValue = comboBox_speed.SelectedIndex + 1;
+                        int speedValue = Math.Max(1, Math.Min(8, comboBox_speed.SelectedIndex + 1));
                         PPLBEmulation.SetUtil.SetPrintRate(speedValue);
                         
                         // Apply label dimensions (controls entire print area)
@@ -4734,7 +4751,8 @@ namespace ScanLink
                 //exception.
                 catch (Exception ex)
                 {
-                    ShowException.Show(this.Name, "__testPPLB_barcode1", ex);
+                    _printerWriteFailed = true;   // reported by button_send_Click as a failed print
+                ShowException.Show(this.Name, "__testPPLB_barcode1", ex);
                 }
                 //Close the connection.
                 //Notice: If you don't call BarcodePrinter.Connection.Close() method at here, maybe you don't close the connection.
@@ -4801,8 +4819,9 @@ namespace ScanLink
                 PPLBEmulation.SetUtil.SetHardwareOption(PPLBMediaType.Direct_Thermal_Media, PPLBPrintMode.Tear_Off, 0);
                 
                 // Apply all advanced settings including label dimensions
-                PPLBEmulation.SetUtil.SetDarkness(trackBar_darkness.Value - 1);
-                int speedValue = Math.Max(1, comboBox_speed.SelectedIndex + 1);
+                // SDK ranges: darkness 0-15, speed 1-8.
+                PPLBEmulation.SetUtil.SetDarkness(Math.Max(0, Math.Min(15, trackBar_darkness.Value - 1)));
+                int speedValue = Math.Max(1, Math.Min(8, comboBox_speed.SelectedIndex + 1));
                 PPLBEmulation.SetUtil.SetPrintRate(speedValue);
                 
                 // Set label dimensions (controls entire print area)
@@ -5091,6 +5110,7 @@ namespace ScanLink
             }
             catch (Exception ex)
             {
+                _printerWriteFailed = true;   // reported by button_send_Click as a failed print
                 ShowException.Show(this.Name, "__testPPLB_customPreset", ex);
                 statusLabel.Text = $"❌ Custom preset failed: {ex.Message}";
                 statusLabel.ForeColor = Theme.Err500;
@@ -5182,8 +5202,9 @@ namespace ScanLink
                     return;
                 }
 
-                // Read the file
-                string jsonContent = File.ReadAllText(scansFilePath);
+                // Read the file. scan_capture.ps1 rewrites it on every scan, so open it shared
+                // and retry briefly instead of failing on "being used by another process".
+                string jsonContent = ReadSharedText(scansFilePath);
 
                 if (string.IsNullOrWhiteSpace(jsonContent))
                 {
@@ -5341,13 +5362,66 @@ namespace ScanLink
                 }
 
                 // Initialize pagination with all data
+                _scansReadFailures = 0;
                 InitializePagination(allData);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException ||
+                                       ex is ArgumentException || ex is InvalidOperationException)
+            {
+                // Locked or half-written by the scanner script (scans arriving close together).
+                // Keep what is on screen and read again shortly; no pop-up, no emptied table.
+                Debug.WriteLine("[SCANS] scans file busy or mid-write, retrying: " + ex.Message);
+                if (++_scansReadFailures <= 5)
+                {
+                    ScheduleScansReload();
+                }
+                else
+                {
+                    // Not a passing clash: the file stays unreadable. Say so once.
+                    _scansReadFailures = 0;
+                    statusLabel.Text = "Scans couldn't be read: " + ex.Message;
+                    statusLabel.ForeColor = Theme.Err500;
+                }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error loading scans data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 InitializePagination(null);
             }
+        }
+
+        /// <summary>Reads a file another process may be writing (FileShare.ReadWrite), with
+        /// three short retries on a sharing violation.</summary>
+        private static string ReadSharedText(string path)
+        {
+            for (int attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var reader = new StreamReader(fs))
+                        return reader.ReadToEnd();
+                }
+                catch (IOException) when (attempt < 3)
+                {
+                    System.Threading.Thread.Sleep(150);
+                }
+            }
+        }
+
+        private System.Windows.Forms.Timer _scansReloadRetry;
+        private int _scansReadFailures;
+
+        /// <summary>One pending re-read of scans.txt, ~0.8 s out (coalesces bursts).</summary>
+        private void ScheduleScansReload()
+        {
+            if (_scansReloadRetry == null)
+            {
+                _scansReloadRetry = new System.Windows.Forms.Timer { Interval = 800 };
+                _scansReloadRetry.Tick += (s, e) => { _scansReloadRetry.Stop(); LoadScansData(); };
+            }
+            _scansReloadRetry.Stop();
+            _scansReloadRetry.Start();
         }
 
         private void StartScanFileMonitoring()
@@ -6613,9 +6687,13 @@ namespace ScanLink
             return recoveredBarcode;
         }
 
+        // BeginInvoke, not Invoke: these events are raised while ScannerComPortManager holds its
+        // lock (e.g. inside OpenScanner), and the UI thread's 2s status timer waits on that same
+        // lock — a synchronous Invoke deadlocked the app ("Not Responding").
         private void ScannerComPortManager_DataReceived(object sender, ScannerDataReceivedEventArgs e)
         {
-            this.Invoke((MethodInvoker)delegate
+            if (IsDisposed || !IsHandleCreated) return;
+            this.BeginInvoke((MethodInvoker)delegate
             {
                 try
                 {
@@ -6838,7 +6916,8 @@ namespace ScanLink
 
         private void ScannerComPortManager_Error(object sender, ScannerErrorEventArgs e)
         {
-            this.Invoke((MethodInvoker)delegate
+            if (IsDisposed || !IsHandleCreated) return;
+            this.BeginInvoke((MethodInvoker)delegate
             {
                 Debug.WriteLine($"Scanner error: {e.ErrorMessage} - Scanner: {e.Scanner.DeviceName}");
                 
@@ -6867,7 +6946,8 @@ namespace ScanLink
 
         private void ScannerComPortManager_Log(object sender, ScannerLogEventArgs e)
         {
-            this.Invoke((MethodInvoker)delegate
+            if (IsDisposed || !IsHandleCreated) return;
+            this.BeginInvoke((MethodInvoker)delegate
             {
                 string timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
                 System.Diagnostics.Debug.WriteLine($"[C# DEBUG] {e.Scanner?.ComPort}: {e.Message}");
@@ -7791,6 +7871,14 @@ namespace ScanLink
         {
             try
             {
+                // Printer connection first, so a failure further down cannot lose it
+                // (older settings files have none of these keys).
+                string v;
+                if (settings.TryGetValue("ConnectionType", out v) && !string.IsNullOrWhiteSpace(v)) CurrentConnectionType = v;
+                if (settings.TryGetValue("UsbDevicePath", out v) && !string.IsNullOrWhiteSpace(v)) m_USBDevicePath = v;
+                if (settings.TryGetValue("TcpAddress", out v) && !string.IsNullOrWhiteSpace(v)) m_TCPAddress = v;
+                if (settings.TryGetValue("TcpPort", out v) && int.TryParse(v, out int tcpPort)) m_TCPPort = tcpPort;
+                if (settings.TryGetValue("OutputFolder", out v) && !string.IsNullOrWhiteSpace(v)) strFolder = v;
                 // Printer Language - set this first and populate the dependent comboboxes
                 if (settings.ContainsKey("PrinterLanguage") && comboBox_emulation != null)
                 {
@@ -7981,13 +8069,6 @@ namespace ScanLink
                         numericUpDown_dpi.Value = Math.Max(numericUpDown_dpi.Minimum, Math.Min(numericUpDown_dpi.Maximum, dpi));
                     }
                 }
-                // Printer connection (older settings files have none of these keys).
-                string v;
-                if (settings.TryGetValue("ConnectionType", out v) && !string.IsNullOrWhiteSpace(v)) CurrentConnectionType = v;
-                if (settings.TryGetValue("UsbDevicePath", out v) && !string.IsNullOrWhiteSpace(v)) m_USBDevicePath = v;
-                if (settings.TryGetValue("TcpAddress", out v) && !string.IsNullOrWhiteSpace(v)) m_TCPAddress = v;
-                if (settings.TryGetValue("TcpPort", out v) && int.TryParse(v, out int tcpPort)) m_TCPPort = tcpPort;
-                if (settings.TryGetValue("OutputFolder", out v) && !string.IsNullOrWhiteSpace(v)) strFolder = v;
             }
             catch (Exception ex)
             {
@@ -8015,6 +8096,9 @@ namespace ScanLink
 					scannerOutputTextBox.ScrollToCaret();
 				}
 				_scannerComPortManager?.CloseAllScanners();
+				// USB-COM drivers release a port a moment after Close; reopening at once
+				// failed with "COM port is already in use by another application".
+				System.Threading.Thread.Sleep(600);
 				InitializeComPortScanners();
 
 				// Update count labels after reinitialization

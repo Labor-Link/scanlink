@@ -1003,6 +1003,14 @@ namespace ScanLink
 
         private void PopulateDataGridView()
         {
+            _populating = true;
+            try { PopulateGridRows(); }
+            finally { _populating = false; }
+            _hasUnsavedEdits = false;   // the grid now shows exactly what is detected / saved
+        }
+
+        private void PopulateGridRows()
+        {
             // Clear existing columns
             scannerDataGridView.Columns.Clear();
             
@@ -1116,6 +1124,8 @@ namespace ScanLink
             scannerDataGridView.SetIconAction("Delete", "trash-2", danger: true);
             scannerDataGridView.CellFormatting -= StatusCellFormatting;
             scannerDataGridView.CellFormatting += StatusCellFormatting;
+            scannerDataGridView.CellValueChanged -= ScannerGrid_CellValueChanged;
+            scannerDataGridView.CellValueChanged += ScannerGrid_CellValueChanged;
 
             // Populate data
             scannerDataGridView.Rows.Clear();
@@ -1232,7 +1242,16 @@ namespace ScanLink
                         // Save updated configuration immediately. Save merges with the file, so
                         // the removed assignment must be dropped from it explicitly or it is
                         // written straight back.
-                        SaveScannersToFile(removedKey);
+                        try
+                        {
+                            SaveScannersToFile(removedKey);
+                        }
+                        catch (Exception ex)
+                        {
+                            ShowResult(SLTone.Error, "Couldn't remove the scanner", ex.Message);
+                            RefreshScanners();
+                            return;
+                        }
                         ScannersSaved?.Invoke(this, EventArgs.Empty);
 
                         // Refresh the grid
@@ -1250,6 +1269,18 @@ namespace ScanLink
         {
             LoadDetectedScanners();
             PopulateDataGridView();
+        }
+
+        private bool _populating;
+        private bool _hasUnsavedEdits;
+
+        /// <summary>Line / Block / Supplier / COM edits typed but not saved yet. The page does not
+        /// auto-refresh then, because refreshing rebuilds the grid and would discard them.</summary>
+        internal bool HasUnsavedEdits { get { return _hasUnsavedEdits; } }
+
+        private void ScannerGrid_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (!_populating && e.RowIndex >= 0) _hasUnsavedEdits = true;
         }
 
         private void refreshButton_Click(object sender, EventArgs e)
@@ -1332,6 +1363,7 @@ namespace ScanLink
                 
 				SaveScannersToFile();
 				ScannersSaved?.Invoke(this, EventArgs.Empty);
+                _hasUnsavedEdits = false;
                 ShowResult(SLTone.Success, "Scanner assignments saved", "Scanners are reconnecting with the new settings.");
             }
             catch (Exception ex)

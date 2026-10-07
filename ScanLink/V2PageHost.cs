@@ -214,7 +214,10 @@ namespace ScanLink
             scanners.Activated = () =>
             {
                 if (scannersFirstVisit) { scannersFirstVisit = false; return; }
-                if (_scannerManagementPage != null && !_scannerManagementPage.IsDisposed) _scannerManagementPage.RefreshScanners();
+                // Re-detect, unless the operator has unsaved edits on the page (a refresh
+                // rebuilds the grid and would discard them; "Look for scanners" is still there).
+                if (_scannerManagementPage != null && !_scannerManagementPage.IsDisposed && !_scannerManagementPage.HasUnsavedEdits)
+                    _scannerManagementPage.RefreshScanners();
             };
 
             // --- Printer ---
@@ -255,6 +258,9 @@ namespace ScanLink
                     scannerOutputTextBox.ScrollToCaret();
                 }
                 if (_scannerComPortManager != null) _scannerComPortManager.CloseAllScanners();
+                // USB-COM drivers release a port a moment after Close; reopening at once failed
+                // with "COM port is already in use by another application".
+                System.Threading.Thread.Sleep(600);
                 InitializeComPortScanners();
                 UpdateCountLabels();
             };

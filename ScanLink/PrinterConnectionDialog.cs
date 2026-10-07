@@ -33,6 +33,7 @@ namespace ScanLink
         // into statusBadge.
         private readonly Label _statusProxy = new Label();
         private bool _cleaningAddress;
+        private bool _initializing;   // selecting the saved type while building must not save
 
         public PrinterConnectionDialog(Form1 mainForm)
         {
@@ -48,7 +49,9 @@ namespace ScanLink
             textBox_port.Inner.TextChanged += (s, e) => CleanAddress();
 
             comboBox_port.Items.AddRange(Options);
-            SelectKey(_mainForm.CurrentConnectionType);
+            _initializing = true;
+            try { SelectKey(_mainForm.CurrentConnectionType); }
+            finally { _initializing = false; }
 
             UpdateConnectionUI();
         }
@@ -75,7 +78,7 @@ namespace ScanLink
             if (_mainForm == null || comboBox_port.SelectedIndex < 0) return;
             _mainForm.CurrentConnectionType = SelectedKey;
             _mainForm.UpdateConnectionUI(SelectedKey, textBox_port.Inner, _statusProxy);
-            _mainForm.SavePrinterConnection();   // remembered across restarts
+            if (!_initializing) _mainForm.SavePrinterConnection();   // remembered across restarts
         }
 
         private void button_setting_Click(object sender, EventArgs e)

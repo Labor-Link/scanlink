@@ -206,6 +206,19 @@
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup>
+    <!-- Scanner scripts the app runs from its own folder. Copied on every build so the output
+         never ships a stale copy (bin/Release used to hold an old scan_capture.ps1 that wrote
+         the pre-.jsonl upload queue). -->
+    <None Include="ScanLinkScanner\scan_capture.ps1">
+      <Link>scan_capture.ps1</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="ScanLinkScanner\scanner_detection.ps1">
+      <Link>scanner_detection.ps1</Link>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
 

@@ -76,6 +76,9 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 2.12 | Table | Headers read DATE, TIME, SERIAL, BLOCK, LINE, SUPPLIER, CROP, PRODUCT, PICKER; serial in monospace, time in grey; hover highlights a row; selected row light indigo. |
 | 2.13 | No scans for the filters | "No scans to show" message in the table instead of a blank box. |
 | 2.14 | Clear filters after picking "Today" | The range switch returns to Custom; clicking Today again re-applies it. |
+| 2.16 | Scan quickly with two or more scanners at once (< 1 s apart) for a minute | No "Error loading scans data" pop-ups; the table never empties; every scan appears. |
+| 2.17 | Leave the app signed in past the token's expiry (or ask the backend team for a short-lived token) | Uploads keep working or ask you to sign in again; no silent 401 failures in the console. |
+| 2.18 | Check the installed `scan_capture.ps1` | Same as `ScanLink/ScanLinkScanner/scan_capture.ps1`; scans are queued in `api_upload_logs.jsonl` and reach the server without restarting. |
 | 2.15 | Scan count | "N scans" next to the filters is correct after paging, filtering and clearing. |
 
 ## 3. Print labels
@@ -96,6 +99,9 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 3.11a | Printer settings on a **fresh PC** (never printed before) | Test Mode and Barcode Type are filled (not empty); printing works without opening settings first. |
 | 3.11c | Printer settings look | No "Advanced Print Settings" frame inside the card; labels in grey field-label style; drop-downs (Printer language, Test mode, Barcode type, Speed) open and save their choice; "Print two stickers horizontally" checkbox works. |
 | 3.11b | Sticker layout diagram | Shown **below** the settings (not cut off on the right); changing width / height / X / gap / "two stickers" updates it; the next print uses the new values. |
+| 3.10e | Darkness slider above 16, or Speed "9 - Fastest", then print | Prints (values are capped to the printer's 15 / 8); no "BarcodePrinterIllegalArgumentException". |
+| 3.10f | Move the USB printer to another USB port, then print | A clear "The USB printer could not be opened" message telling you to re-select it under Printer — not a stack trace, never "completed successfully". |
+| 3.10g | Leave the Print page after generating a barcode (e.g. to Printer) and come back | The barcode is kept; Start printing is still enabled. |
 | 3.10a | Printer switched off / unplugged, then Start printing | Status bar shows red "Print failed: the label printer could not be reached…" — never "completed successfully"; Start printing stays enabled to retry. |
 | 3.10b | Generate barcode, go Back and change product or picker | Start printing greys out; status asks to generate again; the old barcode can never print with the new product. Changing only the count keeps the barcode. |
 | 3.10c | Half-type a product name, then Next | Not allowed until a product is picked from the list. |
@@ -123,6 +129,9 @@ Open from the sidebar (Scanners).
 | 4.12 | Plug / unplug a scanner, go to another page and back to Scanners | The table and banner reflect the change without restarting. |
 | 4.13 | PC with no scanners | "No scanners found yet" (no "Test Scanner" row, no "1 scanner isn't answering"); Save writes no fake scanner. |
 | 4.14 | Baud / Parity / Data / Stop cell | One click opens the drop-down list. |
+| 4.16 | Save assignments with scanners connected | No "COM port … already in use" error; scanners reconnect. |
+| 4.17 | Plug a scanner in while on the Scans page, and wait | The app never freezes ("Not Responding"). |
+| 4.18 | Edit Line/Block, leave the Scanners page without saving, come back | Your unsaved edits are still there (the page doesn't re-detect over them). |
 | 4.15 | Esc on the Scanners or Printer page | Nothing happens (does not jump to Scans). |
 
 ## 5. Printer (connection)

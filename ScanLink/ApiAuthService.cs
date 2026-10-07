@@ -166,7 +166,9 @@ namespace ScanLink
                     if (loginResponse.expires_in > 1000000000) // Likely a Unix timestamp
                     {
                         // Convert Unix timestamp to DateTime
-                        _tokenExpiry = DateTimeOffset.FromUnixTimeSeconds(loginResponse.expires_in).DateTime;
+                        // Local time: it is compared with DateTime.Now. (.DateTime is UTC, which kept an
+                        // expired token "valid" for the UTC offset — 5.5 h in India — and uploads 401'd.)
+                        _tokenExpiry = DateTimeOffset.FromUnixTimeSeconds(loginResponse.expires_in).LocalDateTime;
                         System.Diagnostics.Debug.WriteLine($"Using Unix timestamp expiry: {_tokenExpiry}");
                     }
                     else

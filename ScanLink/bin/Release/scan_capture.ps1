@@ -69,11 +69,16 @@ if (-not (Test-Path $OutputFile)) {
     New-Item -Path $OutputFile -ItemType File -Force | Out-Null
 }
 
-# API upload logs file (for syncing to backend when internet is available)
-$ApiLogsFile = Join-Path $ProgramDataDir "api_upload_logs.json"
+# API upload queue: append-only JSONL (one scan per line) for syncing to the backend.
+# Appending a single line per scan is O(1) - we never read, re-serialize, or rewrite the
+# whole queue here. That is what stops the per-scan cost from growing with the queue (the
+# old read-modify-rewrite of one big JSON array got slower as the queue grew and eventually
+# back-pressured the scanner). The C# ScanLogUploadService reads new lines from a checkpoint,
+# uploads them, then compacts the file. Legacy api_upload_logs.json is migrated to .jsonl by
+# the C# service on startup, before this script runs.
+$ApiLogsFile = Join-Path $ProgramDataDir "api_upload_logs.jsonl"
 if (-not (Test-Path $ApiLogsFile)) {
     New-Item -Path $ApiLogsFile -ItemType File -Force | Out-Null
-    Add-Content -Path $ApiLogsFile -Value "[]"
 }
 
 # Get all connected COM port scanners using the unified detection
@@ -119,6 +124,7 @@ function Load-ScannerAssignments {
             $currentComPort = ""
             $currentLineID = ""
             $currentBlockID = ""
+            $currentSupplier = ""
             $currentBaudRate = "9600"
             $currentParity = "None"
             $currentDataBits = "8"
@@ -144,6 +150,9 @@ function Load-ScannerAssignments {
                 elseif ($trimmedLine.StartsWith("Block ID:")) {
                     $currentBlockID = $trimmedLine.Substring("Block ID:".Length).Trim()
                 }
+                elseif ($trimmedLine.StartsWith("Supplier:")) {
+                    $currentSupplier = $trimmedLine.Substring("Supplier:".Length).Trim()
+                }
                 elseif ($trimmedLine.StartsWith("Baud Rate:")) {
                     $currentBaudRate = $trimmedLine.Substring("Baud Rate:".Length).Trim()
                 }
@@ -165,6 +174,7 @@ function Load-ScannerAssignments {
                             ComPort = $currentComPort
                             LineID = $currentLineID
                             BlockID = $currentBlockID
+                            Supplier = $currentSupplier
                             BaudRate = $currentBaudRate
                             Parity = $currentParity
                             DataBits = $currentDataBits
@@ -177,6 +187,7 @@ function Load-ScannerAssignments {
                     $currentComPort = ""
                     $currentLineID = ""
                     $currentBlockID = ""
+                    $currentSupplier = ""
                     $currentBaudRate = "9600"
                     $currentParity = "None"
                     $currentDataBits = "8"
@@ -220,12 +231,44 @@ try {
 }
 catch {}
 
+# ---- Concurrency-safe queue helpers ------------------------------------------------------
+# This scanner and the C# upload service both touch api_upload_logs.json from separate
+# processes. They coordinate via a named system mutex; writes are atomic (temp file + atomic
+# replace) and reads self-heal (salvage + quarantine), so a single corrupt file can never
+# silently wedge uploads again.
+$script:UploadMutexName = "Global\ScanLinkUploadLogs"
+
+function Invoke-WithUploadLock {
+    param([scriptblock]$Action, [int]$TimeoutMs = 5000)
+    $mtx = New-Object System.Threading.Mutex($false, $script:UploadMutexName)
+    $acquired = $false
+    try {
+        try { $acquired = $mtx.WaitOne($TimeoutMs) }
+        catch [System.Threading.AbandonedMutexException] { $acquired = $true } # prior owner died; we own it now
+        if (-not $acquired) { return $false }
+        $null = & $Action
+        return $true
+    }
+    finally {
+        if ($acquired) { try { $mtx.ReleaseMutex() } catch {} }
+        $mtx.Dispose()
+    }
+}
+
+# NOTE: the old read-modify-rewrite queue helpers (Write-FileAtomic / Get-SalvagedRecords /
+# Read-UploadQueue) were removed when the queue became append-only JSONL. The scanner now only
+# APPENDS one line per scan (see Add-ApiUploadLog); reading, compaction, and corrupt-line
+# tolerance all live on the C# side (ScanLogUploadService.cs). Only Invoke-WithUploadLock (the
+# cross-process mutex) is still needed here, to serialise the append against C# compaction.
+# ------------------------------------------------------------------------------------------
+
 function Add-ApiUploadLog {
     param(
         [string]$userId,
         [string]$siteId,
         [string]$lineNumber,
         [string]$blockNumber,
+        [string]$supplier,
         [string]$productId,
         [string]$parsedInfo,
         [string]$scanStatus,
@@ -247,39 +290,41 @@ function Add-ApiUploadLog {
     }
 
     try {
-        # Read existing API logs
-        $apiLogsContent = Get-Content -Path $ApiLogsFile -Raw -ErrorAction SilentlyContinue
-        if (-not $apiLogsContent) { $apiLogsContent = "[]" }
-        
-        # Parse existing logs
-        $apiLogs = $apiLogsContent | ConvertFrom-Json -ErrorAction SilentlyContinue
-        if (-not $apiLogs) { $apiLogs = @() }
-        
         # Create timestamp in required format (UTC for API logs)
         $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss")
-        
-        # Create new API log entry
+
+        # Create new API log entry (userId/siteId are filled in later by the C# service from the token)
         $newApiLog = [PSCustomObject]@{
             userId = $userId
             siteId = $siteId
             timestamp = $timestamp
             lineNumber = $lineNumber
             blockNumber = $blockNumber
+            supplier = $supplier
             productId = $productId
             scanStatus = "SCANNED"
             parsedInfo = $parsedInfo
             cropId = $cropId
         }
-        
-        # Add new log to array
-        $apiLogs = @($apiLogs) + $newApiLog
-        
-        # Convert back to JSON and save
-        $jsonOutput = $apiLogs | ConvertTo-Json -Depth 4
-        Set-Content -Path $ApiLogsFile -Value $jsonOutput -Encoding UTF8
-        Write-Host "[API-LOG] Appended to api_upload_logs.json ($($apiLogs.Count) total)" -ForegroundColor DarkGreen
-        
-        Write-Host "  API upload log created (will sync when online)" -ForegroundColor DarkCyan
+
+        # Append-only: serialize THIS scan to one compact single-line JSON record and append it
+        # under the cross-process mutex. O(1) - no read/parse/re-serialize of the existing queue.
+        # -Compress keeps it on one physical line so the C# reader can split the file by line.
+        # The mutex serialises this append against the C# service's compaction (its atomic file
+        # replace), so an append can never land in a file that is mid-replace.
+        $line = ($newApiLog | ConvertTo-Json -Depth 4 -Compress)
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $appended = Invoke-WithUploadLock -Action {
+            [System.IO.File]::AppendAllText($ApiLogsFile, $line + "`n", $utf8NoBom)
+            Write-Host "[API-LOG] Appended 1 scan to api_upload_logs.jsonl" -ForegroundColor DarkGreen
+        }
+
+        if ($appended) {
+            Write-Host "  API upload log created (will sync when online)" -ForegroundColor DarkCyan
+        } else {
+            Write-Host "  Could not acquire upload lock; scan preserved in scans_backup.csv only" -ForegroundColor Yellow
+            Send-IssueLog -subject "ScanLink queue lock timeout (scanner)" -message "Could not acquire the upload mutex to enqueue a scan within timeout; the scan is safe in scans_backup.csv. Manual re-sync may be needed if this persists."
+        }
     }
     catch {
         Write-Host "Error saving API upload log: $($_.Exception.Message)" -ForegroundColor Red
@@ -420,7 +465,8 @@ function Add-ScanRecord {
         $isDatalogic = $false
         $lineID = ""
         $blockID = ""
-        
+        $supplier = ""
+
         if ($scannerInfo) {
             $pnpId = $scannerInfo.PNPDeviceID
             $serial = $scannerInfo.SerialNumber
@@ -441,6 +487,7 @@ function Add-ScanRecord {
                 $assignment = $scannerAssignments[$assignmentKey]
                 $lineID = $assignment.LineID
                 $blockID = $assignment.BlockID
+                $supplier = $assignment.Supplier
                 if (-not $comPort -and $assignment.ComPort) {
                     $comPort = $assignment.ComPort
                 }
@@ -462,6 +509,7 @@ function Add-ScanRecord {
             if ($deviceMeta.ContainsKey('comPort') -and $deviceMeta.comPort) { $comPort = $deviceMeta.comPort }
             if ($deviceMeta.ContainsKey('lineID') -and $deviceMeta.lineID) { $lineID = $deviceMeta.lineID }
             if ($deviceMeta.ContainsKey('blockID') -and $deviceMeta.blockID) { $blockID = $deviceMeta.blockID }
+            if ($deviceMeta.ContainsKey('supplier') -and $deviceMeta.supplier) { $supplier = $deviceMeta.supplier }
             if ($deviceMeta.ContainsKey('status') -and $deviceMeta.status) { $status = $deviceMeta.status }
         }
         
@@ -474,6 +522,7 @@ function Add-ScanRecord {
                 $assignment = $scannerAssignments[$assignmentLookupKey]
                 if (-not $lineID -and $assignment.LineID) { $lineID = $assignment.LineID }
                 if (-not $blockID -and $assignment.BlockID) { $blockID = $assignment.BlockID }
+                if (-not $supplier -and $assignment.Supplier) { $supplier = $assignment.Supplier }
                 if (-not $comPort -and $assignment.ComPort) { $comPort = $assignment.ComPort }
             }
         }
@@ -490,6 +539,7 @@ function Add-ScanRecord {
             connectionType = $resolvedConnectionType
             lineID = $lineID
             blockID = $blockID
+            supplier = $supplier
         }
         if ($usbPid) { $deviceDetails["pid"] = $usbPid }
         if ($devicePath) { $deviceDetails["devicePath"] = $devicePath }
@@ -502,15 +552,38 @@ function Add-ScanRecord {
             productId = $productId
             lineNumber = $lineID
             blockNumber = $blockID
+            supplier = $supplier
             sourceScanner = $sourceScanner
             device = [PSCustomObject]$deviceDetails
         }
         
         # Add new record to array
         $scanRecords = @($scanRecords) + $newRecord
-        
-        # Convert back to JSON and save
+
+        # Bound the on-disk display log to the most recent N scans. This keeps the file
+        # small so (a) the C# app loads it instantly and (b) this writer no longer reads +
+        # rewrites an ever-growing array on every scan (which got slower over time and
+        # eventually crashed the C# grid at ~2 MB).
+        # NOTE: this is the DISPLAY buffer only. Full history is preserved in the web portal
+        # (backend, via api_upload_logs.jsonl) and in scans_backup.csv below, so nothing is
+        # lost - the desktop grid is a recent-activity view. Do NOT apply this cap to
+        # api_upload_logs.jsonl: that is the un-synced upload queue and trimming it would
+        # drop scans that never reached the backend.
+        # TRADE-OFF: with this JSON-array format the whole array is re-serialized on every
+        # scan, so this number also caps per-scan write cost. Lowered from 2000 -> 300 so the
+        # per-scan rewrite stays cheap (~6x less work) and the grid loads fast; 300 recent
+        # scans is plenty for the on-screen activity view. (The upload queue is now append-only
+        # JSONL, so the unbounded cost there is gone independently of this cap.)
+        $maxDisplayRecords = 300
+        if ($scanRecords.Count -gt $maxDisplayRecords) {
+            $scanRecords = @($scanRecords | Select-Object -Last $maxDisplayRecords)
+        }
+
+        # Convert back to JSON and save. Force an array even for a single record: Windows
+        # PowerShell's ConvertTo-Json emits a bare object '{...}' for one item, which the C#
+        # reader (Deserialize<List<...>>) cannot parse and would error on.
         $jsonOutput = $scanRecords | ConvertTo-Json -Depth 6
+        if ($scanRecords.Count -eq 1) { $jsonOutput = "[" + $jsonOutput + "]" }
         Set-Content -Path $OutputFile -Value $jsonOutput -Encoding UTF8
         
         # Also create a simple CSV backup for compatibility
@@ -522,7 +595,7 @@ function Add-ScanRecord {
         Add-Content -Path $csvFile -Value $csvLine
         
         # Create API upload log (userId and siteId will be filled by C# service from token)
-        Add-ApiUploadLog -userId "" -siteId "" -lineNumber $lineID -blockNumber $blockID -productId $productId -parsedInfo $employeeId -scanStatus $serial -cropId $cropId
+        Add-ApiUploadLog -userId "" -siteId "" -lineNumber $lineID -blockNumber $blockID -supplier $supplier -productId $productId -parsedInfo $employeeId -scanStatus $serial -cropId $cropId
         
         Write-Host "Scan recorded: $code" -ForegroundColor Green
         Write-Host "  Connection: $resolvedConnectionType" -ForegroundColor Yellow
