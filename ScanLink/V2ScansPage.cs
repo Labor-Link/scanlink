@@ -51,7 +51,7 @@ namespace ScanLink
         private const int StatsPanelFullHeight = 116;
         /// <summary>Height of the Daily Stats / Connected Scanners row that
         /// InitDashboardStatusUI adds under the tiles; its RowStyle is Absolute 250.</summary>
-        private const int DashboardRowHeight = 250;
+        private const int DashboardRowHeight = 470;
 
         /// <summary>
         /// Free-text search across serial, block, supplier and product. Read by
@@ -96,7 +96,7 @@ namespace ScanLink
             SLButton sync = new SLButton { Text = "Sync now", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "cloud-upload", TabStop = false };
             // Same action as the console's "Sync logs to API", promoted to the page header
             // because it is the one thing an operator reaches for when the count looks wrong.
-            sync.Click += (s, e) => { if (button_manualUpload != null) button_manualUpload.PerformClick(); };
+            sync.Click += (s, e) => button_manualUpload_Click(button_manualUpload, EventArgs.Empty);
             return sync;
         }
 
@@ -156,6 +156,22 @@ namespace ScanLink
 
             _outputCardFullHeight = CardPanel.TitledHeaderHeight + CardPanel.BodyPaddingV + panelHeight;
             _outputCard.Height = _outputCardFullHeight;
+
+            // Same positions (LayoutRootPanels places them by field), design-system controls.
+            button_manualUpload = SwapInPlace(button_manualUpload, button_manualUpload_Click,
+                new SLButton { Text = "Sync logs to server", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "cloud-upload" });
+            button_cleanupScans = SwapInPlace(button_cleanupScans, button_cleanupScans_Click,
+                new SLButton { Text = "Clean up local scans", Variant = SLVariant.DangerQuiet, ButtonSize = SLSize.Sm, IconName = "trash-2" });
+            if (showScannerOutputCheckBox != null && !(showScannerOutputCheckBox is SLToggle))
+            {
+                CheckBox old = showScannerOutputCheckBox;
+                SLToggle toggle = new SLToggle { Name = old.Name, Text = "Show the live scanner log", Checked = old.Checked, Location = old.Location };
+                old.CheckedChanged -= showScannerOutputCheckBox_CheckedChanged;
+                Control parent = old.Parent;
+                if (parent != null) { parent.Controls.Remove(old); parent.Controls.Add(toggle); }
+                toggle.CheckedChanged += showScannerOutputCheckBox_CheckedChanged;
+                showScannerOutputCheckBox = toggle;
+            }
         }
 
         private void BuildStatTiles()
@@ -383,6 +399,31 @@ namespace ScanLink
             _moreFiltersToggle.IconName = _moreFiltersExpanded ? "x" : "sliders-horizontal";
             _filtersCard.Height = CardPanel.BodyPaddingV + FilterBarHeight + FilterLinksHeight
                                 + _moreFiltersHost.Height;
+            UpdateScansScroll();
+        }
+
+        /// <summary>The scans grid keeps at least this much height; the page scrolls instead.</summary>
+        private const int ScansGridMinHeight = 380;
+
+        /// <summary>
+        /// scannerContentPanel scrolls (AutoScroll), but a TableLayoutPanel only scrolls past
+        /// what its AutoScrollMinSize says. With details shown the rows add up to more than the
+        /// window, so everything below was cut off with no scrollbar. The minimum is the fixed
+        /// rows plus room for the grid.
+        /// </summary>
+        private void UpdateScansScroll()
+        {
+            if (scannerContentPanel == null) return;
+            int height = scannerContentPanel.Padding.Vertical;
+            foreach (Control c in scannerContentPanel.Controls)
+            {
+                if (c == _gridCard || !SLVisibility.IsSet(c) || c.Height <= 0) continue;
+                if (c == headerPanel || c == statusPanel) continue;
+                height += c.Height + c.Margin.Vertical;
+            }
+            height += ScansGridMinHeight;
+            scannerContentPanel.AutoScroll = true;
+            scannerContentPanel.AutoScrollMinSize = new Size(0, height);
         }
 
         /// <summary>Whatever control currently sits in the scans layout's stats row.</summary>
@@ -438,6 +479,7 @@ namespace ScanLink
                 statsRow.Height = _detailsExpanded ? StatsRowFullHeight(statsRow) : 0;
                 statsRow.Margin = new Padding(0, 0, 0, _detailsExpanded ? Theme.S4 : 0);
             }
+            UpdateScansScroll();
             if (_detailsToggle != null)
             {
                 _detailsToggle.Text = _detailsExpanded ? "Hide details" : "Show details";
@@ -456,8 +498,17 @@ namespace ScanLink
         {
             try
             {
+                RebuildDailyStats();
                 StyleDashboardCard(dailyStatsPanel);
                 StyleDashboardCard(activeScannersPanel);
+                foreach (Control c in activeScannersPanel != null ? activeScannersPanel.Controls : new Control.ControlCollection(this))
+                {
+                    Label title = c as Label;
+                    if (title != null && title.Dock == DockStyle.Top) title.Text = "Connected scanners — quick line / block update";
+                }
+                // The split panel's second row held the old 250px stats form; the new one needs more.
+                TableLayoutPanel split = dailyStatsPanel != null ? dailyStatsPanel.Parent as TableLayoutPanel : null;
+                if (split != null && split.RowStyles.Count > 1) split.RowStyles[1] = new RowStyle(SizeType.Absolute, DashboardRowHeight);
                 if (dgvActiveScanners != null)
                 {
                     ThemeStyles.Grid(dgvActiveScanners);
@@ -470,6 +521,92 @@ namespace ScanLink
             {
                 System.Diagnostics.Debug.WriteLine("[SCANS] dashboard styling failed: " + ex);
             }
+        }
+
+        /// <summary>
+        /// Daily Stats Logger with design-system fields. The same TextBoxes, date picker and
+        /// status label are reused (LoadDailyStatsAsync / SaveDailyStatsWorkerAsync read them);
+        /// only their containers change. Layout: 3-column SLFieldSet, a status badge, Save stats
+        /// (primary) and Debug token (ghost), in a scrollable body.
+        /// </summary>
+        private void RebuildDailyStats()
+        {
+            if (dailyStatsPanel == null || dtpDailyStats == null) return;
+
+            // The old body: a FlowLayoutPanel of small hand-placed panels.
+            Control oldFlow = null;
+            foreach (Control c in dailyStatsPanel.Controls) if (c is FlowLayoutPanel) oldFlow = c;
+
+            SLFieldSet fields = new SLFieldSet { Columns = 3 };
+            fields.Add(new SLField("Date", new SLFrame(dtpDailyStats)));
+            string[][] stats =
+            {
+                new[] { "Hours" }, new[] { "Basic wage" }, new[] { "Active employees" }, new[] { "Packers" },
+                new[] { "Boxes packed" }, new[] { "Cell" }, new[] { "Address" }, new[] { "Delivery note" },
+                new[] { "Truck registration" }, new[] { "Transporter" }, new[] { "Driver name" }
+            };
+            TextBox[] boxes = { txtStatHours, txtStatWage, txtStatActiveEmps, txtStatPackers, txtStatBoxes, txtStatCell,
+                                txtStatAddress, txtStatDeliveryNote, txtStatTruckReg, txtStatTransporter, txtStatDriverName };
+            for (int i = 0; i < boxes.Length; i++)
+                if (boxes[i] != null) fields.Add(new SLField(stats[i][0], new SLTextBox(boxes[i])));
+
+            // Status label (Loading / Data loaded / Not set / No site selected) -> badge.
+            SLBadge status = new SLBadge("Not set", SLTone.Neutral, true);
+            if (lblDailyStatsStatus != null)
+            {
+                if (lblDailyStatsStatus.Parent != null) lblDailyStatsStatus.Parent.Controls.Remove(lblDailyStatsStatus);
+                EventHandler sync = (s, e) =>
+                {
+                    status.Text = string.IsNullOrWhiteSpace(lblDailyStatsStatus.Text) ? "Not set" : lblDailyStatsStatus.Text;
+                    int c = lblDailyStatsStatus.ForeColor.ToArgb();
+                    status.Tone = c == Color.Green.ToArgb() ? SLTone.Success
+                                : c == Color.Red.ToArgb() ? SLTone.Error
+                                : c == Color.DarkOrange.ToArgb() || c == Color.Orange.ToArgb() ? SLTone.Warning
+                                : SLTone.Neutral;
+                    if (status.Parent != null) status.Parent.PerformLayout();
+                };
+                lblDailyStatsStatus.TextChanged += sync;
+                lblDailyStatsStatus.ForeColorChanged += sync;
+                sync(null, EventArgs.Empty);
+            }
+
+            // Save stats: the worker sets Enabled and "Saving..." on the field.
+            if (btnSaveDailyStats != null && btnSaveDailyStats.Parent != null) btnSaveDailyStats.Parent.Controls.Remove(btnSaveDailyStats);
+            SLButton save = new SLButton { Text = "Save stats", IconName = "save" };
+            save.Click += async (s, e) => await SaveDailyStatsWorkerAsync();
+            save.TextChanged += (s, e) => save.Loading = save.Text.StartsWith("Saving", StringComparison.OrdinalIgnoreCase);
+            btnSaveDailyStats = save;
+
+            // Support tool kept, but quiet.
+            SLButton debug = new SLButton { Text = "Debug token", Variant = SLVariant.Ghost, ButtonSize = SLSize.Sm, IconName = "bug" };
+            debug.Click += (s, e) =>
+            {
+                string eff = _apiAuthService?.GetEffectiveSiteId();
+                var payload = _apiAuthService?.GetCurrentTokenPayload();
+                string json = payload != null ? new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = int.MaxValue }.Serialize(payload) : "null";
+                ErrorDialog.ShowError("Token details", $"Effective Site ID: {eff}\r\n\r\nLast API Error:\r\n{_lastStatsError}\r\n\r\nToken Payload:\r\n{json}", this);
+            };
+
+            SLStack actions = new SLStack(SLOrientation.Horizontal, Theme.S3) { Align = SLAlign.Center };
+            actions.AddRange(save, status, debug);
+
+            SLStack content = new SLStack(SLOrientation.Vertical, Theme.S4) { BackColor = Theme.SurfaceCard, Dock = DockStyle.Top };
+            content.AddRange(fields, actions);
+
+            Panel body = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Theme.SurfaceCard };
+            body.Controls.Add(content);
+            EventHandler fit = (s, e) =>
+            {
+                int w = Math.Max(300, body.ClientSize.Width - SystemInformation.VerticalScrollBarWidth);
+                content.Width = w;
+                content.Height = content.MeasureHeight(w);
+            };
+            body.Resize += fit;
+            fit(null, EventArgs.Empty);
+
+            if (oldFlow != null) { dailyStatsPanel.Controls.Remove(oldFlow); oldFlow.Dispose(); }
+            dailyStatsPanel.Controls.Add(body);
+            body.BringToFront();   // Fill docks last, below the title
         }
 
         /// <summary>A legacy panel as an SLCard: white, 1px border, radius 12, 16/20 padding,
@@ -653,6 +790,18 @@ namespace ScanLink
 
             scannerDataGridView.DataSourceChanged += (s, e) => UpdateScanCountLabel();
             scannerDataGridView.DataBindingComplete += (s, e) => StyleScanColumns();
+        }
+
+        /// <summary>ReplaceButton that also keeps the old button's place in its parent.</summary>
+        private static Button SwapInPlace(Button old, EventHandler handler, SLButton replacement)
+        {
+            if (old == null) return old;
+            Control parent = old.Parent;
+            replacement.Location = old.Location;
+            replacement.Anchor = old.Anchor;
+            Button swapped = ReplaceButton(old, handler, replacement);
+            if (parent != null) parent.Controls.Add(swapped);
+            return swapped;
         }
 
         /// <summary>Swaps a designer Button for an SL one, moving its Click handler across.</summary>

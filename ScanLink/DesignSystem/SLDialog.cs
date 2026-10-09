@@ -292,8 +292,17 @@ namespace ScanLink.DesignSystem
 
         // ---- backdrop ------------------------------------------------------------------
 
+        /// <summary>
+        /// The dimmed layer over the owner window. It must stay ENABLED: Form.Show refuses a
+        /// disabled form ("Forms that are not enabled cannot be displayed…"), which made every
+        /// dialog with an owner fail to open. It is kept out of the way at the window level
+        /// instead: never activated, and clicks on it are swallowed.
+        /// </summary>
         private sealed class Backdrop : Form
         {
+            private const int WS_EX_NOACTIVATE = 0x08000000, WS_EX_TOOLWINDOW = 0x00000080;
+            private const int WM_MOUSEACTIVATE = 0x0021, MA_NOACTIVATEANDEAT = 4;
+
             public Backdrop()
             {
                 FormBorderStyle = FormBorderStyle.None;
@@ -301,9 +310,25 @@ namespace ScanLink.DesignSystem
                 StartPosition = FormStartPosition.Manual;
                 BackColor = Theme.Overlay;
                 Opacity = Theme.OverlayOpacity;
-                Enabled = false; // clicks cannot activate it above the dialog
             }
+
             protected override bool ShowWithoutActivation { get { return true; } }
+
+            protected override CreateParams CreateParams
+            {
+                get
+                {
+                    CreateParams cp = base.CreateParams;
+                    cp.ExStyle |= WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
+                    return cp;
+                }
+            }
+
+            protected override void WndProc(ref Message m)
+            {
+                if (m.Msg == WM_MOUSEACTIVATE) { m.Result = (IntPtr)MA_NOACTIVATEANDEAT; return; }
+                base.WndProc(ref m);
+            }
         }
 
         protected override void OnLoad(EventArgs e)
@@ -333,9 +358,18 @@ namespace ScanLink.DesignSystem
             {
                 if (Modal && _overlay == null)
                 {
-                    _overlay = new Backdrop { Bounds = owner.Bounds };
-                    _overlay.Show(owner);
-                    BringToFront();
+                    // Cosmetic: a backdrop that cannot be shown must never stop the dialog.
+                    try
+                    {
+                        _overlay = new Backdrop { Bounds = owner.Bounds };
+                        _overlay.Show(owner);
+                        BringToFront();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[SLDialog] backdrop unavailable: " + ex.Message);
+                        if (_overlay != null) { _overlay.Dispose(); _overlay = null; }
+                    }
                 }
                 if (onScreen) Location = new Point(owner.Left + (owner.Width - Width) / 2, owner.Top + (owner.Height - Height) / 2);
             }

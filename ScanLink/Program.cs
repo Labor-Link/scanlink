@@ -23,6 +23,8 @@ namespace ScanLink
             // Anything not handled where it happens is shown in ScanLink's error dialog (with a
             // Copy button for support) instead of the raw .NET crash dialog, and the app keeps running.
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            // Mouse wheel scrolls whatever is under the pointer (WinForms sends it to the focused control).
+            Application.AddMessageFilter(new DesignSystem.SLMouseWheel());
             Application.ThreadException += (s, e) =>
             {
                 try { ErrorDialog.ShowError("Something went wrong", e.Exception.ToString()); }

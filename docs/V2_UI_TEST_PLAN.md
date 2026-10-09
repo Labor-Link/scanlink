@@ -35,6 +35,13 @@ Report bugs with a screenshot, the screen name below and the steps.
 
 ## 0. Shell
 
+**Scrolling (everywhere):** with the mouse over any page, card, table or dialog, the wheel
+scrolls it — no need to click into it first. Pages taller than the window show a scrollbar.
+
+**Dialogs (everywhere):** Add combination, Find picker, Remove scanner, COM help, Add new grade /
+count / carton type, error details — each opens over a dimmed app with **no error**, and clicking
+the dimmed area does nothing.
+
 | # | Check | Expected |
 |---|---|---|
 | 0.1 | Sidebar **Sign out** | Returns to the Sign in screen; signing in again works. |
@@ -69,6 +76,9 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 2.5 | Crop select | Filters by crop; list fills after sign-in. |
 | 2.6 | More filters / Fewer filters | Shows/hides a row of labelled From, To, Block, Line, Product fields with Apply and Clear; labels not broken across lines; Apply/Clear still filter. |
 | 2.7 | Page opens | Filter card, then the **scans table** in a card with "Page x of y" and Previous / Next in its footer. The Daily Stats Logger and Connected Scanners panels are **hidden**. |
+| 2.8a | Show details, then scroll down | The page scrolls to the Daily Stats and Connected Scanners cards and the table below them. |
+| 2.9a | Daily Stats card | Fields in three columns with labels (Date, Hours, Basic wage … Driver name), a status badge (Not set / Loading / Data loaded / No site selected), **Save stats** (spinner while saving) and a quiet **Debug token**. Changing the date loads that day; Save stats saves. |
+| 2.9b | Scanner output card | "Show the live scanner log" switch, **Sync logs to server** and **Clean up local scans** buttons work as before. |
 | 2.8 | Show details / Hide details | Shows/hides the scanner console, the totals, and the Daily Stats Logger + Connected Scanners cards; the console keeps logging while hidden. |
 | 2.9 | Daily Stats Logger (details shown) | "Date Selected" label not clipped; entering values and Save still work. |
 | 2.10 | Connected Scanners (details shown) | Editing Line / Block / Supplier and the save icon on a row still update that scanner. |
@@ -95,6 +105,7 @@ Report bugs with a screenshot, the screen name below and the steps.
 | 3.8 | Generate barcode | Barcode appears in the summary and preview; **Start printing** enables and turns **green**. |
 | 3.9 | Open full preview | Opens the existing full preview. |
 | 3.10 | Start printing | Prints the right number of labels; progress bar runs; button text follows the job. If the printer is not set up, configure it first under **Printer** ("No USB device selected" means no USB printer was picked there). |
+| 3.11z | Printer settings → Show, then scroll | The page scrolls down through every setting and the sticker diagram. |
 | 3.11 | Printer settings → Show / Hide | Expands/collapses the advanced printer settings and scrolls them into view. |
 | 3.11a | Printer settings on a **fresh PC** (never printed before) | Test Mode and Barcode Type are filled (not empty); printing works without opening settings first. |
 | 3.11c | Printer settings look | No "Advanced Print Settings" frame inside the card; labels in grey field-label style; drop-downs (Printer language, Test mode, Barcode type, Speed) open and save their choice; "Print two stickers horizontally" checkbox works. |
@@ -150,6 +161,7 @@ Open from the sidebar (Scanners).
 
 | # | Check | Expected |
 |---|---|---|
+| 6.0 | Add combination (Print step 1) | Opens with **no error**; after Create the dialog closes, the status bar says "Combination created", and the new combination is in the Product list. |
 | 6.1 | Open from Print step 1 | Six fields in two columns; each unlocks after the previous one is chosen. |
 | 6.2 | "+ Add new grade / count / carton type" | Opens a ScanLink-styled prompt (not a grey Windows box); Cancel leaves the list unchanged. |
 | 6.3 | Carton type | Asks for name, then empty carton weight. |

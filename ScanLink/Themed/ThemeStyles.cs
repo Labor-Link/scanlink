@@ -214,6 +214,11 @@ namespace ScanLink.Themed
         public static void Inputs(Control root)
         {
             if (root == null) return;
+            // Design-system wrappers style their own inner controls (borderless TextBox inside
+            // SLTextBox, framed combos / numbers / dates in SLFrame); restyling them here put a
+            // second border back inside the field.
+            if (root is ScanLink.DesignSystem.SLTextBox || root is ScanLink.DesignSystem.SLFrame ||
+                (root.Parent is ScanLink.DesignSystem.SLFrame)) return;
             foreach (Control child in root.Controls)
             {
                 if (child is DataGridView) continue;   // grids paint their own cells

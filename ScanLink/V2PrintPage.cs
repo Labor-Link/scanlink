@@ -33,6 +33,19 @@ namespace ScanLink
         };
 
         private Panel _printPage;
+        private TableLayoutPanel _printSteps;
+
+        private void UpdatePrintScroll()
+        {
+            if (_printSteps == null) return;
+            int height = _printSteps.Padding.Vertical;
+            foreach (Control c in _printSteps.Controls)
+            {
+                if (!c.Visible && _printSteps.Visible) continue;   // the two step cards not showing
+                height += c.Height + c.Margin.Vertical;
+            }
+            _printSteps.AutoScrollMinSize = new Size(0, height);
+        }
         private SLStack _stepper;
         private readonly PrintStepChip[] _stepChips = new PrintStepChip[3];
         private readonly CardPanel[] _stepCards = new CardPanel[3];
@@ -85,6 +98,16 @@ namespace ScanLink
             for (int i = 0; i < _stepCards.Length; i++) stepsColumn.Controls.Add(_stepCards[i], 0, i + 1);
             stepsColumn.Controls.Add(_printerSettingsCard, 0, 4);
 
+            // The column scrolls (AutoScroll), but a TableLayoutPanel only scrolls past what
+            // AutoScrollMinSize says: with Printer settings open its contents run well below the
+            // window and could not be reached. Keep the minimum in step with the cards.
+            _printSteps = stepsColumn;
+            foreach (Control c in stepsColumn.Controls)
+            {
+                c.SizeChanged += (s, e) => UpdatePrintScroll();
+                c.VisibleChanged += (s, e) => UpdatePrintScroll();
+            }
+
             // Fill first so the docked right column claims its width first.
             _printPage.Controls.Add(stepsColumn);
             _printPage.Controls.Add(previewColumn);
@@ -93,6 +116,7 @@ namespace ScanLink
 
             WirePreviewRefresh();
             GoToStep(StepIdentify);
+            UpdatePrintScroll();
         }
 
         /// <summary>

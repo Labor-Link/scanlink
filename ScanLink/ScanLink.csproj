@@ -146,6 +146,7 @@
     <Compile Include="DesignSystem\SLPrompt.cs" />
     <Compile Include="DesignSystem\SLSegmentedControl.cs" />
     <Compile Include="DesignSystem\SLStatusBar.cs" />
+    <Compile Include="DesignSystem\SLMouseWheel.cs" />
     <Compile Include="Themed\ThemeStyles.cs" />
     <Compile Include="Themed\IconSet.cs" />
     <Compile Include="Themed\SegmentedControl.cs" />
