@@ -90,7 +90,11 @@ namespace ScanLink.DesignSystem
                 foreach (Control c in kids)
                 {
                     int cw = _align == SLAlign.Stretch ? inner : Math.Min(inner, SLLayout.WidthOf(c));
-                    h += SLLayout.HeightOf(c, cw);
+                    // A growing child with a MinimumSize (e.g. a table) needs only that much: its
+                    // Height is whatever it was last stretched to, so measuring it made the stack
+                    // only ever grow. (A card that shrank then drew its body over its own footer.)
+                    bool sizedByGrow = _grow.Contains(c) && !(c is ISLMeasure) && !c.AutoSize && c.MinimumSize.Height > 0;
+                    h += sizedByGrow ? c.MinimumSize.Height : SLLayout.HeightOf(c, cw);
                 }
                 if (kids.Count > 1) h += _gap * (kids.Count - 1);
                 return h + Padding.Vertical;
@@ -262,6 +266,10 @@ namespace ScanLink.DesignSystem
         /// <summary>Hide or show a child of an SL layout. Use instead of Visible = x.</summary>
         public static void Set(Control c, bool visible)
         {
+            // Already in that state (the parent is on screen, so Visible is the control's own
+            // flag): skip, because the PerformLayout below re-lays out the whole parent and was
+            // run on every call, which is a large part of why toggles redrew in stages.
+            if (c.Parent != null && c.Parent.Visible && c.Visible == visible && IsSet(c) == visible) return;
             Hidden.Remove(c);
             if (!visible) Hidden.Add(c, Hidden);
             c.Visible = visible;
@@ -291,6 +299,7 @@ namespace ScanLink.DesignSystem
     {
         private string _title, _subtitle;
         private int _lastMeasured = -1;
+        private int _paintedHeader = -1, _paintedFooter = -1, _paintedActions = -1;
 
         public SLCard()
         {
@@ -304,6 +313,10 @@ namespace ScanLink.DesignSystem
             Controls.Add(Actions);
             Controls.Add(Body);
             Controls.Add(Footer);
+            // Header buttons and footer above the body, so content that does not fit is clipped
+            // under them rather than covering them ("Show detection log" vanished that way).
+            Footer.BringToFront();
+            Actions.BringToFront();
             Actions.ControlAdded += (s, e) => PerformLayout();
             Actions.ControlRemoved += (s, e) => PerformLayout();
             Footer.ControlAdded += (s, e) => PerformLayout();
@@ -384,12 +397,24 @@ namespace ScanLink.DesignSystem
             }
 
             int bodyTop = 1 + header;
-            int bodyH = Math.Max(Body.MeasureHeight(w - 2), Height - 2 - header - footer - CornerGuard);
+            // The room between header and footer, never more: content taller than the card is
+            // clipped instead of running under (and, before, over) the footer.
+            int bodyH = Math.Max(0, Height - 2 - header - footer - CornerGuard);
             Body.SetBounds(1, bodyTop, w - 2, Math.Max(0, bodyH));
 
             Footer.Visible = HasFooter;
             if (HasFooter) Footer.SetBounds(1, Height - 1 - (footer - 1), w - 2, footer - 1);
-            Invalidate();
+            // Repaint only when the painted header or footer band moved; a resize repaints by
+            // itself (ResizeRedraw). Invalidating on every layout pass repainted the card each
+            // time anything inside it changed.
+            int actions = Actions.Visible ? Actions.Width : 0;   // the title is clipped to their left
+            if (header != _paintedHeader || footer != _paintedFooter || actions != _paintedActions)
+            {
+                _paintedHeader = header;
+                _paintedFooter = footer;
+                _paintedActions = actions;
+                Invalidate();
+            }
             SLLayout.NotifyIfChanged(this, MeasureHeight(w), ref _lastMeasured);
         }
 

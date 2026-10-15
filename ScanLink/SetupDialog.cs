@@ -80,7 +80,20 @@ namespace ScanLink
 
         private void ShowTable(string tableType)
         {
+            // One repaint for the table swap and fill (each row added used to repaint).
+            using (new SLRedrawBatch(_tableCard))
+            {
+                ShowTableCore(tableType);
+            }
+        }
+
+        private void ShowTableCore(string tableType)
+        {
+            // Dispose the table being replaced: Controls.Clear only detaches it, so every switch
+            // leaked a grid and its window handles.
+            DataGridView previous = _currentDataGridView;
             _tableCard.Body.Controls.Clear();
+            if (previous != null) previous.Dispose();
             SLVisibility.Set(_filterPanel, tableType == "Combination Table");
 
             switch (tableType)
@@ -335,15 +348,18 @@ namespace ScanLink
 
             _currentDataGridView.Rows.Clear();
 
+            // Each combination carries its own names. Looking every name up again across all
+            // combinations (GetCropName etc.) made filling the table O(n²).
+            Func<string, string> named = n => string.IsNullOrWhiteSpace(n) ? "Unknown" : n;
             foreach (var combo in combinations)
             {
                 _currentDataGridView.Rows.Add(
                     combo.id,
-                    $"{combo.crop_id} ({GetCropName(combo.crop_id)})",
+                    $"{combo.crop_id} ({named(combo.crop_name)})",
                     combo.product_id,
-                    $"{combo.variety_id} ({GetVarietyName(combo.variety_id)})",
-                    $"{combo.grade_id} ({GetGradeName(combo.grade_id)})",
-                    $"{combo.count_id} ({GetCountName(combo.count_id)})",
+                    $"{combo.variety_id} ({named(combo.variety_name)})",
+                    $"{combo.grade_id} ({named(combo.grade_name)})",
+                    $"{combo.count_id} ({named(combo.count_name)})",
                     GetCartonTypeName(combo.carton_type_id, combo.carton_type_name),
                     combo.avg_weight_kg
                 );
@@ -355,46 +371,6 @@ namespace ScanLink
             if (!string.IsNullOrWhiteSpace(cartonName)) return cartonName;
             if (string.IsNullOrWhiteSpace(cartonId)) return "Unknown";
             return $"Unknown ({cartonId})";
-        }
-
-        private string GetCropName(string cropId)
-        {
-            if (string.IsNullOrEmpty(cropId) || _productCombinationsService == null || !_productCombinationsService.HasCachedData())
-                return "Unknown";
-
-            var crops = _productCombinationsService.GetUniqueCrops();
-            var crop = crops?.FirstOrDefault(c => string.Equals(c.crop_id, cropId, StringComparison.OrdinalIgnoreCase));
-            return crop?.crop_name ?? "Unknown";
-        }
-
-        private string GetVarietyName(string varietyId)
-        {
-            if (string.IsNullOrEmpty(varietyId) || _productCombinationsService == null || !_productCombinationsService.HasCachedData())
-                return "Unknown";
-
-            var combinations = _productCombinationsService.GetAllCombinations();
-            var variety = combinations?.FirstOrDefault(c => string.Equals(c.variety_id, varietyId, StringComparison.OrdinalIgnoreCase));
-            return variety?.variety_name ?? "Unknown";
-        }
-
-        private string GetGradeName(string gradeId)
-        {
-            if (string.IsNullOrEmpty(gradeId) || _productCombinationsService == null || !_productCombinationsService.HasCachedData())
-                return "Unknown";
-
-            var combinations = _productCombinationsService.GetAllCombinations();
-            var grade = combinations?.FirstOrDefault(c => string.Equals(c.grade_id, gradeId, StringComparison.OrdinalIgnoreCase));
-            return grade?.grade_name ?? "Unknown";
-        }
-
-        private string GetCountName(string countId)
-        {
-            if (string.IsNullOrEmpty(countId) || _productCombinationsService == null || !_productCombinationsService.HasCachedData())
-                return "Unknown";
-
-            var combinations = _productCombinationsService.GetAllCombinations();
-            var count = combinations?.FirstOrDefault(c => string.Equals(c.count_id, countId, StringComparison.OrdinalIgnoreCase));
-            return count?.count_name ?? "Unknown";
         }
 
         private void LoadCropsData()

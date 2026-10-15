@@ -77,6 +77,22 @@ namespace ScanLink
             V2Page page;
             if (!_pages.TryGetValue(key, out page)) return;
 
+            // One repaint for the whole switch. Hiding the old page, showing (and on the first
+            // visit building) the new one, the sidebar, the top bar and the page's Activated
+            // work each painted on their own, so a tab appeared in visible stages.
+            using (new ScanLink.DesignSystem.SLRedrawBatch(_shellRoot))
+            {
+                ShowPage(key, page);
+            }
+
+            // After the batch: a control inside a frozen window cannot take focus.
+            // A keyboard-mode scanner types into the focused control and ends with Enter: keep
+            // focus off the search box and the header buttons on the Scans page.
+            if (key == NavScans && scannerDataGridView != null && scannerDataGridView.CanFocus) scannerDataGridView.Focus();
+        }
+
+        private void ShowPage(string key, V2Page page)
+        {
             try
             {
                 if (page.Build != null)
@@ -104,10 +120,6 @@ namespace ScanLink
 
             page.Root.Visible = true;
             page.Root.BringToFront();
-
-            // A keyboard-mode scanner types into the focused control and ends with Enter: keep
-            // focus off the search box and the header buttons on the Scans page.
-            if (key == NavScans && scannerDataGridView != null && scannerDataGridView.CanFocus) scannerDataGridView.Focus();
 
             _sidebar.SetActive(key);
             _topBar.SetPage(page.Title, page.Subtitle);
@@ -179,9 +191,8 @@ namespace ScanLink
 
         /// <summary>
         /// Registers every destination. Pages that wrap one of the old dialogs build lazily:
-        /// ScannerManagementForm enumerates COM ports in its constructor and SetupDialog
-        /// pulls product combinations, and neither should run before the operator asks for
-        /// that tab.
+        /// ScannerManagementForm detects scanners when first shown and SetupDialog pulls
+        /// product combinations, and neither should run before the operator asks for that tab.
         /// </summary>
         private void BuildPages()
         {
@@ -249,21 +260,7 @@ namespace ScanLink
             // The same wiring scannerSetupButton_Click performed. It used ShowDialog, so the
             // reinitialise ran after the window closed; as a page it runs on Save, which is
             // when the operator actually expects it.
-            form.ScannersSaved += (s, args) =>
-            {
-                if (scannerOutputTextBox != null)
-                {
-                    string ts = DateTime.Now.ToString("HH:mm:ss");
-                    scannerOutputTextBox.AppendText("[" + ts + "] [C# INFO] Scanner configuration saved — reinitializing scanners...\r\n");
-                    scannerOutputTextBox.ScrollToCaret();
-                }
-                if (_scannerComPortManager != null) _scannerComPortManager.CloseAllScanners();
-                // USB-COM drivers release a port a moment after Close; reopening at once failed
-                // with "COM port is already in use by another application".
-                System.Threading.Thread.Sleep(600);
-                InitializeComPortScanners();
-                UpdateCountLabels();
-            };
+            form.ScannersSaved += (s, args) => ReconnectScannersAfterSave();
 
             EmbeddedFormHost.Embed(form, host, () => NavigateTo(NavScans));
         }

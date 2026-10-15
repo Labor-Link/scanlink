@@ -44,7 +44,10 @@ namespace ScanLink
                 if (!c.Visible && _printSteps.Visible) continue;   // the two step cards not showing
                 height += c.Height + c.Margin.Vertical;
             }
-            _printSteps.AutoScrollMinSize = new Size(0, height);
+            // Assigning it forces a full layout even when nothing changed; this runs on every
+            // card resize and visibility change.
+            Size min = new Size(0, height);
+            if (_printSteps.AutoScrollMinSize != min) _printSteps.AutoScrollMinSize = min;
         }
         private SLStack _stepper;
         private readonly PrintStepChip[] _stepChips = new PrintStepChip[3];
@@ -159,8 +162,15 @@ namespace ScanLink
                 RefreshLabelPreview();
                 UpdateStepAvailability();
 
-                // Same call barCodesButton_Click made when its popup opened.
-                var ignored = EnsureCropOptionsLoadedAsync(updateStatusLabel: false);
+                // Same call barCodesButton_Click made when its popup opened, but only while the lists
+                // are empty: with the cache loaded it re-bound the product list on every visit,
+                // which cleared and refilled "This combination prints as" and re-laid the page
+                // out several times. Add combination reloads the lists itself when one is added.
+                if (_cropOptionsCache == null || _cropOptionsCache.Count == 0 ||
+                    comboBox_ProductID == null || comboBox_ProductID.Items.Count == 0)
+                {
+                    var ignored = EnsureCropOptionsLoadedAsync(updateStatusLabel: false);
+                }
             }
             catch (Exception ex)
             {
@@ -240,27 +250,35 @@ namespace ScanLink
 
         private void GoToStep(int index)
         {
-            _activeStep = index;
-            for (int i = 0; i < _stepCards.Length; i++)
+            // One repaint: the card swap, the validation banner, the chips and the summary each
+            // re-laid out and painted the column on their own.
+            using (new SLRedrawBatch(_printSteps))
             {
-                if (_stepCards[i] != null) _stepCards[i].Visible = (i == index);
+                _activeStep = index;
+                for (int i = 0; i < _stepCards.Length; i++)
+                {
+                    if (_stepCards[i] != null) _stepCards[i].Visible = (i == index);
+                }
+                ShowStepValidation(null);
+                RestyleStepChips();
+                UpdatePrintSummary();
+                RefreshLabelPreview();
             }
-            ShowStepValidation(null);
-            RestyleStepChips();
-            UpdatePrintSummary();
-            RefreshLabelPreview();
         }
 
         private void ShowStepValidation(string message)
         {
             if (_stepValidation == null) return;
-            bool show = !string.IsNullOrEmpty(message);
-            _stepValidation.Message = message ?? string.Empty;
-            SLVisibility.Set(_stepValidation, show);
-            // The banner sits in the identify card; its row needs the extra height.
-            CardPanel card = _stepCards[StepIdentify];
-            if (card != null)
-                card.Height = _stepCardHeights[StepIdentify] + (show ? Theme.S4 + _stepValidation.MeasureHeight(Math.Max(300, card.Width - 42)) : 0);
+            using (new SLRedrawBatch(_printSteps))
+            {
+                bool show = !string.IsNullOrEmpty(message);
+                _stepValidation.Message = message ?? string.Empty;
+                SLVisibility.Set(_stepValidation, show);
+                // The banner sits in the identify card; its row needs the extra height.
+                CardPanel card = _stepCards[StepIdentify];
+                if (card != null)
+                    card.Height = _stepCardHeights[StepIdentify] + (show ? Theme.S4 + _stepValidation.MeasureHeight(Math.Max(300, card.Width - 42)) : 0);
+            }
         }
 
         private void UpdateStepAvailability()
@@ -352,22 +370,22 @@ namespace ScanLink
             picker.AddRange(employee, button_FetchEmployees);
             picker.SetGrow(employee);
 
+            // label_ProductDetail (Form1 keeps writing the combination into it) is shown through an
+            // SLText, which wraps by word and measures its own height. The label itself sat in this
+            // Align.Start stack with AutoSize off, so its width was whatever it had last been given:
+            // one layout while the column was narrow left it ~50px wide for good ("Variet / y:").
+            SLText productDetail = new SLText("", SLTextStyle.BodySmStrong) { Color = Theme.Indigo700 };
             if (label_ProductDetail != null)
             {
                 if (label_ProductDetail.Parent != null) label_ProductDetail.Parent.Controls.Remove(label_ProductDetail);
-                label_ProductDetail.AutoSize = false;
-                label_ProductDetail.Height = 56;   // up to three lines (grade, count, carton, weight)
-                label_ProductDetail.Font = Theme.FontSmSemibold;
-                label_ProductDetail.ForeColor = Theme.Indigo700;
-                label_ProductDetail.BackColor = Color.Transparent;
-                label_ProductDetail.Visible = true;
+                productDetail.Text = label_ProductDetail.Text;
+                label_ProductDetail.TextChanged += (s, e) => productDetail.Text = label_ProductDetail.Text;
             }
             button_AddCombination = ReplaceButton(button_AddCombination, button_AddCombination_Click,
                 new SLButton { Text = "Add combination", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "plus" });
             SLStack printsAs = new SLStack(SLOrientation.Vertical, Theme.S2) { Align = SLAlign.Start };
-            if (label_ProductDetail != null) printsAs.Controls.Add(label_ProductDetail);
+            printsAs.Controls.Add(productDetail);
             printsAs.Controls.Add(button_AddCombination);
-            if (label_ProductDetail != null) label_ProductDetail.Width = 360;
 
             SLFieldSet fields = new SLFieldSet { Columns = 2 };
             fields.Add(new SLField("Crop", comboBox_CropID) { Required = true });
@@ -391,8 +409,9 @@ namespace ScanLink
                 GoToStep(StepQuantity);
             };
 
-            // Rows: Crop/Product (16 + 6 + 38) + 16 + Picker (16 + 2 + 17 + 6 + 38) / prints-as.
-            return NewStepCard(StepIdentify, "Pick the crop first — the product list narrows to match.", 182, content, next);
+            // Rows: Crop/Product (16 + 6 + 38) + 16 + the taller of Picker (16 + 2 + 17 + 6 + 38) and
+            // prints-as (16 + 6 + up to 3 wrapped lines of 18 + 8 + 32 for Add combination).
+            return NewStepCard(StepIdentify, "Pick the crop first — the product list narrows to match.", 194, content, next);
         }
 
         private CardPanel BuildQuantityCard()
@@ -473,12 +492,15 @@ namespace ScanLink
                     ? _generatedBarcode
                     : "Not generated yet";
 
-                _printSummary.Clear();
-                _printSummary.Add("Crop", string.IsNullOrWhiteSpace(crop) ? "—" : crop);
-                _printSummary.Add("Product", string.IsNullOrWhiteSpace(product) ? "—" : product);
-                _printSummary.Add("Picker", string.IsNullOrWhiteSpace(picker) ? "—" : picker);
-                _printSummary.Add("Labels", count);
-                _printSummary.Add("Barcode", barcode);
+                using (new SLRedrawBatch(_printSummary))   // one layout and repaint, not one per row
+                {
+                    _printSummary.Clear();
+                    _printSummary.Add("Crop", string.IsNullOrWhiteSpace(crop) ? "—" : crop);
+                    _printSummary.Add("Product", string.IsNullOrWhiteSpace(product) ? "—" : product);
+                    _printSummary.Add("Picker", string.IsNullOrWhiteSpace(picker) ? "—" : picker);
+                    _printSummary.Add("Labels", count);
+                    _printSummary.Add("Barcode", barcode);
+                }
             }
             catch (Exception ex)
             {
@@ -573,6 +595,10 @@ namespace ScanLink
             comboBox_test = ReplaceCombo(comboBox_test, comboBox_test_SelectedIndexChanged);
             comboBox_barcode = ReplaceCombo(comboBox_barcode, comboBox_barcode_SelectedIndexChanged);
             comboBox_speed = ReplaceCombo(comboBox_speed, comboBox_speed_SelectedIndexChanged);
+            comboBox_barWidth = ReplaceCombo(comboBox_barWidth, comboBox_barWidth_SelectedIndexChanged);
+            // Tooltips stay on the replaced controls; give the new ones theirs.
+            SyncBarcodeTypeLock();
+            if (comboBox_barWidth != null) toolTip.SetToolTip(comboBox_barWidth, BarWidthTip);
 
             if (checkBox_twoUp != null && !(checkBox_twoUp is SLCheckBox))
             {
@@ -625,7 +651,7 @@ namespace ScanLink
 
             SLButton toggle = new SLButton { Text = "Show", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm, IconName = "chevron-down" };
 
-            Panel settingsHost = new Panel
+            Panel settingsHost = new SLHorizontalScrollPanel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Theme.SurfaceCard,
@@ -648,16 +674,24 @@ namespace ScanLink
             toggle.Click += (s, e) =>
             {
                 expanded = !expanded;
-                settingsHost.Visible = expanded;
-                toggle.Text = expanded ? "Hide" : "Show";
-                toggle.IconName = expanded ? "chevron-up" : "chevron-down";
-                card.Height = expanded
-                    ? CardPanel.TitledHeaderHeight + CardPanel.BodyPaddingV + panelHeight + SystemInformation.HorizontalScrollBarHeight
-                    : CardPanel.TitledHeaderHeight;
+                // One repaint for the ~40 settings controls appearing, the card growing and the
+                // column's scroll range changing; each used to paint on its own.
+                using (new SLRedrawBatch(_printSteps))
+                {
+                    settingsHost.Visible = expanded;
+                    toggle.Text = expanded ? "Hide" : "Show";
+                    toggle.IconName = expanded ? "chevron-up" : "chevron-down";
+                    card.Height = expanded
+                        ? CardPanel.TitledHeaderHeight + CardPanel.BodyPaddingV + panelHeight + SystemInformation.HorizontalScrollBarHeight
+                        : CardPanel.TitledHeaderHeight;
+                    if (expanded)
+                    {
+                        EnsurePrinterFunctionLists();
+                        UpdatePictureBoxVisibility();
+                    }
+                }
                 if (expanded)
                 {
-                    EnsurePrinterFunctionLists();
-                    UpdatePictureBoxVisibility();
                     // Bring the opened settings into view; they sit below the step card.
                     ScrollableControl column = card.Parent as ScrollableControl;
                     if (column != null) column.ScrollControlIntoView(card);

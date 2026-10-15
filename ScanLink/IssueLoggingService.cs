@@ -21,7 +21,7 @@ namespace ScanLink
             {
                 if (string.IsNullOrEmpty(deviceInfo))
                 {
-                    deviceInfo = $"{Environment.OSVersion} / ScanLink App";
+                    deviceInfo = $"{Environment.OSVersion} / ScanLink App {System.Windows.Forms.Application.ProductVersion}";
                 }
 
                 var payload = new Dictionary<string, string>

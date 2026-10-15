@@ -16,7 +16,12 @@ namespace ScanLink.Themed
     /// </summary>
     internal static class ThemeStyles
     {
-        private sealed class RadiusHolder { public int Value; }
+        private sealed class RadiusHolder
+        {
+            public int Value;
+            public Size RegionSize;      // size and radius of the Region last applied
+            public int RegionRadius;
+        }
 
         /// <summary>Radius per control. A ConditionalWeakTable, not a Dictionary: dialogs
         /// are constructed and destroyed repeatedly and a static dictionary would hold every
@@ -53,10 +58,30 @@ namespace ScanLink.Themed
         public static void SetRoundedRegion(Control control, int radius)
         {
             if (control == null || control.Width < 2 || control.Height < 2) return;
+            // Same size as the region already applied: keep it. Replacing it forces a redraw,
+            // and this runs on every resize of every rounded control.
+            RadiusHolder holder = Radii.GetOrCreateValue(control);
+            if (control.Region != null && holder.RegionSize == control.Size && holder.RegionRadius == radius) return;
+            Region old = control.Region;
             using (GraphicsPath path = Theme.RoundedPath(new Rectangle(0, 0, control.Width, control.Height), radius))
             {
                 control.Region = new Region(path);
             }
+            holder.RegionSize = control.Size;
+            holder.RegionRadius = radius;
+            if (old != null) old.Dispose();   // a Region is a GDI object; replaced ones leaked
+        }
+
+        /// <summary>Undoes RoundedCorners: square again, and no longer re-rounded on resize.</summary>
+        public static void ClearRoundedCorners(Control control)
+        {
+            if (control == null) return;
+            control.Resize -= OnRoundedResize;
+            Radii.Remove(control);
+            Region old = control.Region;
+            if (old == null) return;
+            control.Region = null;
+            old.Dispose();
         }
 
         private static void Base(Button button, int minHeight)

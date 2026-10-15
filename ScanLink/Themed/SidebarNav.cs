@@ -31,6 +31,7 @@ namespace ScanLink.Themed
         private readonly Panel _body;
         private readonly Panel _footer;
         private string _activeKey;
+        private bool _activeStyled;   // SetActive has styled every row once
 
         public event EventHandler<string> ItemSelected;
 
@@ -197,7 +198,9 @@ namespace ScanLink.Themed
         {
             if (row == null) return;
             if (active) ThemeStyles.RoundedCorners(row, Theme.RadiusSm);
-            else if (row.Region != null) row.Region = null;
+            // Clear, not just Region = null: the resize handler stayed subscribed and rounded a
+            // row that was no longer active again on the next window resize.
+            else ThemeStyles.ClearRoundedCorners(row);
         }
 
         private void SetHover(NavItem item, bool hovered)
@@ -216,10 +219,16 @@ namespace ScanLink.Themed
 
         public void SetActive(string key)
         {
+            bool first = !_activeStyled;
+            _activeStyled = true;
             _activeKey = key;
             foreach (NavItem item in _items)
             {
-                item.IsActive = (item.Key == key);
+                // Only the rows that change: restyling all of them (colour, font, icon, region)
+                // on every tab switch repainted and re-laid out the whole sidebar.
+                bool active = item.Key == key;
+                if (!first && item.IsActive == active) continue;
+                item.IsActive = active;
                 item.Row.BackColor = item.IsActive ? Theme.ActionPrimary : Theme.SurfaceShell;
                 RoundedCornersFor(item.Row, item.IsActive);
                 item.TextLabel.ForeColor = item.IsActive ? Theme.TextOnShellStrong : Theme.TextOnShell;

@@ -358,12 +358,17 @@ namespace ScanLink.DesignSystem
 
         public event EventHandler ValueChanged;
 
+        /// <summary>Raised on every keystroke. Value only changes when the box is left or Enter is
+        /// pressed, so a form that enables a button from it should also listen to this.</summary>
+        public event EventHandler Typing;
+
         public SLNumberBox()
         {
             Width = 160;
             FixedWidth = true;
             Box.TextAlign = HorizontalAlignment.Left;
             Box.Leave += (s, e) => Commit();
+            Box.TextChanged += (s, e) => { if (!_syncing && Typing != null) Typing(this, EventArgs.Empty); };
             Box.KeyDown += (s, e) =>
             {
                 if (e.KeyCode == Keys.Up) { Step(1); e.Handled = true; }
@@ -392,6 +397,19 @@ namespace ScanLink.DesignSystem
                 _value = v;
                 Render();
                 if (changed && ValueChanged != null) ValueChanged(this, EventArgs.Empty);
+            }
+        }
+
+        /// <summary>The number in the box now, including one still being typed (clamped like Value);
+        /// Value while the text is not a number.</summary>
+        public decimal CurrentValue
+        {
+            get
+            {
+                decimal parsed;
+                return decimal.TryParse(Box.Text, NumberStyles.Number, CultureInfo.CurrentCulture, out parsed)
+                    ? Math.Max(_min, Math.Min(_max, parsed))
+                    : _value;
             }
         }
 

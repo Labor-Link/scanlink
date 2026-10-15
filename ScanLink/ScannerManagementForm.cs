@@ -85,27 +85,26 @@ namespace ScanLink
             }
         }
 
-        private void LoadHidScanners()
+        private void LoadHidScanners(List<PnpRow> hidDevices, string queryError)
         {
             try
             {
                 LogDebug("Scanning for HID-mode scanners...");
-                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID LIKE 'HID\\\\VID_%'");
-                var hidDevices = searcher.Get();
+                if (hidDevices == null) throw new InvalidOperationException(queryError ?? "WMI query failed");
 
                 var connectedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (ManagementObject device in hidDevices)
+                foreach (PnpRow device in hidDevices)
                 {
-                    string deviceId = device["PNPDeviceID"]?.ToString();
+                    string deviceId = device.DeviceId;
                     if (string.IsNullOrWhiteSpace(deviceId))
                     {
                         continue;
                     }
 
-                    string name = device["Name"]?.ToString();
-                    string description = device["Description"]?.ToString();
-                    string manufacturer = device["Manufacturer"]?.ToString();
+                    string name = device.Name;
+                    string description = device.Description;
+                    string manufacturer = device.Manufacturer;
                     string vid = ExtractVid(deviceId);
 
                     if (!IsLikelyScannerDevice(name, description, manufacturer, vid))
@@ -158,27 +157,26 @@ namespace ScanLink
             }
         }
 
-        private void RefreshComPortStatusFromWmi()
+        private void RefreshComPortStatusFromWmi(List<PnpRow> devices, string queryError)
         {
             try
             {
                 LogDebug("Refreshing COM-port scanners via WMI...");
-                var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%(COM%'");
-                var devices = searcher.Get();
+                if (devices == null) throw new InvalidOperationException(queryError ?? "WMI query failed");
 
                 var connectedKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (ManagementObject device in devices)
+                foreach (PnpRow device in devices)
                 {
-                    string deviceId = device["PNPDeviceID"]?.ToString();
+                    string deviceId = device.DeviceId;
                     if (string.IsNullOrWhiteSpace(deviceId))
                     {
                         continue;
                     }
 
-                    string name = device["Name"]?.ToString() ?? string.Empty;
-                    string description = device["Description"]?.ToString() ?? string.Empty;
-                    string manufacturer = device["Manufacturer"]?.ToString() ?? string.Empty;
+                    string name = device.Name ?? string.Empty;
+                    string description = device.Description ?? string.Empty;
+                    string manufacturer = device.Manufacturer ?? string.Empty;
                     string vid = ExtractVid(deviceId);
 
                     if (!IsLikelyScannerDevice(name, description, manufacturer, vid))
@@ -531,7 +529,10 @@ namespace ScanLink
             System.Diagnostics.Debug.WriteLine($"Application.StartupPath: {Application.StartupPath}");
             System.Diagnostics.Debug.WriteLine($"Directory.GetCurrentDirectory(): {Directory.GetCurrentDirectory()}");
             
-            LoadDetectedScanners();
+            // Detection runs once the page is shown (Load), in the background; the grid starts empty
+            // with a "Looking for scanners" state instead of the page taking a second to appear.
+            detectedScanners = new List<ScannerInfo>();
+            _detectOnLoad = true;
             PopulateDataGridView();
         }
 
@@ -569,7 +570,7 @@ namespace ScanLink
             Title = "Scanners on this site";
             Description = "Each scanner is tied to a line and a block so scans land in the right place.";
             DialogWidth = 1100;
-            BodyHeight = 560;
+            BodyHeight = ScannersCardHeight;
 
             connectionBanner = new SLBanner { Tone = SLTone.Error, IconName = "unplug" };
             connectionBanner.Action = new SLButton { Text = "Look again", Variant = SLVariant.Secondary, ButtonSize = SLSize.Sm };
@@ -588,7 +589,8 @@ namespace ScanLink
                 // Only one row selectable at a time. With MultiSelect clicking a second row left
                 // two rows highlighted, which made it unclear which scanner's edit was saved.
                 MultiSelect = false,
-                Height = 240
+                Height = 240,
+                MinimumSize = new Size(0, 240)   // what the card measures it at (it grows into the rest)
             };
             scannerDataGridView.EmptyState = new SLEmptyState
             {
@@ -606,7 +608,7 @@ namespace ScanLink
             configHelpButton.Click += configHelpButton_Click;
 
             debugToggle = new SLToggle { Text = "Show detection log" };
-            debugToggle.CheckedChanged += (s, e) => SLVisibility.Set(debugField, debugToggle.Checked);
+            debugToggle.CheckedChanged += (s, e) => SetExtraVisible(debugField, debugToggle.Checked);
 
             var card = new SLCard { Title = "Scanners", BodyPadding = Padding.Empty };
             card.Actions.AddRange(configHelpButton, refreshButton);
@@ -641,6 +643,11 @@ namespace ScanLink
             {
                 PopulateDataGridView();
             }
+            if (_detectOnLoad)
+            {
+                _detectOnLoad = false;
+                RefreshScanners();
+            }
         }
 
         /// <summary>Owner for confirmation dialogs, whether this is a window or an embedded page.</summary>
@@ -652,7 +659,37 @@ namespace ScanLink
             resultBanner.IconName = tone == SLTone.Success ? "circle-check" : tone == SLTone.Error ? "circle-alert" : "info";
             resultBanner.Title = title;
             resultBanner.Message = message;
-            SLVisibility.Set(resultBanner, true);
+            SetExtraVisible(resultBanner, true);
+        }
+
+        /// <summary>Height the Scanners card (table + "Show detection log" footer) always gets.</summary>
+        private const int ScannersCardHeight = 560;
+
+        /// <summary>
+        /// Shows or hides a banner or the detection log, and grows the page by its height. With a
+        /// fixed body height they took their room from the Scanners card instead; squeezed below
+        /// the table's height, the table covered the card's footer, so "Show detection log"
+        /// vanished once switched on and the log could not be hidden again.
+        /// </summary>
+        private void SetExtraVisible(Control extra, bool visible)
+        {
+            // Nothing to change: skip, or every detection pass repainted the whole page.
+            if (SLVisibility.IsSet(extra) == visible && BodyHeight == PageBodyHeight()) return;
+            using (new SLRedrawBatch(this))   // the banner and the page height change in one repaint
+            {
+                SLVisibility.Set(extra, visible);
+                BodyHeight = PageBodyHeight();
+            }
+        }
+
+        /// <summary>The Scanners card's height plus every banner and the log that is showing.</summary>
+        private int PageBodyHeight()
+        {
+            int width = (Body.Width > 0 ? Body.Width : DialogWidth) - Body.Padding.Horizontal;
+            int height = ScannersCardHeight;
+            foreach (Control c in new Control[] { connectionBanner, resultBanner, debugField })
+                if (c != null && SLVisibility.IsSet(c)) height += SLLayout.HeightOf(c, width) + 16;   // + the body's gap
+            return height;
         }
 
         /// <summary>Debug stand-ins from older builds ("Test Scanner", "No scanners detected").</summary>
@@ -666,10 +703,10 @@ namespace ScanLink
         private void UpdateConnectionBanner()
         {
             int offline = detectedScanners == null ? 0 : detectedScanners.Count(sc => !sc.IsCurrentlyConnected && !IsPlaceholder(sc));
-            if (offline == 0) { SLVisibility.Set(connectionBanner, false); return; }
+            if (offline == 0) { SetExtraVisible(connectionBanner, false); return; }
             connectionBanner.Title = offline == 1 ? "1 scanner isn't answering" : offline + " scanners aren't answering";
             connectionBanner.Message = "Check that it's plugged in and switched on, then look again. Scans already saved are not affected.";
-            SLVisibility.Set(connectionBanner, true);
+            SetExtraVisible(connectionBanner, true);
         }
 
         private void UpdateColumnFillWeights()
@@ -681,15 +718,20 @@ namespace ScanLink
             // and "COM3" on a 1024px screen.
             // Device ID is a long technical string ("USB\VID_05F9&PID_4204\S/N:…") that only
             // fits as "USB\V…"; it stays in the grid (Save reads it) but is hidden and shown as
-            // the Serial cell's tooltip. Supplier takes the remaining width.
+            // the Serial cell's tooltip. Serial and Supplier share the remaining width: Serial is the
+            // scanner's Windows device name, and sized to its full text it pushed Status and the
+            // remove button off the right edge at 1440x900. It truncates with "…" instead.
             foreach (DataGridViewColumn col in scannerDataGridView.Columns)
             {
-                col.AutoSizeMode = col.Name == "Supplier"
+                col.AutoSizeMode = col.Name == "Supplier" || col.Name == "SerialNumber"
                     ? DataGridViewAutoSizeColumnMode.Fill
                     : DataGridViewAutoSizeColumnMode.AllCells;
                 if (col is DataGridViewComboBoxColumn) col.MinimumWidth = 84;   // value + chevron
             }
             if (scannerDataGridView.Columns.Contains("PNPDeviceID")) scannerDataGridView.Columns["PNPDeviceID"].Visible = false;
+            SetColumnFillWeight("SerialNumber", 60);
+            SetColumnFillWeight("Supplier", 40);
+            if (scannerDataGridView.Columns.Contains("SerialNumber")) scannerDataGridView.Columns["SerialNumber"].MinimumWidth = 140;
             if (scannerDataGridView.Columns.Contains("Supplier")) scannerDataGridView.Columns["Supplier"].MinimumWidth = 110;
             if (scannerDataGridView.Columns.Contains("Status")) scannerDataGridView.Columns["Status"].MinimumWidth = 128;
             if (scannerDataGridView.Columns.Contains("Delete")) scannerDataGridView.Columns["Delete"].MinimumWidth = 46;
@@ -703,48 +745,73 @@ namespace ScanLink
             }
         }
 
-        private void LoadDetectedScanners()
+        /// <summary>
+        /// What one detection pass reads from the system: COM names, the detection script's output
+        /// and the WMI rows. Collected off the UI thread by ProbeHardware (the script alone takes
+        /// ~0.6 s and each WMI query ~0.5 s, which made the Scanners tab open a second late and
+        /// froze the window), then merged on the UI thread by ApplyDetection.
+        /// </summary>
+        private sealed class DetectionProbe
         {
-            if (resultBanner != null) SLVisibility.Set(resultBanner, false);   // results of the last run no longer apply
-            detectedScanners = new List<ScannerInfo>();
-            
-            // Clear and log to debug panel
-            debugOutputTextBox.Clear();
-            LogDebug("=== Scanner Detection Started ===");
-            
-            // First check COM ports directly
-            try
-            {
-                string[] availablePorts = System.IO.Ports.SerialPort.GetPortNames();
-                LogDebug($"Available COM ports on system: {availablePorts.Length}");
-                foreach (string port in availablePorts)
-                {
-                    LogDebug($"  - {port}");
-                }
-            }
-            catch (Exception ex)
-            {
-                LogDebug($"Failed to enumerate COM ports: {ex.Message}");
-            }
-            
-            try
-            {
-                // First, load historical scanners from assignments file
-                LoadHistoricalScanners();
-                LogDebug($"Loaded {detectedScanners.Count} historical scanner(s) from assignments file");
-                
-                // Then run the scanner detection PowerShell script to get currently connected scanners (bin root)
-                string scriptPath = Path.Combine(Application.StartupPath, "scanner_detection.ps1");
-                LogDebug($"Looking for script at: {scriptPath}");
-                
-                if (!File.Exists(scriptPath))
-                {
-                    LogDebug($"ERROR: Scanner detection script not found at: {scriptPath}");
-                    ShowResult(SLTone.Error, "Scanner detection isn't installed", "ScanLink couldn't find its detection script at " + scriptPath + ". Reinstall ScanLink, then look again.");
-                    return;
-                }
+            public string[] Ports;
+            public string PortsError;
+            public bool ScriptMissing;
+            public bool ScriptTimedOut;
+            public string ScriptOutput = "";
+            public string ScriptError = "";
+            public int ScriptExitCode;
+            public List<PnpRow> ComRows;
+            public string ComError;
+            public List<PnpRow> HidRows;
+            public string HidError;
+        }
 
-                LogDebug("Executing PowerShell script...");
+        /// <summary>The fields detection reads from one Win32_PnPEntity row, copied out of WMI.</summary>
+        private sealed class PnpRow
+        {
+            public string DeviceId;
+            public string Name;
+            public string Description;
+            public string Manufacturer;
+        }
+
+        private const string HidDeviceQuery = "SELECT * FROM Win32_PnPEntity WHERE PNPDeviceID LIKE 'HID\\\\VID_%'";
+        private const int DetectionScriptTimeoutMs = 10000;
+
+        private static List<PnpRow> QueryPnpRows(string wql)
+        {
+            var rows = new List<PnpRow>();
+            using (var searcher = new ManagementObjectSearcher(wql))
+            {
+                foreach (ManagementObject device in searcher.Get())
+                {
+                    rows.Add(new PnpRow
+                    {
+                        DeviceId = device["PNPDeviceID"]?.ToString(),
+                        Name = device["Name"]?.ToString(),
+                        Description = device["Description"]?.ToString(),
+                        Manufacturer = device["Manufacturer"]?.ToString()
+                    });
+                }
+            }
+            return rows;
+        }
+
+        /// <summary>Background half of detection: no UI and no fields, only the slow reads.</summary>
+        private static DetectionProbe ProbeHardware(string scriptPath)
+        {
+            var probe = new DetectionProbe();
+            try { probe.Ports = System.IO.Ports.SerialPort.GetPortNames(); }
+            catch (Exception ex) { probe.PortsError = ex.Message; }
+
+            if (!File.Exists(scriptPath))
+            {
+                probe.ScriptMissing = true;
+                return probe;
+            }
+
+            try
+            {
                 ProcessStartInfo startInfo = new ProcessStartInfo()
                 {
                     FileName = "powershell.exe",
@@ -754,52 +821,120 @@ namespace ScanLink
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 };
-
                 using (Process process = Process.Start(startInfo))
                 {
-                    string output = process.StandardOutput.ReadToEnd();
-                    string error = process.StandardError.ReadToEnd();
-                    process.WaitForExit();
-
-                    if (!string.IsNullOrEmpty(error))
+                    Task<string> output = process.StandardOutput.ReadToEndAsync();
+                    Task<string> error = process.StandardError.ReadToEndAsync();
+                    if (!process.WaitForExit(DetectionScriptTimeoutMs))
                     {
-                        LogDebug($"PowerShell Error: {error}");
+                        probe.ScriptTimedOut = true;
+                        try { process.Kill(); } catch { }
+                        return probe;
                     }
+                    probe.ScriptOutput = output.Result ?? "";
+                    probe.ScriptError = error.Result ?? "";
+                    probe.ScriptExitCode = process.ExitCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                probe.ScriptError = ex.Message;
+                probe.ScriptExitCode = -1;
+            }
+            if (probe.ScriptExitCode != 0) return probe;
 
-                    LogDebug($"PowerShell exit code: {process.ExitCode}");
+            try { probe.ComRows = QueryPnpRows(ComPortScannerDetection.ComDeviceQuery); }
+            catch (Exception ex) { probe.ComError = ex.Message; }
+            try { probe.HidRows = QueryPnpRows(HidDeviceQuery); }
+            catch (Exception ex) { probe.HidError = ex.Message; }
+            return probe;
+        }
 
-                    if (process.ExitCode != 0)
-                    {
-                        LogDebug($"ERROR: Script execution failed");
-                        ShowResult(SLTone.Error, "Scanner detection failed", string.IsNullOrWhiteSpace(error) ? "Turn on Show detection log for details." : error.Trim());
-                        return;
-                    }
-
-                    LogDebug($"PowerShell output received ({output.Length} chars)");
-                    if (!string.IsNullOrWhiteSpace(output))
-                    {
-                        // Log first few lines of output
-                        string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                        LogDebug($"Output has {lines.Length} line(s)");
-                        for (int i = 0; i < Math.Min(5, lines.Length); i++)
-                        {
-                            LogDebug($"  Line {i + 1}: {lines[i].Substring(0, Math.Min(80, lines[i].Length))}...");
-                        }
-                    }
-                    else
-                    {
-                        LogDebug("WARNING: PowerShell returned empty output");
-                    }
-
-                    // Parse the output to extract currently connected scanner information
-                    ParseCurrentScanners(output);
+        /// <summary>UI half of detection: rebuilds detectedScanners from a probe (fast, no I/O but
+        /// the small assignments file).</summary>
+        private void ApplyDetection(DetectionProbe probe, string scriptPath)
+        {
+            if (resultBanner != null) SetExtraVisible(resultBanner, false);   // results of the last run no longer apply
+            detectedScanners = new List<ScannerInfo>();
+            
+            // Clear and log to debug panel
+            debugOutputTextBox.Clear();
+            LogDebug("=== Scanner Detection Started ===");
+            
+            // First check COM ports directly
+            if (probe.Ports != null)
+            {
+                LogDebug($"Available COM ports on system: {probe.Ports.Length}");
+                foreach (string port in probe.Ports)
+                {
+                    LogDebug($"  - {port}");
+                }
+            }
+            else
+            {
+                LogDebug($"Failed to enumerate COM ports: {probe.PortsError}");
+            }
+            
+            try
+            {
+                // First, load historical scanners from assignments file
+                LoadHistoricalScanners();
+                LogDebug($"Loaded {detectedScanners.Count} historical scanner(s) from assignments file");
+                
+                LogDebug($"Looking for script at: {scriptPath}");
+                if (probe.ScriptMissing)
+                {
+                    LogDebug($"ERROR: Scanner detection script not found at: {scriptPath}");
+                    ShowResult(SLTone.Error, "Scanner detection isn't installed", "ScanLink couldn't find its detection script at " + scriptPath + ". Reinstall ScanLink, then look again.");
+                    return;
                 }
 
+                LogDebug("Executed PowerShell script");
+                if (probe.ScriptTimedOut)
+                {
+                    LogDebug($"ERROR: Script did not finish within {DetectionScriptTimeoutMs / 1000} s and was stopped");
+                    ShowResult(SLTone.Error, "Scanner detection took too long", "Look again. If it keeps happening, turn on Show detection log for details.");
+                    return;
+                }
+                if (!string.IsNullOrEmpty(probe.ScriptError))
+                {
+                    LogDebug($"PowerShell Error: {probe.ScriptError}");
+                }
+
+                LogDebug($"PowerShell exit code: {probe.ScriptExitCode}");
+
+                if (probe.ScriptExitCode != 0)
+                {
+                    LogDebug($"ERROR: Script execution failed");
+                    ShowResult(SLTone.Error, "Scanner detection failed", string.IsNullOrWhiteSpace(probe.ScriptError) ? "Turn on Show detection log for details." : probe.ScriptError.Trim());
+                    return;
+                }
+
+                string output = probe.ScriptOutput;
+                LogDebug($"PowerShell output received ({output.Length} chars)");
+                if (!string.IsNullOrWhiteSpace(output))
+                {
+                    // Log first few lines of output
+                    string[] lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    LogDebug($"Output has {lines.Length} line(s)");
+                    for (int i = 0; i < Math.Min(5, lines.Length); i++)
+                    {
+                        LogDebug($"  Line {i + 1}: {lines[i].Substring(0, Math.Min(80, lines[i].Length))}...");
+                    }
+                }
+                else
+                {
+                    LogDebug("WARNING: PowerShell returned empty output");
+                }
+
+                // Parse the output to extract currently connected scanner information
+                ParseCurrentScanners(output);
+
                 // Supplement COM-port detection with WMI enumeration
-                RefreshComPortStatusFromWmi();
+                RefreshComPortStatusFromWmi(probe.ComRows, probe.ComError);
                 
                 // Detect HID-mode scanners (keyboard/raw)
-                LoadHidScanners();
+                LoadHidScanners(probe.HidRows, probe.HidError);
                 
                 // Update status for all scanners (connected vs not connected)
                 UpdateScannerStatus();
@@ -812,6 +947,69 @@ namespace ScanLink
                 LogDebug($"EXCEPTION: {ex.Message}");
                 LogDebug($"Stack trace: {ex.StackTrace}");
                 ShowResult(SLTone.Error, "Couldn't read the scanner list", ex.Message);
+            }
+        }
+
+        private bool _detecting;
+        private bool _detectAgain;
+        private bool _detectForced;
+        /// <summary>Set by the public constructor: detect once the page is shown, not while it is built.</summary>
+        private bool _detectOnLoad;
+
+        /// <summary>
+        /// Detects in the background and refills the grid when done; the page keeps showing the last
+        /// result meanwhile, so it opens at once. Overlapping requests run one more pass instead of
+        /// two at a time. An automatic refresh (page visit, scanner plugged or unplugged) is dropped
+        /// when Line/Block edits were typed meanwhile, because refilling the grid discards them;
+        /// "Look for scanners" (<paramref name="userAsked"/>) refreshes regardless, as it always did.
+        /// </summary>
+        private async Task DetectAndShowAsync(bool userAsked)
+        {
+            _detectForced |= userAsked;
+            if (_detecting) { _detectAgain = true; return; }
+            _detecting = true;
+            SetLooking(true);
+            try
+            {
+                do
+                {
+                    _detectAgain = false;
+                    string scriptPath = Path.Combine(Application.StartupPath, "scanner_detection.ps1");
+                    DetectionProbe probe = await Task.Run(() => ProbeHardware(scriptPath));
+                    if (IsDisposed) return;
+                    bool forced = _detectForced;
+                    _detectForced = false;
+                    if (HasUnsavedEdits && !forced)
+                    {
+                        _refreshAfterEdit = true;
+                        continue;
+                    }
+                    ApplyDetection(probe, scriptPath);
+                    PopulateDataGridView();
+                } while (_detectAgain && !IsDisposed);
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed) ShowResult(SLTone.Error, "Couldn't read the scanner list", ex.Message);
+            }
+            finally
+            {
+                _detecting = false;
+                if (!IsDisposed) SetLooking(false);
+            }
+        }
+
+        /// <summary>The "Looking…" state while a detection pass runs.</summary>
+        private void SetLooking(bool looking)
+        {
+            if (refreshButton != null) refreshButton.Loading = looking;
+            if (connectionBanner != null && connectionBanner.Action != null) connectionBanner.Action.Enabled = !looking;
+            if (scannerDataGridView != null && scannerDataGridView.EmptyState != null)
+            {
+                scannerDataGridView.EmptyState.Title = looking ? "Looking for scanners…" : "No scanners found yet";
+                scannerDataGridView.EmptyState.Description = looking
+                    ? "Checking the USB ports. This takes a second."
+                    : "Plug a scanner into this computer, then choose Look for scanners.";
             }
         }
 
@@ -1004,7 +1202,8 @@ namespace ScanLink
         private void PopulateDataGridView()
         {
             _populating = true;
-            try { PopulateGridRows(); }
+            // One repaint: rebuilding the 12 columns and every row painted step by step.
+            try { using (new SLRedrawBatch(scannerDataGridView)) PopulateGridRows(); }
             finally { _populating = false; }
             _hasUnsavedEdits = false;   // the grid now shows exactly what is detected / saved
         }
@@ -1126,6 +1325,8 @@ namespace ScanLink
             scannerDataGridView.CellFormatting += StatusCellFormatting;
             scannerDataGridView.CellValueChanged -= ScannerGrid_CellValueChanged;
             scannerDataGridView.CellValueChanged += ScannerGrid_CellValueChanged;
+            scannerDataGridView.CellEndEdit -= ScannerGrid_CellEndEdit;
+            scannerDataGridView.CellEndEdit += ScannerGrid_CellEndEdit;
 
             // Populate data
             scannerDataGridView.Rows.Clear();
@@ -1154,7 +1355,8 @@ namespace ScanLink
                     var scanner = detectedScanners[row.Index];
 
                     row.Cells["ComPort"].Value = scanner.GetComPortDisplay();
-                    row.Cells["SerialNumber"].ToolTipText = "Device ID: " + scanner.PNPDeviceID;
+                    // The Serial column truncates, so its tooltip carries the full name as well.
+                    row.Cells["SerialNumber"].ToolTipText = scanner.SerialNumber + "\nDevice ID: " + scanner.PNPDeviceID;
                     var statusValue = scanner.IsCurrentlyConnected ? "Connected" : "Not Connected";
                     row.Cells["Status"].Value = statusValue;
 
@@ -1235,9 +1437,11 @@ namespace ScanLink
                     {
                         LogDebug($"Deleting scanner: {scanner.PNPDeviceID}");
 
-                        // Remove from list
+                        // Remove from list, by key: a detection pass that finished while the
+                        // confirmation was open has replaced the list, so the row index may now
+                        // point at another scanner (or past the end).
                         string removedKey = scanner.AssignmentKey;
-                        detectedScanners.RemoveAt(e.RowIndex);
+                        detectedScanners.RemoveAll(s => s.AssignmentKey == removedKey);
 
                         // Save updated configuration immediately. Save merges with the file, so
                         // the removed assignment must be dropped from it explicitly or it is
@@ -1264,11 +1468,11 @@ namespace ScanLink
             }
         }
 
-        /// <summary>Re-detects scanners (the page calls this on every revisit).</summary>
+        /// <summary>Re-detects scanners in the background (the page calls this on every revisit and
+        /// when a scanner is plugged in or unplugged). Returns at once.</summary>
         internal void RefreshScanners()
         {
-            LoadDetectedScanners();
-            PopulateDataGridView();
+            var pending = DetectAndShowAsync(false);
         }
 
         private bool _populating;
@@ -1276,7 +1480,24 @@ namespace ScanLink
 
         /// <summary>Line / Block / Supplier / COM edits typed but not saved yet. The page does not
         /// auto-refresh then, because refreshing rebuilds the grid and would discard them.</summary>
-        internal bool HasUnsavedEdits { get { return _hasUnsavedEdits; } }
+        internal bool HasUnsavedEdits
+        {
+            // A cell being typed in counts too: CellValueChanged (which sets the flag) only fires
+            // when the edit is committed, and a refresh meanwhile threw the typing away.
+            get { return _hasUnsavedEdits || scannerDataGridView.IsCurrentCellInEditMode || scannerDataGridView.IsCurrentCellDirty; }
+        }
+
+        /// <summary>A refresh was held back by an edit in progress; run it once the edit ends.</summary>
+        private bool _refreshAfterEdit;
+
+        private void ScannerGrid_CellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            // An automatic refresh waited for this edit. If it changed nothing, run it now;
+            // otherwise the change is unsaved and keeps it waiting, as before.
+            if (!_refreshAfterEdit || _hasUnsavedEdits) return;
+            _refreshAfterEdit = false;
+            BeginInvoke(new Action(RefreshScanners));   // after the grid has left edit mode
+        }
 
         private void ScannerGrid_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
@@ -1285,8 +1506,7 @@ namespace ScanLink
 
         private void refreshButton_Click(object sender, EventArgs e)
         {
-            LoadDetectedScanners();
-            PopulateDataGridView();
+            var pending = DetectAndShowAsync(true);
         }
 
         private void configHelpButton_Click(object sender, EventArgs e)
@@ -1328,7 +1548,7 @@ namespace ScanLink
 
         private void saveButton_Click(object sender, EventArgs e)
         {
-            SLVisibility.Set(resultBanner, false);
+            SetExtraVisible(resultBanner, false);
             try
             {
                 // Commit any in-progress cell edit so the latest typed value is read below. Without

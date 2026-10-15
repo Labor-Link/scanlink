@@ -70,6 +70,7 @@ namespace ScanLink
                 BuildStatTiles();
                 BuildFiltersCard();
                 BuildGridCard();
+                PlaceFiltersAboveDetails();
                 ApplyDetailsDisclosure();
             }
             catch (Exception ex)
@@ -394,12 +395,15 @@ namespace ScanLink
         {
             if (_moreFiltersHost == null || _filtersCard == null) return;
 
-            _moreFiltersHost.Height = _moreFiltersExpanded ? _moreFiltersFullHeight : 0;
-            _moreFiltersToggle.Text = _moreFiltersExpanded ? "Fewer filters" : "More filters";
-            _moreFiltersToggle.IconName = _moreFiltersExpanded ? "x" : "sliders-horizontal";
-            _filtersCard.Height = CardPanel.BodyPaddingV + FilterBarHeight + FilterLinksHeight
-                                + _moreFiltersHost.Height;
-            UpdateScansScroll();
+            using (new SLRedrawBatch(scannerContentPanel))   // one repaint, not one per change
+            {
+                _moreFiltersHost.Height = _moreFiltersExpanded ? _moreFiltersFullHeight : 0;
+                _moreFiltersToggle.Text = _moreFiltersExpanded ? "Fewer filters" : "More filters";
+                _moreFiltersToggle.IconName = _moreFiltersExpanded ? "x" : "sliders-horizontal";
+                _filtersCard.Height = CardPanel.BodyPaddingV + FilterBarHeight + FilterLinksHeight
+                                    + _moreFiltersHost.Height;
+                UpdateScansScroll();
+            }
         }
 
         /// <summary>The scans grid keeps at least this much height; the page scrolls instead.</summary>
@@ -422,8 +426,11 @@ namespace ScanLink
                 height += c.Height + c.Margin.Vertical;
             }
             height += ScansGridMinHeight;
-            scannerContentPanel.AutoScroll = true;
-            scannerContentPanel.AutoScrollMinSize = new Size(0, height);
+            // Assigning either property forces a full layout even when nothing changed, and this
+            // runs on every visit to the page.
+            if (!scannerContentPanel.AutoScroll) scannerContentPanel.AutoScroll = true;
+            Size min = new Size(0, height);
+            if (scannerContentPanel.AutoScrollMinSize != min) scannerContentPanel.AutoScrollMinSize = min;
         }
 
         /// <summary>Whatever control currently sits in the scans layout's stats row.</summary>
@@ -448,7 +455,37 @@ namespace ScanLink
                 : StatsPanelFullHeight + DashboardRowHeight;
         }
 
+        /// <summary>
+        /// The filter card holds "Show details", and the console and totals it reveals used to sit
+        /// above it: opening them pushed the button off-screen below what it had opened. The
+        /// filter card now comes first and the details open underneath, so the button stays put.
+        /// </summary>
+        private void PlaceFiltersAboveDetails()
+        {
+            if (_filtersCard == null || scannerContentPanel == null) return;
+            Control statsRow = ResolveStatsRowControl();
+            int top = int.MaxValue;
+            foreach (Control c in new[] { _outputCard, statsRow, _filtersCard })
+                if (c != null && scannerContentPanel.Controls.Contains(c)) top = Math.Min(top, scannerContentPanel.GetRow(c));
+            if (top == int.MaxValue) return;
+
+            int row = top;
+            foreach (Control c in new[] { _filtersCard, _outputCard, statsRow })
+                if (c != null && scannerContentPanel.Controls.Contains(c)) scannerContentPanel.SetRow(c, row++);
+        }
+
         private void ApplyDetailsDisclosure()
+        {
+            // One layout pass and one repaint for all the height changes below; each used to
+            // re-layout and paint the page on its own, which showed as the section redrawing and
+            // jumping several times.
+            using (new SLRedrawBatch(scannerContentPanel))
+            {
+                ApplyDetailsHeights();
+            }
+        }
+
+        private void ApplyDetailsHeights()
         {
             // The console and the three totals are diagnostic. The design puts neither on
             // Scans, but removing them would cost the operator the live log and the season
@@ -829,8 +866,8 @@ namespace ScanLink
             new[] { "SerialNumber", "Serial" },
             new[] { "BlockNumber", "Block" },
             new[] { "LineNumber", "Line" },
-            new[] { "Crops", "Crop" },
-            new[] { "Products", "Product" },
+            new[] { "CropID", "Crop" },
+            new[] { "ProductID", "Product" },
             new[] { "ParsedInfo", "Picker" }
         };
 
@@ -843,13 +880,19 @@ namespace ScanLink
                     if (scannerDataGridView.Columns.Contains(h[0]))
                         scannerDataGridView.Columns[h[0]].HeaderText = SLTableStyle.DisplayHeader(h[1]);
                 }
-                SetColumnStyle("SerialNumber", null, 150);
+                // Fill weights: the share of the width each column takes. Date and Time get a
+                // token weight and a minimum that fits their text (UpdateDataGridViewColumnWidths).
+                SetColumnStyle("SerialNumber", null, 110);
                 SLTableStyle.SetMono(scannerDataGridView, "SerialNumber");
                 SLTableStyle.SetMuted(scannerDataGridView, "Time");
-                SetColumnStyle("Time", null, 90);
-                SetColumnStyle("Date", null, 110);
-                SetColumnStyle("BlockNumber", null, 80);
+                SetColumnStyle("Time", null, 1);
+                SetColumnStyle("Date", null, 1);
+                SetColumnStyle("BlockNumber", null, 70);
                 SetColumnStyle("LineNumber", null, 70);
+                SetColumnStyle("Supplier", null, 100);
+                SetColumnStyle("CropID", null, 100);
+                SetColumnStyle("ProductID", null, 200);
+                SetColumnStyle("ParsedInfo", null, 100);
             }
             catch (Exception ex)
             {

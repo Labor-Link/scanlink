@@ -49,6 +49,9 @@ namespace ScanLink
             _productCombinationsService = productCombinationsService;
             InitializeComponent();
             PopulateCropStep();
+            // All grades/counts/carton types, not only the ones combinations already use. Loads
+            // while crop and variety are being picked; without it the lists are as before.
+            Shown += async (s, e) => await _productCombinationsService.FetchMasterDataAsync();
         }
 
         // Layout: SLDialog with a 2-column SLFieldSet (crop/variety, grade/count,
@@ -95,6 +98,8 @@ namespace ScanLink
             countCombo.SelectedIndexChanged += CountCombo_SelectedIndexChanged;
             cartonTypeCombo.SelectedIndexChanged += CartonTypeCombo_SelectedIndexChanged;
             avgWeightInput.ValueChanged += (s, e) => UpdateCreateButtonEnabled();
+            // Value commits only when the box is left, so Create stayed grey while typing the weight.
+            avgWeightInput.Typing += (s, e) => UpdateCreateButtonEnabled();
         }
 
         private static ComboBox AddStep(SLFieldSet fields, string label, string placeholder)
@@ -309,7 +314,7 @@ namespace ScanLink
                 && gradeCombo.SelectedIndex >= 0
                 && countCombo.SelectedIndex >= 0
                 && cartonTypeCombo.SelectedIndex >= 0
-                && avgWeightInput.Value > 0;
+                && avgWeightInput.CurrentValue > 0;
         }
 
         private void PopulateCropStep()
@@ -331,7 +336,7 @@ namespace ScanLink
 
         private void PopulateGradeStep()
         {
-            BindCombo(gradeCombo, _productCombinationsService.GetUniqueGrades(),
+            BindCombo(gradeCombo, _productCombinationsService.GetAllGrades(),
                 g => g.grade_id, g => g.grade_name, "+ Add new grade...");
             gradeCombo.Enabled = true;
             ResetStepsFrom(countCombo, cartonTypeCombo);
@@ -339,7 +344,7 @@ namespace ScanLink
 
         private void PopulateCountStep()
         {
-            BindCombo(countCombo, _productCombinationsService.GetUniqueCounts(),
+            BindCombo(countCombo, _productCombinationsService.GetAllCounts(),
                 c => c.count_id, c => c.count_name, "+ Add new count...");
             countCombo.Enabled = true;
             ResetStepsFrom(cartonTypeCombo);
@@ -347,7 +352,7 @@ namespace ScanLink
 
         private void PopulateCartonTypeStep()
         {
-            BindCombo(cartonTypeCombo, _productCombinationsService.GetUniqueCartonTypes(),
+            BindCombo(cartonTypeCombo, _productCombinationsService.GetAllCartonTypes(),
                 c => c.carton_type_id, c => c.carton_type_name, "+ Add new carton type...");
             cartonTypeCombo.Enabled = true;
             avgWeightInput.Enabled = false;
@@ -411,7 +416,7 @@ namespace ScanLink
             string gradeId = gradeCombo.SelectedValue?.ToString();
             string countId = countCombo.SelectedValue?.ToString();
             string cartonTypeId = cartonTypeCombo.SelectedValue?.ToString();
-            double avgWeightKg = (double)avgWeightInput.Value;
+            double avgWeightKg = (double)avgWeightInput.CurrentValue;   // Enter can press Create before the box commits
 
             var result = await _productCombinationsService.CreateProductCombinationAsync(
                 cropId, varietyId, gradeId, countId, cartonTypeId, avgWeightKg);

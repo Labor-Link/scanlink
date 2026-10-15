@@ -35,8 +35,9 @@ namespace ScanLink
                 Multiline = true,
                 ReadOnly = true,
                 Mono = true,
-                WordWrap = false,
-                ScrollBars = ScrollBars.Both
+                // Wrapped, so a long message reads without scrolling sideways.
+                WordWrap = true,
+                ScrollBars = ScrollBars.Vertical
             };
             Body.Controls.Add(textBoxError);
             Body.SetGrow(textBoxError);
@@ -84,7 +85,8 @@ namespace ScanLink
         {
             ErrorDialog dialog = new ErrorDialog();
             dialog.Title = title;
-            dialog.textBoxError.Text = errorMessage;
+            // A Windows TextBox breaks lines only on CR LF; callers build messages with "\n".
+            dialog.textBoxError.Text = (errorMessage ?? "").Replace("\r\n", "\n").Replace("\n", "\r\n");
             return dialog;
         }
 
