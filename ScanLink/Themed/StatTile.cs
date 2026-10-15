@@ -93,6 +93,13 @@ namespace ScanLink.Themed
             }
         }
 
+        /// <summary>Flat fill behind the rounded tile when the parent is one colour, instead of
+        /// WinForms repainting the parent behind the tile each time.</summary>
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            if (!ScanLink.DesignSystem.SLPaint.TryFillBackdrop(this, e.Graphics)) base.OnPaintBackground(e);
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             Graphics g = e.Graphics;

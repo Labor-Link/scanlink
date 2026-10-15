@@ -104,6 +104,26 @@ namespace ScanLink.DesignSystem
         /// their corners with this before drawing a rounded shape, which is what makes the
         /// corners look transparent.
         /// </summary>
+        /// <summary>
+        /// Background for a transparent, owner-drawn control: when its parent paints one flat
+        /// colour (an SL surface, or an opaque BackColor without an image) fills with that and
+        /// returns true. WinForms transparency instead re-runs the parent's whole painting
+        /// behind the control on every repaint. Returns false otherwise, so the caller paints
+        /// the usual transparent way.
+        /// </summary>
+        public static bool TryFillBackdrop(Control control, Graphics g)
+        {
+            Control parent = control == null ? null : control.Parent;
+            if (parent == null) return false;
+            ISLSurface surface = parent as ISLSurface;
+            Color color;
+            if (surface != null) color = surface.SurfaceFor(control);
+            else if (parent.BackColor.A == 255 && parent.BackgroundImage == null) color = parent.BackColor;
+            else return false;
+            using (SolidBrush b = new SolidBrush(color)) g.FillRectangle(b, control.ClientRectangle);
+            return true;
+        }
+
         public static Color BackdropOf(Control control)
         {
             Control child = control;

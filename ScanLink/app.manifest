@@ -30,6 +30,11 @@
            slightly soft on a scaled display but never truncated. Revisit only once the
            layout is fluid rather than hard-coded. -->
       <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">false</dpiAware>
+      <!-- GDI scaling (Windows 10 1703+): Windows still scales the layout, but draws GDI text
+           (TextRenderer, which the SL controls and most WinForms controls use) at the screen's
+           real resolution, so text is sharp on a 150-200% display instead of a stretched bitmap.
+           Layout is untouched, so none of the clipping above comes back. -->
+      <gdiScaling xmlns="http://schemas.microsoft.com/SMI/2017/WindowsSettings">true</gdiScaling>
     </windowsSettings>
   </application>
 </assembly>

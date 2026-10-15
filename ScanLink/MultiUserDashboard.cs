@@ -361,8 +361,20 @@ namespace ScanLink
 
         private void RenderDashboard()
         {
-            // Clear existing controls
+            // All the tiles appear in one repaint instead of one by one.
+            using (new ScanLink.DesignSystem.SLRedrawBatch(dashboardPanel))
+            {
+                RenderDashboardCore();
+            }
+        }
+
+        private void RenderDashboardCore()
+        {
+            // Clear existing controls. Disposed, not just removed: Clear only detaches them,
+            // which leaked their window handles.
+            var previous = dashboardPanel.Controls.Cast<Control>().ToList();
             dashboardPanel.Controls.Clear();
+            foreach (Control c in previous) c.Dispose();
 
             if (_siteTiles.Count == 0)
             {

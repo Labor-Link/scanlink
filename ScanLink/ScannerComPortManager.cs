@@ -4,6 +4,7 @@ using System.IO.Ports;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ScanLink
 {
@@ -38,6 +39,13 @@ namespace ScanLink
                 if (_activeScannners.ContainsKey(config.PNPDeviceID))
                 {
                     return true; // Already open
+                }
+
+                // Still being closed after an unplug: not yet, and quietly (the retry timer tries
+                // again shortly; an error here would show the "close winscan" dialog).
+                if (_closingPorts.Contains(config.ComPort))
+                {
+                    return false;
                 }
 
                 // Serial ports are exclusive PER COM-PORT NAME, not per PNP id. The same physical
@@ -125,6 +133,55 @@ namespace ScanLink
                 return _activeScannners.Values.Select(s => s.Config).ToList();
             }
         }
+
+        /// <summary>
+        /// Closes every open scanner whose device is gone: PnP (WMI) no longer lists it, or reading
+        /// from it has failed. The COM name is no evidence: usbser keeps it registered (and
+        /// SerialPort raises no error) for as long as this process holds the dead handle, so the
+        /// unplugged scanner stayed "Connected" and its scans were lost. With
+        /// <paramref name="present"/> null (WMI failed) only failed reads count. The entries leave
+        /// the active list at once; the ports are closed off-lock with a time limit, because
+        /// Close() on a surprise-removed device can block. Returns the scanners it closed.
+        /// </summary>
+        public List<ScannerConfig> CloseMissingScanners(ComPortScannerDetection.PresentComDevices present,
+                                                        ICollection<string> removedPorts = null)
+        {
+            var gone = new List<ScannerComPort>();
+            lock (_lockObj)
+            {
+                foreach (var kv in _activeScannners.ToList())
+                {
+                    // removedPorts: Windows reported the device behind this port removed. Close it
+                    // even if it is present again (re-seated within the debounce): the handle is
+                    // still the dead one. The retry timer then reopens it.
+                    bool removed = removedPorts != null && kv.Value.Config != null &&
+                                   removedPorts.Contains(kv.Value.Config.ComPort ?? "");
+                    if (!removed && !kv.Value.IsFaulted && (present == null || present.Contains(kv.Value.Config))) continue;
+                    kv.Value.DataReceived -= ScannerPort_DataReceived;
+                    kv.Value.ErrorOccurred -= ScannerPort_ErrorOccurred;
+                    kv.Value.LogOccurred -= ScannerPort_LogOccurred;
+                    _activeScannners.Remove(kv.Key);
+                    gone.Add(kv.Value);
+                }
+            }
+
+            foreach (var port in gone)
+            {
+                // Until Close() returns the handle is still held: reopening the port then fails
+                // with "access denied", which shows as "in use by another application".
+                string comPort = port.Config?.ComPort ?? "";
+                lock (_lockObj) _closingPorts.Add(comPort);
+                var closing = Task.Run(() => port.Close());
+                closing.ContinueWith(t => { lock (_lockObj) _closingPorts.Remove(comPort); });
+                if (!closing.Wait(3000))
+                    IssueLoggingService.LogIssue("Scanner Port Close", $"Closing {comPort} after unplug did not finish in 3 s; left to finish in the background.");
+                ScannerDisconnected?.Invoke(this, new ScannerEventArgs(port.Config));
+            }
+            return gone.Select(p => p.Config).ToList();
+        }
+
+        /// <summary>Ports whose handle CloseMissingScanners is still closing; not reopened until done.</summary>
+        private readonly HashSet<string> _closingPorts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Checks if a scanner is currently open.
@@ -236,8 +293,12 @@ namespace ScanLink
         private readonly object _bufferLock = new object();
         private System.Timers.Timer _pollTimer;
         private DateTime _lastReceiveUtc = DateTime.MinValue;
+        private volatile bool _faulted;
 
         public ScannerConfig Config { get; private set; }
+
+        /// <summary>True once reading the port has failed, which is what an unplugged USB-COM device does.</summary>
+        public bool IsFaulted { get { return _faulted; } }
         public event EventHandler<ScannerDataReceivedEventArgs> DataReceived;
         public event EventHandler<ScannerErrorEventArgs> ErrorOccurred;
         public event EventHandler<ScannerLogEventArgs> LogOccurred;
@@ -322,12 +383,15 @@ namespace ScanLink
             {
                 EmitLog($"Closing port {Config.ComPort}");
                 StopPolling();
-                if (_serialPort != null && _serialPort.IsOpen)
+                if (_serialPort != null)
                 {
                     _serialPort.DataReceived -= SerialPort_DataReceived;
                     _serialPort.ErrorReceived -= SerialPort_ErrorReceived;
-                    _serialPort.Close();
-                    _serialPort.Dispose();
+                    // Close throws when the USB device has already been unplugged; dispose anyway
+                    // so the handle is released and the port can be reopened on re-plug.
+                    try { if (_serialPort.IsOpen) _serialPort.Close(); } catch { }
+                    try { _serialPort.Dispose(); } catch { }
+                    _serialPort = null;
                     EmitLog($"Port closed {Config.ComPort}");
                 }
             }
@@ -432,7 +496,20 @@ namespace ScanLink
                     try
                     {
                         if (_serialPort == null || !_serialPort.IsOpen) return;
-                        int available = _serialPort.BytesToRead;
+                        int available;
+                        try
+                        {
+                            SerialPort port = _serialPort;   // Close() may null the field meanwhile
+                            available = port != null ? port.BytesToRead : 0;
+                        }
+                        catch (Exception ex) when (ex is System.IO.IOException || ex is InvalidOperationException || ex is UnauthorizedAccessException)
+                        {
+                            // The device behind the port is gone (unplugged). Flag it so the next
+                            // device-change pass closes this port and reopens the scanner on re-plug.
+                            if (!_faulted) EmitLog($"Port {Config.ComPort} stopped responding: {ex.Message}");
+                            _faulted = true;
+                            return;
+                        }
                         if (available > 0)
                         {
                             string data = _serialPort.ReadExisting();

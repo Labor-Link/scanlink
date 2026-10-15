@@ -98,6 +98,8 @@ namespace ScanLink.DesignSystem
 
         /// <summary>The white dialog panel inside the client area.</summary>
         private Rectangle _panel;
+        private Rectangle _paintedPanel, _paintedFooter;
+        private int _paintedHeader = -1;
 
         private int PanelWidth
         {
@@ -159,7 +161,17 @@ namespace ScanLink.DesignSystem
             Footer.Visible = HasFooter;
             if (HasFooter)
                 Footer.SetBounds(_panel.X + inset, _panel.Bottom - inset - footer + 1, w - 2 * inset, footer - 1);
-            Invalidate();
+            // Repaint only when the painted panel, header or footer band moved (resizes repaint by
+            // themselves); invalidating on every layout pass repainted the whole dialog or page
+            // each time anything inside it changed.
+            Rectangle footerBand = HasFooter ? Footer.Bounds : Rectangle.Empty;
+            if (_panel != _paintedPanel || header != _paintedHeader || footerBand != _paintedFooter)
+            {
+                _paintedPanel = _panel;
+                _paintedHeader = header;
+                _paintedFooter = footerBand;
+                Invalidate();
+            }
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)

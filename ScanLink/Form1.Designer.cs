@@ -1806,13 +1806,13 @@ namespace ScanLink
             // trackBar_darkness
             // 
             this.trackBar_darkness.Location = new System.Drawing.Point(170, 10);
-            this.trackBar_darkness.Maximum = 30;
-            this.trackBar_darkness.Minimum = 1;
+            this.trackBar_darkness.Maximum = 15;
+            this.trackBar_darkness.Minimum = 0;
             
             this.trackBar_darkness.Name = "trackBar_darkness";
             this.trackBar_darkness.Size = new System.Drawing.Size(300, 45);
             this.trackBar_darkness.TabIndex = 1;
-            this.trackBar_darkness.Value = 15;
+            this.trackBar_darkness.Value = 14;
             this.trackBar_darkness.Scroll += new System.EventHandler(this.trackBar_darkness_Scroll);
             
             // 
@@ -1825,7 +1825,7 @@ namespace ScanLink
             this.label_darknessValue.Name = "label_darknessValue";
             this.label_darknessValue.Size = new System.Drawing.Size(19, 15);
             this.label_darknessValue.TabIndex = 2;
-            this.label_darknessValue.Text = "15";
+            this.label_darknessValue.Text = "14";
             
             // 
             // label_speed
@@ -2425,11 +2425,9 @@ namespace ScanLink
 
                     // Row 1 now uses AutoSize, so scannerOutputPanel will automatically adjust its height
 
-                    // Update DataGridView column widths to utilize full available space
-                    UpdateDataGridViewColumnWidths();
-                    
-                    // Update count labels
-                    UpdateCountLabels();
+                    // Column widths follow the grid by themselves (Fill mode), and the counts are
+                    // updated when scans load; doing both here re-did them, with file I/O, on
+                    // every resize.
 
                     // TableLayoutPanel handles positioning of statsPanel automatically
                 }

@@ -111,6 +111,29 @@ namespace ScanLink.DesignSystem
 
     internal static class SLLayout
     {
+        private static readonly System.Reflection.PropertyInfo DoubleBufferedProperty =
+            typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        /// <summary>
+        /// Double-buffers a scrolling container and every panel inside it, including panels added
+        /// later. Plain Panels / TableLayoutPanels erase their background and then paint, each on
+        /// its own, so scrolling a page of them flickers. (WS_EX_COMPOSITED on the page was tried
+        /// instead and left stale regions on screen after redraw batches; don't.)
+        /// </summary>
+        public static void DoubleBufferPanels(Control root)
+        {
+            if (root == null) return;
+            if (root is Panel)
+            {
+                try { DoubleBufferedProperty.SetValue(root, true, null); } catch (Exception) { }
+            }
+            foreach (Control child in root.Controls) DoubleBufferPanels(child);
+            root.ControlAdded -= OnPanelAdded;
+            root.ControlAdded += OnPanelAdded;
+        }
+
+        private static void OnPanelAdded(object sender, ControlEventArgs e) { DoubleBufferPanels(e.Control); }
+
         /// <summary>Height a child wants at the given width.</summary>
         public static int HeightOf(Control child, int width)
         {

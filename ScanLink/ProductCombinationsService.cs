@@ -94,12 +94,27 @@ namespace ScanLink
         public double? weight_kg { get; set; } // only populated for carton types
     }
 
+    // GET /scan-link/master-data: every grade/count/carton type, including ones no combination
+    // uses yet (crops and varieties are in the response too but not needed here).
+    public class ScanLinkMasterData
+    {
+        public List<NamedMasterItem> grades { get; set; }
+        public List<NamedMasterItem> counts { get; set; }
+        public List<NamedMasterItem> carton_types { get; set; }
+    }
+
     public class ProductCombinationsService
     {
         private readonly ApiAuthService _apiAuthService;
         private readonly JavaScriptSerializer _jsonSerializer;
         private readonly HttpClient _httpClient;
+        private const string ScanLinkApiBase = "https://backend-stage.labourlinksoftware.co.za/user/v1/scan-link/";
         private List<ProductCombination> _cachedCombinations;
+        // Grades / counts / carton types from master-data plus any created this session, so one
+        // that no combination uses yet stays selectable (see GetAllGrades).
+        private readonly List<NamedMasterItem> _masterGrades = new List<NamedMasterItem>();
+        private readonly List<NamedMasterItem> _masterCounts = new List<NamedMasterItem>();
+        private readonly List<NamedMasterItem> _masterCartonTypes = new List<NamedMasterItem>();
 
         public ProductCombinationsService(ApiAuthService apiAuthService)
         {
@@ -141,7 +156,7 @@ namespace ScanLink
 
             try
             {
-                var url = "https://backend-stage.labourlinksoftware.co.za/user/v1/scan-link/product-combinations";
+                var url = ScanLinkApiBase + "product-combinations";
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiAuthService.GetCurrentToken());
                 request.Headers.Add("Accept", "application/json");
@@ -307,7 +322,7 @@ namespace ScanLink
 
             try
             {
-                var url = "https://backend-stage.labourlinksoftware.co.za/user/v1/scan-link/product-combinations";
+                var url = ScanLinkApiBase + "product-combinations";
                 var request = new HttpRequestMessage(HttpMethod.Post, url);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiAuthService.GetCurrentToken());
                 request.Headers.Add("Accept", "application/json");
@@ -430,7 +445,7 @@ namespace ScanLink
 
             try
             {
-                var url = $"https://backend-stage.labourlinksoftware.co.za/user/v1/scan-link/{path}";
+                var url = ScanLinkApiBase + path;
                 var request = new HttpRequestMessage(HttpMethod.Post, url);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiAuthService.GetCurrentToken());
                 request.Headers.Add("Accept", "application/json");
@@ -484,22 +499,98 @@ namespace ScanLink
         }
 
         /// <summary>Creates a new grade (e.g. a new "Class") on the server.</summary>
-        public Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateGradeAsync(string name)
+        public async Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateGradeAsync(string name)
         {
-            return CreateNamedMasterItemAsync("grades", new CreateNameRequest { name = name }, "Invalid name");
+            var result = await CreateNamedMasterItemAsync("grades", new CreateNameRequest { name = name }, "Invalid name");
+            if (result.Success) RememberMasterItem(_masterGrades, result.Data);
+            return result;
         }
 
         /// <summary>Creates a new count (size) on the server.</summary>
-        public Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateCountAsync(string name)
+        public async Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateCountAsync(string name)
         {
-            return CreateNamedMasterItemAsync("counts", new CreateNameRequest { name = name }, "Invalid name");
+            var result = await CreateNamedMasterItemAsync("counts", new CreateNameRequest { name = name }, "Invalid name");
+            if (result.Success) RememberMasterItem(_masterCounts, result.Data);
+            return result;
         }
 
         /// <summary>Creates a new carton type on the server.</summary>
-        public Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateCartonTypeAsync(string name, double weightKg)
+        public async Task<ApiAuthService.ApiResponse<NamedMasterItem>> CreateCartonTypeAsync(string name, double weightKg)
         {
-            return CreateNamedMasterItemAsync("carton-types",
+            var result = await CreateNamedMasterItemAsync("carton-types",
                 new CreateCartonTypeRequest { name = name, weight_kg = weightKg }, "Invalid name/weight");
+            if (result.Success) RememberMasterItem(_masterCartonTypes, result.Data);
+            return result;
+        }
+
+        private static void RememberMasterItem(List<NamedMasterItem> list, NamedMasterItem item)
+        {
+            if (item == null || string.IsNullOrEmpty(item.id)) return;
+            if (!list.Any(m => string.Equals(m.id, item.id, StringComparison.OrdinalIgnoreCase))) list.Add(item);
+        }
+
+        /// <summary>
+        /// Loads every grade, count and carton type from GET /scan-link/master-data. The lists built
+        /// from combinations only hold values some combination already uses, so a grade made with
+        /// "+ Add new grade" vanished from Add combination until a combination used it, and making
+        /// it again failed with "already exists". On failure the cached lists are kept.
+        /// </summary>
+        public async Task<bool> FetchMasterDataAsync()
+        {
+            if (!_apiAuthService.IsTokenValid()) return false;
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, ScanLinkApiBase + "master-data");
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _apiAuthService.GetCurrentToken());
+                request.Headers.Add("Accept", "application/json");
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    System.Diagnostics.Debug.WriteLine($"master-data failed: {response.StatusCode}");
+                    return false;
+                }
+                var data = _jsonSerializer.Deserialize<ScanLinkMasterData>(await response.Content.ReadAsStringAsync());
+                if (data == null) return false;
+                foreach (var g in data.grades ?? new List<NamedMasterItem>()) RememberMasterItem(_masterGrades, g);
+                foreach (var c in data.counts ?? new List<NamedMasterItem>()) RememberMasterItem(_masterCounts, c);
+                foreach (var t in data.carton_types ?? new List<NamedMasterItem>()) RememberMasterItem(_masterCartonTypes, t);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"master-data failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>Every grade: those used by combinations plus master-data and ones created here.</summary>
+        public List<GradeItem> GetAllGrades()
+        {
+            var all = GetUniqueGrades();
+            foreach (var m in _masterGrades)
+                if (!all.Any(g => string.Equals(g.grade_id, m.id, StringComparison.OrdinalIgnoreCase)))
+                    all.Add(new GradeItem { grade_id = m.id, grade_name = m.name });
+            return all.OrderBy(g => g.grade_name).ToList();
+        }
+
+        /// <summary>Every count: those used by combinations plus master-data and ones created here.</summary>
+        public List<CountItem> GetAllCounts()
+        {
+            var all = GetUniqueCounts();
+            foreach (var m in _masterCounts)
+                if (!all.Any(c => string.Equals(c.count_id, m.id, StringComparison.OrdinalIgnoreCase)))
+                    all.Add(new CountItem { count_id = m.id, count_name = m.name });
+            return all.OrderBy(c => c.count_name).ToList();
+        }
+
+        /// <summary>Every carton type: those used by combinations plus master-data and ones created here.</summary>
+        public List<ProductCombination> GetAllCartonTypes()
+        {
+            var all = GetUniqueCartonTypes();
+            foreach (var m in _masterCartonTypes)
+                if (!all.Any(c => string.Equals(c.carton_type_id, m.id, StringComparison.OrdinalIgnoreCase)))
+                    all.Add(new ProductCombination { carton_type_id = m.id, carton_type_name = m.name });
+            return all.OrderBy(c => c.carton_type_name).ToList();
         }
 
         /// <summary>

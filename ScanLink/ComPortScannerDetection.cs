@@ -24,6 +24,56 @@ namespace ScanLink
             { "0403", "FTDI" },  // Generic USB-Serial chips
         };
 
+        /// <summary>Every PnP device with a COM port. Unlike SerialPort.GetPortNames(), it drops a
+        /// USB-COM scanner as soon as it is unplugged: usbser keeps the COM name registered while a
+        /// handle is open, so GetPortNames() still lists it.</summary>
+        public const string ComDeviceQuery = "SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%(COM%'";
+
+        /// <summary>PnP device ids and COM names of the COM devices that are plugged in right now.</summary>
+        public sealed class PresentComDevices
+        {
+            public readonly HashSet<string> PnpDeviceIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            public readonly HashSet<string> ComPorts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            /// <summary>
+            /// False when the device behind a scanner config is gone: neither its PnP id nor its COM
+            /// name is listed. GENERIC_ ids (a COM device WMI lists but did not recognise as a
+            /// scanner) are checked by COM name. BASIC_ ids come from the fallback used when WMI
+            /// fails, so there is nothing to check them against; they count as present.
+            /// </summary>
+            public bool Contains(ScannerConfig config)
+            {
+                if (config == null) return false;
+                string id = config.PNPDeviceID ?? "";
+                if (id.Length == 0 || id.StartsWith("BASIC_", StringComparison.OrdinalIgnoreCase)) return true;
+                return PnpDeviceIds.Contains(id) || ComPorts.Contains(ExtractComPort(config.ComPort) ?? "");
+            }
+        }
+
+        /// <summary>The COM devices WMI reports as present, or null when the query fails (unknown).</summary>
+        public static PresentComDevices GetPresentComDevices()
+        {
+            try
+            {
+                var present = new PresentComDevices();
+                using (var searcher = new ManagementObjectSearcher(ComDeviceQuery))
+                {
+                    foreach (ManagementObject device in searcher.Get())
+                    {
+                        string pnpDeviceId = device["PNPDeviceID"]?.ToString();
+                        string comPort = ExtractComPort(device["Name"]?.ToString());
+                        if (!string.IsNullOrEmpty(pnpDeviceId)) present.PnpDeviceIds.Add(pnpDeviceId);
+                        if (!string.IsNullOrEmpty(comPort)) present.ComPorts.Add(comPort);
+                    }
+                }
+                return present;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// Detects all COM port scanners currently connected to the system.
         /// </summary>
@@ -39,8 +89,11 @@ namespace ScanLink
 
             try
             {
+                // COM names that belong to a device that is actually plugged in (see ComDeviceQuery)
+                var presentPorts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                 // Query WMI for COM port device information
-                using (var searcher = new ManagementObjectSearcher("SELECT * FROM Win32_PnPEntity WHERE Name LIKE '%(COM%'"))
+                using (var searcher = new ManagementObjectSearcher(ComDeviceQuery))
                 {
                     var comDevices = searcher.Get();
 
@@ -55,6 +108,7 @@ namespace ScanLink
 
                             // Extract COM port number from device name (e.g., "COM3")
                             string comPort = ExtractComPort(deviceName);
+                            if (!string.IsNullOrEmpty(comPort)) presentPorts.Add(comPort);
 
                             if (string.IsNullOrEmpty(comPort) || string.IsNullOrEmpty(pnpDeviceId))
                                 continue;
@@ -87,8 +141,11 @@ namespace ScanLink
                     }
                 }
 
-                // Also check for generic USB-Serial adapters that might be scanners
-                scanners.AddRange(DetectGenericUsbSerialScanners(availablePorts, scanners));
+                // Also check for generic USB-Serial adapters that might be scanners. Only ports of a
+                // present device: an unplugged scanner's COM name stays in GetPortNames() while the
+                // app still holds it, and would come back as a phantom "Generic Scanner".
+                scanners.AddRange(DetectGenericUsbSerialScanners(
+                    availablePorts.Where(p => presentPorts.Contains(ExtractComPort(p) ?? "")).ToArray(), scanners));
             }
             catch
             {

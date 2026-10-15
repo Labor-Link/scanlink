@@ -27,7 +27,8 @@ namespace ScanLink
 
     public partial class Form1 : Form
     {
-        private const string AppVersion = "4.1.4";
+        // From Properties/AssemblyInfo.cs (AssemblyInformationalVersion); not repeated here.
+        private static string AppVersion { get { return Application.ProductVersion; } }
 
         public class FunctionData
         {
@@ -80,6 +81,7 @@ namespace ScanLink
         private System.Windows.Forms.Timer _deviceChangeDebounceTimer;
         private int _scannerReconnectAttemptsLeft;
         private int _scannerScanInProgress; // 0/1 guard (Interlocked) so scans never overlap
+        private int _scannerScanPending;    // 0/1: a trigger arrived mid-pass; run once more after it
         private bool _scannerInUseDialogShown; // throttle: one "port in use" popup at a time; re-arms on a successful connect
         private const int ScannerReconnectIntervalMs = 2500;
         private const int ScannerReconnectMaxAttempts = 8; // ~20s window after each (re)init
@@ -301,6 +303,7 @@ namespace ScanLink
         public Form1()
         {
             InitializeComponent();
+            AddLabelLayoutControls();
             try
             {
                 this.Icon = System.Drawing.Icon.ExtractAssociatedIcon(Application.ExecutablePath);
@@ -579,6 +582,14 @@ namespace ScanLink
             dgvActiveScanners.Columns.Add(btnSave);
 
             dgvActiveScanners.CellContentClick += DgvActiveScanners_CellContentClick;
+            dgvActiveScanners.CellValueChanged += (s, e) =>
+            {
+                if (_rebuildingActiveScanners || e.RowIndex < 0) return;
+                string column = dgvActiveScanners.Columns[e.ColumnIndex].Name;
+                if (column != "LineID" && column != "BlockID" && column != "Supplier") return;
+                string pnp = dgvActiveScanners.Rows[e.RowIndex].Cells["PNPDeviceID"].Value?.ToString();
+                if (!string.IsNullOrEmpty(pnp)) _unsavedActiveScannerEdits.Add(pnp);
+            };
             
             activeScannersPanel.Controls.Add(dgvActiveScanners);
             dgvActiveScanners.BringToFront();
@@ -598,12 +609,14 @@ namespace ScanLink
             Control existingStatsPanel = this.statsPanel;
             if (existingStatsPanel != null && scannerContentPanel.Controls.Contains(existingStatsPanel)) 
             {
+                // The Scans page may have moved the stats row (filters now sit above the details).
+                int statsRow = scannerContentPanel.GetRow(existingStatsPanel);
                 scannerContentPanel.Controls.Remove(existingStatsPanel);
                 splitPanel.Controls.Add(existingStatsPanel, 0, 0);
                 splitPanel.SetColumnSpan(existingStatsPanel, 2);
                 splitPanel.Controls.Add(dailyStatsPanel, 0, 1);
                 splitPanel.Controls.Add(activeScannersPanel, 1, 1);
-                scannerContentPanel.Controls.Add(splitPanel, 0, 2);
+                scannerContentPanel.Controls.Add(splitPanel, 0, statsRow >= 0 ? statsRow : 2);
             }
         }
 
@@ -804,6 +817,7 @@ namespace ScanLink
                     scanner.LineID = newLine;
                     scanner.BlockID = newBlock;
                     scanner.Supplier = newSupplier;
+                    _unsavedActiveScannerEdits.Remove(pnp);
 
                     UpdateScannerAssignmentFile(pnp, newLine, newBlock, newSupplier);
 
@@ -881,21 +895,63 @@ namespace ScanLink
             int scannerCount = GetAllDisplayScanners().Count;
             lblDashboardScannerStatus.Text = $"{scannerCount} Scanner{(scannerCount != 1 ? "s" : "")} Connected";
             
-            bool isPrinterConnected = false;
-            if (!string.IsNullOrEmpty(CurrentConnectionType))
-            {
-                if (CurrentConnectionType == "USB")
-                {
-                    isPrinterConnected = !string.IsNullOrWhiteSpace(this.m_USBDevicePath);
-                }
-                else if (CurrentConnectionType != "Multi-LAN")
-                {
-                    isPrinterConnected = true;
-                }
-            }
-            lblDashboardPrinterStatus.Text = isPrinterConnected ? "1 Printer Connected" : "0 Printer Connected";
+            lblDashboardPrinterStatus.Text = DescribePrinterStatus();
 
             RefreshActiveScannersGrid();
+        }
+
+        // "Connected" only when the printer is actually there: a USB printer must be plugged in and
+        // switched on (its device is enumerated), a COM printer's port must exist. A saved setting
+        // alone used to count, so the status bar said "1 Printer Connected" with nothing plugged in.
+        // Network and file targets can't be checked without sending to them, so they say what is set.
+        private string DescribePrinterStatus()
+        {
+            switch (CurrentConnectionType ?? "")
+            {
+                case "USB":
+                    return IsUsbDevicePresent(m_USBDevicePath) ? "1 Printer Connected" : "0 Printers Connected";
+                case "COM":
+                    bool portPresent = !string.IsNullOrWhiteSpace(m_ComName) &&
+                        System.IO.Ports.SerialPort.GetPortNames().Any(p => string.Equals(p, m_ComName, StringComparison.OrdinalIgnoreCase));
+                    return portPresent ? "1 Printer Connected" : "0 Printers Connected";
+                case "LAN":
+                case "Multi-LAN":
+                    return "Network printer set";
+                case "File":
+                    return "Printing to file";
+                default:
+                    return "0 Printers Connected";
+            }
+        }
+
+        // True when the USB device saved in settings is currently enumerated by Windows. Compares
+        // the device instance part (USB#VID_x&PID_y#serial) so a different interface GUID suffix
+        // on the same device still matches, or failing that the printer's VID/PID, in case the
+        // printer picker saved its path in another form than the SDK lists.
+        private static bool IsUsbDevicePresent(string devicePath)
+        {
+            if (string.IsNullOrWhiteSpace(devicePath)) return false;
+            string wanted = UsbDeviceInstanceKey(devicePath);
+            string vidPid = System.Text.RegularExpressions.Regex.Match(devicePath, @"vid_[0-9a-f]{4}&pid_[0-9a-f]{4}",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase).Value;
+            try
+            {
+                string[] present = USBConnection.GetDevicePaths();
+                return present != null && present.Any(p =>
+                    string.Equals(UsbDeviceInstanceKey(p), wanted, StringComparison.OrdinalIgnoreCase) ||
+                    (vidPid.Length > 0 && (p ?? "").IndexOf(vidPid, StringComparison.OrdinalIgnoreCase) >= 0));
+            }
+            catch
+            {
+                return false; // the SDK throws when there is no USB device to list
+            }
+        }
+
+        private static string UsbDeviceInstanceKey(string devicePath)
+        {
+            string path = (devicePath ?? "").Trim();
+            int guid = path.LastIndexOf("#{", StringComparison.Ordinal);
+            return guid > 0 ? path.Substring(0, guid) : path;
         }
 
         private void RefreshActiveScannersGrid()
@@ -923,20 +979,47 @@ namespace ScanLink
             
             if (needsRebuild) 
             {
-                dgvActiveScanners.Rows.Clear();
-                foreach (var scanner in activeScanners) 
+                // This runs every 2 s from the status timer. Rebuilding under the cursor wiped the
+                // Line/Block being typed, so wait for the edit to finish, and carry over values
+                // typed but not saved yet for scanners that are still in the list.
+                if (dgvActiveScanners.IsCurrentCellInEditMode) return;
+                var typed = new Dictionary<string, object[]>(StringComparer.OrdinalIgnoreCase);
+                foreach (DataGridViewRow row in dgvActiveScanners.Rows)
                 {
-                    dgvActiveScanners.Rows.Add(
-                        scanner.PNPDeviceID,
-                        scanner.DeviceName ?? scanner.PNPDeviceID,
-                        scanner.ComPort,
-                        scanner.LineID,
-                        scanner.BlockID,
-                        scanner.Supplier
-                    );
+                    string pnp = row.Cells["PNPDeviceID"].Value?.ToString();
+                    if (!string.IsNullOrEmpty(pnp) && _unsavedActiveScannerEdits.Contains(pnp))
+                        typed[pnp] = new[] { row.Cells["LineID"].Value, row.Cells["BlockID"].Value, row.Cells["Supplier"].Value };
                 }
+
+                _rebuildingActiveScanners = true;
+                try
+                {
+                    using (new ScanLink.DesignSystem.SLRedrawBatch(dgvActiveScanners))   // one repaint
+                    {
+                        dgvActiveScanners.Rows.Clear();
+                        foreach (var scanner in activeScanners) 
+                        {
+                            object[] t;
+                            bool edited = typed.TryGetValue(scanner.PNPDeviceID ?? "", out t);
+                            dgvActiveScanners.Rows.Add(
+                                scanner.PNPDeviceID,
+                                scanner.DeviceName ?? scanner.PNPDeviceID,
+                                scanner.ComPort,
+                                edited ? t[0] : scanner.LineID,
+                                edited ? t[1] : scanner.BlockID,
+                                edited ? t[2] : scanner.Supplier
+                            );
+                        }
+                    }
+                }
+                finally { _rebuildingActiveScanners = false; }
+                _unsavedActiveScannerEdits.IntersectWith(typed.Keys.Where(k => activeScanners.Any(a => string.Equals(a.PNPDeviceID, k, StringComparison.OrdinalIgnoreCase))));
             }
         }
+
+        private bool _rebuildingActiveScanners;
+        /// <summary>Scanners whose Line/Block/Supplier was typed in the Connected scanners grid but not saved.</summary>
+        private readonly HashSet<string> _unsavedActiveScannerEdits = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         private void LoadLoginLogo()
         {
@@ -1551,7 +1634,7 @@ namespace ScanLink
 
         private void comboBox_test_SelectedIndexChanged(object sender, EventArgs e)
         {
-            comboBox_barcode.Enabled = ("BarcodeUtil 1 : one barcode" == comboBox_test.Text) || ("🎯 Custom Preset (Advanced Settings)" == comboBox_test.Text);
+            SyncBarcodeTypeLock();
             
             // Show advanced settings automatically when custom preset is selected
             if ("🎯 Custom Preset (Advanced Settings)" == comboBox_test.Text)
@@ -1571,6 +1654,125 @@ namespace ScanLink
             SaveAdvancedSettings();
         }
 
+        // ---- Label layout: Y offset and bar width -------------------------------------------
+        // X Coordinate says where the sticker starts on the print head; Width is the sticker's
+        // width. These two add the vertical position and a bar width that no longer has to come
+        // from Width, so Width can stay the real sticker width.
+        private Label label_yOffset;
+        private NumericUpDown numericUpDown_yOffset;
+        private Label label_px_yOffset;
+        private Label label_barWidth;
+        private ComboBox comboBox_barWidth;
+
+        private const string BarWidthTip = "Width of the thinnest bar. Auto sizes the barcode from the sticker width.";
+
+        /// <summary>Space kept free at the sticker's right edge for the name and product lines.</summary>
+        private const int LabelTextMarginDots = 10;
+        /// <summary>Modules in the 12-digit Code 128 subset C barcode: start, 6 pairs, check, stop.</summary>
+        private const int LabelBarcodeModules = 101;
+
+        /// <summary>A fourth row in the label-size section: "Y offset" and "Bar width".</summary>
+        private void AddLabelLayoutControls()
+        {
+            if (dimensionsPanel == null) return;
+            const int rowTop = 117;
+            label_yOffset = new Label { Name = "label_yOffset", Text = "Y offset", AutoSize = true, Location = new Point(5, rowTop + 3) };
+            numericUpDown_yOffset = new NumericUpDown
+            {
+                Name = "numericUpDown_yOffset",
+                Minimum = 0,
+                Maximum = 400,
+                Location = new Point(170, rowTop),
+                Size = new Size(100, 23)
+            };
+            label_px_yOffset = new Label { Name = "label_px_yOffset", Text = "px", AutoSize = true, Location = new Point(275, rowTop + 3) };
+            label_barWidth = new Label { Name = "label_barWidth", Text = "Bar width", AutoSize = true, Location = new Point(350, rowTop + 3) };
+            comboBox_barWidth = new ComboBox
+            {
+                Name = "comboBox_barWidth",
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(500, rowTop),
+                Size = new Size(100, 23)
+            };
+            comboBox_barWidth.Items.AddRange(new object[] { "Auto", "1 dot", "2 dots", "3 dots", "4 dots", "5 dots", "6 dots" });
+            comboBox_barWidth.SelectedIndex = 0;
+
+            numericUpDown_yOffset.ValueChanged += numericUpDown_yOffset_ValueChanged;
+            comboBox_barWidth.SelectedIndexChanged += comboBox_barWidth_SelectedIndexChanged;
+
+            dimensionsPanel.Controls.AddRange(new Control[] { label_yOffset, numericUpDown_yOffset, label_px_yOffset, label_barWidth, comboBox_barWidth });
+            dimensionsPanel.Height += 35;
+        }
+
+        private void numericUpDown_yOffset_ValueChanged(object sender, EventArgs e)
+        {
+            SaveAdvancedSettings();
+        }
+
+        private void comboBox_barWidth_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            SaveAdvancedSettings();
+        }
+
+        /// <summary>Dots added to every Y position on the label (moves the content down the sticker).</summary>
+        private int LabelYOffset
+        {
+            get { return numericUpDown_yOffset != null ? (int)numericUpDown_yOffset.Value : 0; }
+        }
+
+        /// <summary>
+        /// Narrow bar width in dots: the "Bar width" setting, or with "Auto" the old rule that sizes
+        /// the barcode from the sticker width.
+        /// </summary>
+        private int LabelNarrowBarWidth(string barcodeId, int stickerWidthDots)
+        {
+            int chosen = comboBox_barWidth != null ? comboBox_barWidth.SelectedIndex : 0;
+            if (chosen > 0) return chosen;
+            int estimatedTotalBars = Math.Max(1, (barcodeId ?? "").Length * 11); // ~11 bars per Code 128 character
+            return Math.Max(1, Math.Min(10, stickerWidthDots / estimatedTotalBars)); // ARGOX SDK supports 1-10
+        }
+
+        /// <summary>
+        /// Room for the name and product lines. X Coordinate only says where the sticker starts on
+        /// the print head, so the text gets the whole sticker width. It used to get Width - X, which
+        /// cut "Samar Krishna" to "Samar Krish" on a roll centred on the head.
+        /// </summary>
+        private static int LabelTextMaxDots(int stickerWidthDots)
+        {
+            return Math.Max(1, stickerWidthDots - LabelTextMarginDots);
+        }
+
+        /// <summary>Shortens text to what fits in maxWidthDots of PPLB Font_1 (the preview uses the same rule).</summary>
+        private static string FitLabelText(string text, int maxWidthDots)
+        {
+            if (string.IsNullOrEmpty(text) || maxWidthDots <= 0) return text;
+            // Conservative Font_1 glyph width on a 203-dpi head; over-estimating means we
+            // truncate slightly early rather than risk an overrun.
+            const int approxCharWidthDots = 10;
+            int maxChars = Math.Max(1, maxWidthDots / approxCharWidthDots);
+            return text.Length > maxChars ? text.Substring(0, maxChars) : text;
+        }
+
+        /// <summary>
+        /// Barcode Type only matters for the "BarcodeUtil" test. Custom Preset always prints Code 128
+        /// mode C (the label number is exactly 12 digits; see __testPPLB_customPreset), so there the
+        /// list is locked on that type instead of offering dozens of choices that do nothing.
+        /// </summary>
+        private void SyncBarcodeTypeLock()
+        {
+            if (comboBox_barcode == null || comboBox_test == null) return;
+            bool customPreset = comboBox_test.SelectedIndex == 0;
+            if (customPreset)
+            {
+                int modeC = comboBox_barcode.Items.IndexOf("Code 128 mode C");
+                if (modeC >= 0 && comboBox_barcode.SelectedIndex != modeC) comboBox_barcode.SelectedIndex = modeC;
+            }
+            comboBox_barcode.Enabled = "BarcodeUtil 1 : one barcode" == comboBox_test.Text;
+            toolTip?.SetToolTip(comboBox_barcode, customPreset
+                ? "Custom Preset always prints Code 128 mode C (the label number is 12 digits)."
+                : "Barcode type for the BarcodeUtil test print");
+        }
+
         // Advanced settings are now always enabled
         private void InitializeAdvancedSettings()
         {
@@ -1581,10 +1783,13 @@ namespace ScanLink
             // Set up tooltips for better user experience
             toolTip.SetToolTip(textBox_EmployeeID, "Enter the text/data to encode in the barcode");
             toolTip.SetToolTip(comboBox_ProductID, "Select the product ID for the barcode");
-            toolTip.SetToolTip(numericUpDown_width, "Width of the barcode in dots/pixels");
-            toolTip.SetToolTip(numericUpDown_height, "Height of the barcode in dots/pixels");
+            toolTip.SetToolTip(numericUpDown_width, "Width of the sticker in dots (203 dots = 1 inch). The name and product lines get this much room.");
+            toolTip.SetToolTip(numericUpDown_height, "Height of the sticker in dots/pixels");
+            toolTip.SetToolTip(numericUpDown_xCoordinate, "Where the sticker starts on the print head, in dots from the head's first dot (0)");
+            if (numericUpDown_yOffset != null) toolTip.SetToolTip(numericUpDown_yOffset, "Moves the label content down the sticker, in dots");
+            if (comboBox_barWidth != null) toolTip.SetToolTip(comboBox_barWidth, BarWidthTip);
             toolTip.SetToolTip(numericUpDown_gap, "Gap between labels in millimeters");
-            toolTip.SetToolTip(trackBar_darkness, "Print darkness/density (1=lightest, 30=darkest)");
+            toolTip.SetToolTip(trackBar_darkness, "Print darkness/density (0=lightest, 15=darkest, the printer's own scale)");
             toolTip.SetToolTip(comboBox_speed, "Print speed setting (1=slowest/highest quality, 9=fastest)");
             toolTip.SetToolTip(button_preview, "Preview the current settings before printing");
 
@@ -3315,9 +3520,11 @@ namespace ScanLink
             if (label_ProductDetail == null) return;
             if (label_ProductDetail.IsDisposed) return;
 
-            if (label_ProductDetail.InvokeRequired)
+            // Ask the form, not the label: on the v2 print page the label is off-screen (an SLText
+            // shows its text), has no handle, and would report InvokeRequired = false on any thread.
+            if (InvokeRequired)
             {
-                label_ProductDetail.Invoke(new Action(() => SetProductDetailFields(variety, grade, count, weight, cartonId, cartonName)));
+                Invoke(new Action(() => SetProductDetailFields(variety, grade, count, weight, cartonId, cartonName)));
                 return;
             }
 
@@ -3745,7 +3952,7 @@ namespace ScanLink
             
             // Add settings info panel
             Panel infoPanel = new Panel();
-            infoPanel.Height = 150;
+            infoPanel.Height = 175;
             infoPanel.Dock = DockStyle.Bottom;
             infoPanel.BackColor = Color.FromArgb(247, 249, 249);
             
@@ -3761,8 +3968,9 @@ namespace ScanLink
                 
             infoLabel.Text = $"Preview Settings:\n" +
                 $"{textLayoutInfo}\n" +
-                $"📏 Dimensions: {labelWidth} x {labelHeight} pixels\n" +
-                $"📊 Barcode Type: {comboBox_barcode.Text} | 🌑 Darkness: {trackBar_darkness.Value}/30\n" +
+                $"📏 Dimensions: {labelWidth} x {labelHeight} pixels | Y offset: {LabelYOffset} | Bar width: {LabelNarrowBarWidth(BarcodeID, labelWidth)} dot(s)\n" +
+                $"↔ X Coordinate {(int)(numericUpDown_xCoordinate?.Value ?? 0)}: where the sticker starts on the print head (the outline above is the sticker)\n" +
+                $"📊 Barcode Type: {comboBox_barcode.Text} | 🌑 Darkness: {trackBar_darkness.Value}/15\n" +
                 $"🔢 Print Count: {numericUpDown_count.Value} | ⚡ Speed: {comboBox_speed.Text}";
             
             infoPanel.Controls.Add(infoLabel);
@@ -3808,14 +4016,18 @@ namespace ScanLink
             marginIndicator.BackColor = Color.White;
             labelOutline.Controls.Add(marginIndicator);
             
-            int xPos = (int)(numericUpDown_xCoordinate?.Value ?? 0);
+            // The outline is the sticker itself. X Coordinate is where the sticker starts on the
+            // print head, so content starts at the sticker's edge here; offsetting it by X (as this
+            // used to) showed it running off the right edge while the print was placed correctly.
+            int xPos = 0;
+            int yOffset = LabelYOffset;
             
             // 1. Compact header: "Scan-Link" left + barcode number right (same line, smaller font)
             Label headerLabel = new Label();
             headerLabel.Text = "Scan-Link ||";
             headerLabel.Font = new Font("Courier New", 9, FontStyle.Bold);
             headerLabel.ForeColor = Color.Black;
-            headerLabel.Location = new Point(xPos, 2);
+            headerLabel.Location = new Point(xPos, 2 + yOffset);
             headerLabel.AutoSize = true;
             marginIndicator.Controls.Add(headerLabel);
 
@@ -3827,7 +4039,7 @@ namespace ScanLink
             headerBarcodeLabel.AutoSize = true;
             marginIndicator.Controls.Add(headerBarcodeLabel);
             // Place right after "Scan-Link ||" with larger gap (matches print positioning)
-            headerBarcodeLabel.Location = new Point(xPos + headerLabel.PreferredWidth + 40, 2);
+            headerBarcodeLabel.Location = new Point(xPos + headerLabel.PreferredWidth + 40, 2 + yOffset);
             
             // // 2. Show barcode type (always printed)
             // Label typeLabel = new Label();
@@ -3869,22 +4081,14 @@ namespace ScanLink
             // 6. Simulated barcode visual
             Panel barcodeVisual = new Panel();
             
-            // Calculate barcode width using same logic as printer
-            int desiredWidth = (int)numericUpDown_width.Value;
-            int estimatedBarsPerChar = 11; // Average bars per character for Code 128
-            int estimatedTotalBars = BarcodeID.Length * estimatedBarsPerChar;
-            int narrowBarWidth = Math.Max(1, Math.Min(10, desiredWidth / estimatedTotalBars));
-            if (narrowBarWidth < 1) narrowBarWidth = 1;
-            if (narrowBarWidth > 10) narrowBarWidth = 10;
-            
-            // Calculate actual barcode width based on narrow bar width
-            int barcodeWidth = Math.Min(width - xPos - 10, estimatedTotalBars * narrowBarWidth + 6 * narrowBarWidth); // +6 for quiet zones
-            barcodeWidth = Math.Max(barcodeWidth, 150); // ensure visible minimum for scannability
+            // Same bar width as the printer, and the printed barcode's real width (1 dot = 1 px here)
+            int narrowBarWidth = LabelNarrowBarWidth(BarcodeID, width);
+            int barcodeWidth = LabelBarcodeModules * narrowBarWidth;
 
             // Match physical hardware printing absolute coordinates (Y=20, Height=110) - compact layout
             int actualBarcodeHeight = 110;
-            barcodeVisual.Location = new Point(xPos, 20);
-			barcodeVisual.Size = new Size(Math.Min(Math.Max(barcodeWidth, 220), marginIndicator.Width - xPos), actualBarcodeHeight);
+            barcodeVisual.Location = new Point(xPos, 20 + yOffset);
+			barcodeVisual.Size = new Size(Math.Min(barcodeWidth, marginIndicator.Width - xPos), actualBarcodeHeight);
             barcodeVisual.BackColor = Color.White;
             marginIndicator.Controls.Add(barcodeVisual);
             
@@ -3894,11 +4098,12 @@ namespace ScanLink
             // Barcode number is now shown in the header line (no longer below bars)
 
             // Detail lines below the barcode - mirror of the printed label (employee name; variety | count | grade)
-            string previewEmpName = GetEmployeeNameForBarcode(BarcodeID);
+            // Shortened exactly as the printer shortens them, so a cut-off name shows here first.
+            string previewEmpName = FitLabelText(GetEmployeeNameForBarcode(BarcodeID), LabelTextMaxDots(width));
             var previewCombo = GetSelectedProductCombination();
-            string previewLine2 = string.Join("  |  ",
+            string previewLine2 = FitLabelText(string.Join("  |  ",
                 new[] { previewCombo?.variety_name, previewCombo?.count_name, previewCombo?.grade_name }
-                    .Where(s => !string.IsNullOrWhiteSpace(s)));
+                    .Where(s => !string.IsNullOrWhiteSpace(s))), LabelTextMaxDots(width));
             // Mirror the print-side height guard: only show lines that fit the label height.
             const int previewDetailTextHeight = 14;
             if (barcodeVisual.Bottom + 4 + previewDetailTextHeight > height) previewEmpName = "";
@@ -4385,6 +4590,7 @@ namespace ScanLink
 
             // Show progress and update UI
             _printerWriteFailed = false;
+            _lastPrintWarning = null;
             button_send.Enabled = false;
             button_send.Text = "Processing...";
             progressBar.Visible = true; // keep visible as a thin status strip
@@ -4419,10 +4625,26 @@ namespace ScanLink
                 if (_printerWriteFailed)
                     throw new Exception("the label printer could not be reached. Check Printer in the sidebar, then try again.");
 
-                // Success feedback with generated barcode summary
+                // Only Custom Preset prints the label. Calibrate / Reset send just that command and
+                // BarcodeUtil a bare test barcode, which used to be reported as "Print job completed
+                // successfully" (a Test Mode left on Reset printed nothing). Say what happened and
+                // keep the barcode, so the operator can switch modes and print without regenerating.
+                if (comboBox_test.SelectedIndex != 0)
+                {
+                    statusLabel.Text = ("BarcodeUtil 1 : one barcode" == comboBox_test.Text
+                            ? $"⚠️ A test barcode was printed, not the label: Test Mode is \"{comboBox_test.Text}\". "
+                            : $"⚠️ No label printed: Test Mode is \"{comboBox_test.Text}\", which only sends that command to the printer. ") +
+                        "Choose \"Custom Preset\" in Printer settings to print labels.";
+                    statusLabel.ForeColor = Theme.Warn500;
+                    button_send.Enabled = true;
+                    button_send.Text = "Start printing";
+                    return;
+                }
+
+                // Success feedback with generated barcode summary (plus any fit warning from the preset)
                 string successMessage = $"✅ Print job completed successfully!\n🎯 Barcode used: {_generatedBarcode}";
-                statusLabel.Text = successMessage;
-                statusLabel.ForeColor = Theme.Ok500;
+                statusLabel.Text = string.IsNullOrEmpty(_lastPrintWarning) ? successMessage : $"{successMessage}\n⚠️ {_lastPrintWarning}";
+                statusLabel.ForeColor = string.IsNullOrEmpty(_lastPrintWarning) ? Theme.Ok500 : Theme.Warn500;
 
                 // Reset barcode generation state after successful print
                 _barcodeGenerated = false;
@@ -4449,6 +4671,9 @@ namespace ScanLink
         /// <summary>True when the last __createPrn call could not reach the printer (it shows
         /// its own error and returns false; the print presets then just return).</summary>
         private bool _printerWriteFailed;
+
+        /// <summary>A fit problem the last Custom Preset print found (e.g. barcode wider than the sticker).</summary>
+        private string _lastPrintWarning;
 
         private bool __createPrn(string additionalname, int index)
         {
@@ -4580,7 +4805,7 @@ namespace ScanLink
                         // Apply darkness setting (convert from 1-30 to 0-30 range)
                         // The SDK accepts darkness 0-15 and speed 1-8 (BarcodePrinter_API docs);
                         // the slider goes to 30 and the list to 9, which threw on print.
-                        PPLBEmulation.SetUtil.SetDarkness(Math.Max(0, Math.Min(15, trackBar_darkness.Value - 1)));
+                        PPLBEmulation.SetUtil.SetDarkness(Math.Max(0, Math.Min(15, trackBar_darkness.Value)));
                         
                         // Apply print speed (convert from 1-9 to actual speed)
                         int speedValue = Math.Max(1, Math.Min(8, comboBox_speed.SelectedIndex + 1));
@@ -4695,14 +4920,9 @@ namespace ScanLink
                         barcodeHeight = (int)numericUpDown_height.Value;
                     }
                     
-                    // Calculate narrow bar width based on desired total barcode width
-                    // Formula: narrowBarWidth = desiredWidth / (estimatedBarsCount * averageBarRatio)
+                    // Narrow bar width: the "Bar width" setting, or sized from the sticker width (Auto)
                     int desiredWidth = (int)numericUpDown_width.Value;
-                    int estimatedBarsPerChar = 11; // Average bars per character for Code 128
-                    int estimatedTotalBars = BarcodeID.Length * estimatedBarsPerChar;
-                    int narrowBarWidth = Math.Max(1, Math.Min(10, desiredWidth / estimatedTotalBars));
-                    if (narrowBarWidth < 1) narrowBarWidth = 1;
-                    if (narrowBarWidth > 10) narrowBarWidth = 10; // ARGOX SDK typically supports 1-10
+                    int narrowBarWidth = LabelNarrowBarWidth(BarcodeID, desiredWidth);
                     
                     // Update status with calculated width information
                     // Advanced settings always enabled
@@ -4787,14 +5007,7 @@ namespace ScanLink
         private void PrintBoldLabelText(int x, int y, PPLBFont font, string text, int maxWidthDots = 0)
         {
             if (string.IsNullOrWhiteSpace(text)) return;
-            if (maxWidthDots > 0)
-            {
-                // Conservative Font_1 glyph width on a 203-dpi head; over-estimating means we
-                // truncate slightly early rather than risk an overrun.
-                const int approxCharWidthDots = 10;
-                int maxChars = Math.Max(1, maxWidthDots / approxCharWidthDots);
-                if (text.Length > maxChars) text = text.Substring(0, maxChars);
-            }
+            text = FitLabelText(text, maxWidthDots);
             byte[] b = Encoding.Default.GetBytes(text);
             PPLBEmulation.TextUtil.PrintText(x, y, PPLBOrient.Clockwise_0_Degrees, font, 1, 1, false, b);
             PPLBEmulation.TextUtil.PrintText(x + 1, y, PPLBOrient.Clockwise_0_Degrees, font, 1, 1, false, b);
@@ -4820,7 +5033,7 @@ namespace ScanLink
                 
                 // Apply all advanced settings including label dimensions
                 // SDK ranges: darkness 0-15, speed 1-8.
-                PPLBEmulation.SetUtil.SetDarkness(Math.Max(0, Math.Min(15, trackBar_darkness.Value - 1)));
+                PPLBEmulation.SetUtil.SetDarkness(Math.Max(0, Math.Min(15, trackBar_darkness.Value)));
                 int speedValue = Math.Max(1, Math.Min(8, comboBox_speed.SelectedIndex + 1));
                 PPLBEmulation.SetUtil.SetPrintRate(speedValue);
                 
@@ -4887,9 +5100,11 @@ namespace ScanLink
                 int xCoordinate = (int)(numericUpDown_xCoordinate?.Value ?? 0);
                 int x2Coordinate = (int)(numericUpDown_x2Coordinate?.Value ?? 0);
                 
+                int yOffset = LabelYOffset;
+
                 // Compact header: "Scan-Link ||" on the left, barcode number on the right (same line, smaller font)
                 buf = encoder.GetBytes("Scan-Link ||");
-                PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
+                PPLBEmulation.TextUtil.PrintText(xCoordinate, yOffset, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
 
                 //If roll applied on x=0
                 // buf = encoder.GetBytes("|| Scan-Link ||");
@@ -4926,7 +5141,7 @@ namespace ScanLink
 
                 // Print barcode number right after "Scan-Link ||" text with much more spacing
                 byte[] bufBarcodeText = encoder.GetBytes(BarcodeID);
-                PPLBEmulation.TextUtil.PrintText(xCoordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                PPLBEmulation.TextUtil.PrintText(xCoordinate + 150, yOffset, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
                 
                 // Calculate optimal text layout for the specified width
                 int labelWidth = (int)numericUpDown_width.Value;
@@ -4952,13 +5167,8 @@ namespace ScanLink
                 // int barcodeHeight = (int)numericUpDown_height.Value;
                 int barcodeHeight = 110;
                 
-                // Calculate narrow bar width for custom preset
-                int desiredWidth = (int)numericUpDown_width.Value;
-                int estimatedBarsPerChar = 11; // Average bars per character for Code 128
-                int estimatedTotalBars = BarcodeID.Length * estimatedBarsPerChar;
-                int narrowBarWidth = Math.Max(1, Math.Min(10, desiredWidth / estimatedTotalBars));
-                if (narrowBarWidth < 1) narrowBarWidth = 1;
-                if (narrowBarWidth > 10) narrowBarWidth = 10; // ARGOX SDK typically supports 1-10
+                // Narrow bar width: the "Bar width" setting, or sized from the sticker width (Auto)
+                int narrowBarWidth = LabelNarrowBarWidth(BarcodeID, labelWidthDots);
                 
                 // Add width information to the label
                 // buf2 = encoder.GetBytes($"BarW{narrowBarWidth} (Target:{desiredWidth}px)");
@@ -5005,8 +5215,9 @@ namespace ScanLink
                     new[] { detailCombo?.variety_name, detailCombo?.count_name, detailCombo?.grade_name }
                         .Where(s => !string.IsNullOrWhiteSpace(s)));
                 // Below the bars (bars are Y=20..130); does not affect bar height/width.
-                const int detailLine1Y = 134;
-                const int detailLine2Y = 150;
+                int barcodeY = 20 + yOffset;
+                int detailLine1Y = 134 + yOffset;
+                int detailLine2Y = 150 + yOffset;
                 const int detailTextHeight = 14;
                 // Drop any line that would fall outside the configured label height.
                 int detailLabelHeight = (int)numericUpDown_height.Value;
@@ -5019,11 +5230,13 @@ namespace ScanLink
 
                 if (!twoUp)
                 {
+                    if (LabelBarcodeModules * narrowBarWidth > labelWidthDots)
+                        warnings.Add($"Barcode ({LabelBarcodeModules * narrowBarWidth} dots) is wider than the sticker ({labelWidthDots}); choose a smaller Bar width");
                     // Print barcode below compact header line (Y=20 since header is now single small line)
-                    PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
+                    PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, barcodeY, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
                     // Small bold detail lines below the barcode (employee name; count | grade)
-                    PrintBoldLabelText(xCoordinate, detailLine1Y, PPLBFont.Font_1, detailEmpName, Math.Max(1, labelWidthDots - xCoordinate));
-                    PrintBoldLabelText(xCoordinate, detailLine2Y, PPLBFont.Font_1, detailLine2, Math.Max(1, labelWidthDots - xCoordinate));
+                    PrintBoldLabelText(xCoordinate, detailLine1Y, PPLBFont.Font_1, detailEmpName, LabelTextMaxDots(labelWidthDots));
+                    PrintBoldLabelText(xCoordinate, detailLine2Y, PPLBFont.Font_1, detailLine2, LabelTextMaxDots(labelWidthDots));
                     // EmployeeID and CropID/ProductID text removed per user request
                     PPLBEmulation.SetUtil.SetPrintOut(remaining, 1);
                     PPLBEmulation.IOUtil.PrintOut();
@@ -5071,9 +5284,9 @@ namespace ScanLink
 
                         // left - compact header: "Scan-Link ||" left + barcode number right, same line
                         buf = encoder.GetBytes("Scan-Link ||");
-                        PPLBEmulation.TextUtil.PrintText(xCoordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
-                        PPLBEmulation.TextUtil.PrintText(xCoordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
-                        PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
+                        PPLBEmulation.TextUtil.PrintText(xCoordinate, yOffset, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
+                        PPLBEmulation.TextUtil.PrintText(xCoordinate + 150, yOffset, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                        PPLBEmulation.BarcodeUtil.PrintOneDBarcode(xCoordinate, barcodeY, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
                         PrintBoldLabelText(xCoordinate, detailLine1Y, PPLBFont.Font_1, detailEmpName, Math.Max(1, (x2Coordinate > xCoordinate ? x2Coordinate - xCoordinate - 6 : labelWidthDots - xCoordinate)));
                         PrintBoldLabelText(xCoordinate, detailLine2Y, PPLBFont.Font_1, detailLine2, Math.Max(1, (x2Coordinate > xCoordinate ? x2Coordinate - xCoordinate - 6 : labelWidthDots - xCoordinate)));
 
@@ -5081,9 +5294,9 @@ namespace ScanLink
                         if (remaining > 1)
                         {
                             buf = encoder.GetBytes("Scan-Link ||");
-                            PPLBEmulation.TextUtil.PrintText(x2Coordinate, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
-                            PPLBEmulation.TextUtil.PrintText(x2Coordinate + 150, 0, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
-                            PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, 20, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
+                            PPLBEmulation.TextUtil.PrintText(x2Coordinate, yOffset, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, buf);
+                            PPLBEmulation.TextUtil.PrintText(x2Coordinate + 150, yOffset, PPLBOrient.Clockwise_0_Degrees, PPLBFont.Font_2, 1, 1, false, bufBarcodeText);
+                            PPLBEmulation.BarcodeUtil.PrintOneDBarcode(x2Coordinate, barcodeY, orientation, barcodeType, narrowBarWidth, 0, barcodeHeight, false, bufBarcode);
                             // Right column gets the same width budget as the left column (the column
                             // pitch). Using labelWidthDots - x2Coordinate would collapse to ~0 here
                             // because x2Coordinate is already ~one label width, truncating text to 1 char.
@@ -5098,13 +5311,9 @@ namespace ScanLink
                     }
                 }
                 
-                if (warnings.Count > 0)
-                {
-                    statusLabel.Text = "⚠️ " + string.Join("; ", warnings);
-                    statusLabel.ForeColor = Theme.Warn500;
-                }
-                
-                // Update status
+                // The print handler reports this with its success message, which would otherwise
+                // overwrite a warning set here.
+                _lastPrintWarning = warnings.Count > 0 ? string.Join("; ", warnings) : null;
                 statusLabel.Text = $"✅ Custom preset printed with all advanced settings applied!";
                 statusLabel.ForeColor = Theme.Ok500;
             }
@@ -5171,199 +5380,210 @@ namespace ScanLink
             scannerDataGridView.DefaultCellStyle.SelectionBackColor = System.Drawing.Color.FromArgb(50, 74, 95);
             scannerDataGridView.DefaultCellStyle.SelectionForeColor = System.Drawing.Color.White;
             
-            // Set AutoSizeColumnsMode to prevent empty columns
-            scannerDataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            // Fill: columns follow the grid's width by FillWeight (see UpdateDataGridViewColumnWidths)
+            scannerDataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             scannerDataGridView.AllowUserToAddRows = false;
             scannerDataGridView.AllowUserToDeleteRows = false;
             scannerDataGridView.ReadOnly = true;
         }
 
-        private void LoadScansData()
+        /// <summary>The scans file the app and scan_capture.ps1 share (ProgramData, else bin, else project).</summary>
+        private static string ResolveScansFilePath()
         {
+            // Prefer ProgramData scans file; fallback to bin root then project file
+            string programDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink");
+            string programDataScansFile = Path.Combine(programDataDir, "scans.txt");
+            string binScansFile = Path.Combine(Application.StartupPath, "scans.txt");
+            string projectRoot = Path.GetFullPath(Path.Combine(Application.StartupPath, "..", "..", ".."));
+            string projectScansFile = Path.Combine(projectRoot, "ScanLink", "ScanLinkScanner", "scans.txt");
+            string scansFilePath = File.Exists(programDataScansFile)
+                ? programDataScansFile
+                : (File.Exists(binScansFile) ? binScansFile : projectScansFile);
+
+            return scansFilePath;
+        }
+
+        /// <summary>
+        /// Parses scans.txt into the table the grid shows, newest first; null when there are no
+        /// scans. No UI and no fields: the file watcher runs it on a background thread.
+        /// </summary>
+        private static DataTable BuildScansTable(string jsonContent)
+        {
+            if (string.IsNullOrWhiteSpace(jsonContent)) return null;
+
+            // Parse JSON array using JavaScriptSerializer
+            JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
+            var scansArray = serializer.Deserialize<List<Dictionary<string, object>>>(jsonContent);
+            if (scansArray == null || scansArray.Count == 0) return null;
+
+            // Create DataTable for all scanner data
+            DataTable allData = new DataTable();
+            allData.Columns.Add("Date", typeof(string));
+            allData.Columns.Add("Time", typeof(string));
+            allData.Columns.Add("SerialNumber", typeof(string));
+            allData.Columns.Add("BlockNumber", typeof(string));
+            allData.Columns.Add("LineNumber", typeof(string));
+            allData.Columns.Add("Supplier", typeof(string));
+            allData.Columns.Add("CropID", typeof(string));
+            allData.Columns.Add("ProductID", typeof(string));
+            allData.Columns.Add("ParsedInfo", typeof(string));
+
+            // Get all entries (reverse order for latest first)
+            var allScans = scansArray.AsEnumerable().Reverse().ToList();
+
+            // Populate the DataTable
+            foreach (var scan in allScans)
+            {
+                string date = "";
+                string time = "";
+                string serial = "";
+                string blockId = "";
+                string lineId = "";
+                string supplier = "";
+                string productId = "";
+                string cropId = "";
+                string employeeId = "";
+
+                // Extract device data
+                if (scan.ContainsKey("device") && scan["device"] is Dictionary<string, object> device)
+                {
+                    if (device.ContainsKey("serial"))
+                        serial = device["serial"]?.ToString() ?? "";
+                    if (device.ContainsKey("blockID"))
+                        blockId = device["blockID"]?.ToString() ?? "";
+                    if (device.ContainsKey("lineID"))
+                        lineId = device["lineID"]?.ToString() ?? "";
+                    if (device.ContainsKey("supplier"))
+                        supplier = device["supplier"]?.ToString() ?? "";
+                }
+
+                // Also check top-level supplier field
+                if (string.IsNullOrEmpty(supplier) && scan.ContainsKey("supplier"))
+                    supplier = scan["supplier"]?.ToString() ?? "";
+
+                // Extract product and employee IDs
+                if (scan.ContainsKey("productId"))
+                    productId = scan["productId"]?.ToString() ?? "";
+                // If future scans include cropId, capture it; otherwise leave empty
+                if (scan.ContainsKey("cropId"))
+                    cropId = scan["cropId"]?.ToString() ?? "";
+                if (scan.ContainsKey("employeeId"))
+                    employeeId = scan["employeeId"]?.ToString() ?? "";
+                // Fallback parsing from concatenated barcode if fields are missing
+                if ((string.IsNullOrEmpty(employeeId) || string.IsNullOrEmpty(productId) || string.IsNullOrEmpty(cropId))
+                    && scan.ContainsKey("barcode") && scan["barcode"] != null)
+                {
+                    string code = scan["barcode"].ToString();
+                    if (!string.IsNullOrEmpty(code))
+                    {
+                        code = code.Trim();
+                        if (code.StartsWith("]") && code.Length >= 3)
+                        {
+                            // Strip leading AIM Symbology Identifier such as "]C1"
+                            code = code.Substring(3);
+                        }
+                    }
+                    // Barcode layout: Guard(1) + Employee(4) + Product(3) + Crop(3) + Check(1) = 12
+                    const int encodedDataLength = 12;
+                    string digitsOnly = new string(code.Where(char.IsDigit).ToArray());
+
+                    // Guard digit recovery: if scanner dropped the first digit,
+                    // we receive 11 digits instead of 12. Prepend the known guard '1'.
+                    if (digitsOnly.Length == 11)
+                    {
+                        digitsOnly = "1" + digitsOnly;
+                    }
+
+                    if (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= encodedDataLength)
+                    {
+                        string bestUpc = null;
+
+                        // Try all possible 12-digit substrings to find the valid one
+                        // This reliably ignores any scanner-prepended EAN zeros or appended check digits
+                        for (int i = 0; i <= digitsOnly.Length - encodedDataLength; i++)
+                        {
+                            string candidate = digitsOnly.Substring(i, encodedDataLength);
+                            if (candidate.StartsWith("1"))
+                            {
+                                try 
+                                {
+                                    string upc11 = candidate.Substring(0, 11);
+                                    int expectedCheckDigit = GetUpcCheckDigit(upc11);
+                                    int actualCheckDigit = candidate[11] - '0';
+                                    
+                                    if (expectedCheckDigit == actualCheckDigit)
+                                    {
+                                        bestUpc = candidate;
+                                        break; // Found the valid sequence!
+                                    }
+                                } 
+                                catch { } // Ignore if check digit calc fails
+                            }
+                        }
+
+                        // Fallback if no valid checksum found
+                        if (bestUpc == null)
+                        {
+                            string tempDigits = digitsOnly;
+                            while (tempDigits.Length > encodedDataLength && tempDigits.StartsWith("0"))
+                            {
+                                tempDigits = tempDigits.Substring(1);
+                            }
+                            bestUpc = tempDigits.Substring(0, encodedDataLength);
+                        }
+
+                        if (string.IsNullOrEmpty(employeeId))
+                        {
+                            employeeId = bestUpc.Substring(1, 4); // skip guard digit
+                        }
+                        if (string.IsNullOrEmpty(productId))
+                        {
+                            productId = bestUpc.Substring(5, 3);
+                        }
+                        if (string.IsNullOrEmpty(cropId))
+                        {
+                            cropId = bestUpc.Substring(8, 3);
+                        }
+
+                    }
+                }
+                if (scan.ContainsKey("date"))
+                    date = scan["date"]?.ToString() ?? "";
+                if (scan.ContainsKey("time"))
+                    time = scan["time"]?.ToString() ?? "";
+
+                allData.Rows.Add(date, time, serial, blockId, lineId, supplier, cropId, productId, employeeId);
+            }
+
+            return allData;
+        }
+
+        private void LoadScansData(bool keepPage = false)
+        {
+            ++_scansReloadSeq;   // a background reload still running is older than this read: drop it
             try
             {
                 // Keep the full-history metrics index current before we recompute the stat labels.
                 // Cheap: only the bytes appended to scans_backup.csv since last load are parsed.
                 RefreshMetricsIndex();
 
-                // Prefer ProgramData scans file; fallback to bin root then project file
-                string programDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ScanLink");
-                string programDataScansFile = Path.Combine(programDataDir, "scans.txt");
-                string binScansFile = Path.Combine(Application.StartupPath, "scans.txt");
-                string projectRoot = Path.GetFullPath(Path.Combine(Application.StartupPath, "..", "..", ".."));
-                string projectScansFile = Path.Combine(projectRoot, "ScanLink", "ScanLinkScanner", "scans.txt");
-                string scansFilePath = File.Exists(programDataScansFile)
-                    ? programDataScansFile
-                    : (File.Exists(binScansFile) ? binScansFile : projectScansFile);
-
+                string scansFilePath = ResolveScansFilePath();
                 if (!File.Exists(scansFilePath))
                 {
-                    InitializePagination(null);
+                    InitializePagination(null, keepPage);
                     return;
                 }
 
                 // Read the file. scan_capture.ps1 rewrites it on every scan, so open it shared
                 // and retry briefly instead of failing on "being used by another process".
-                string jsonContent = ReadSharedText(scansFilePath);
-
-                if (string.IsNullOrWhiteSpace(jsonContent))
-                {
-                    InitializePagination(null);
-                    return;
-                }
-
-                // Parse JSON array using JavaScriptSerializer
-                JavaScriptSerializer serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-                var scansArray = serializer.Deserialize<List<Dictionary<string, object>>>(jsonContent);
-
-                if (scansArray == null || scansArray.Count == 0)
-                {
-                    InitializePagination(null);
-                    return;
-                }
-
-                // Create DataTable for all scanner data
-                DataTable allData = new DataTable();
-                allData.Columns.Add("Date", typeof(string));
-                allData.Columns.Add("Time", typeof(string));
-                allData.Columns.Add("SerialNumber", typeof(string));
-                allData.Columns.Add("BlockNumber", typeof(string));
-                allData.Columns.Add("LineNumber", typeof(string));
-                allData.Columns.Add("Supplier", typeof(string));
-                allData.Columns.Add("CropID", typeof(string));
-                allData.Columns.Add("ProductID", typeof(string));
-                allData.Columns.Add("ParsedInfo", typeof(string));
-
-                // Get all entries (reverse order for latest first)
-                var allScans = scansArray.AsEnumerable().Reverse().ToList();
-
-                // Populate the DataTable
-                foreach (var scan in allScans)
-                {
-                    string date = "";
-                    string time = "";
-                    string serial = "";
-                    string blockId = "";
-                    string lineId = "";
-                    string supplier = "";
-                    string productId = "";
-                    string cropId = "";
-                    string employeeId = "";
-
-                    // Extract device data
-                    if (scan.ContainsKey("device") && scan["device"] is Dictionary<string, object> device)
-                    {
-                        if (device.ContainsKey("serial"))
-                            serial = device["serial"]?.ToString() ?? "";
-                        if (device.ContainsKey("blockID"))
-                            blockId = device["blockID"]?.ToString() ?? "";
-                        if (device.ContainsKey("lineID"))
-                            lineId = device["lineID"]?.ToString() ?? "";
-                        if (device.ContainsKey("supplier"))
-                            supplier = device["supplier"]?.ToString() ?? "";
-                    }
-
-                    // Also check top-level supplier field
-                    if (string.IsNullOrEmpty(supplier) && scan.ContainsKey("supplier"))
-                        supplier = scan["supplier"]?.ToString() ?? "";
-
-                    // Extract product and employee IDs
-                    if (scan.ContainsKey("productId"))
-                        productId = scan["productId"]?.ToString() ?? "";
-                    // If future scans include cropId, capture it; otherwise leave empty
-                    if (scan.ContainsKey("cropId"))
-                        cropId = scan["cropId"]?.ToString() ?? "";
-                    if (scan.ContainsKey("employeeId"))
-                        employeeId = scan["employeeId"]?.ToString() ?? "";
-                    // Fallback parsing from concatenated barcode if fields are missing
-                    if ((string.IsNullOrEmpty(employeeId) || string.IsNullOrEmpty(productId) || string.IsNullOrEmpty(cropId))
-                        && scan.ContainsKey("barcode") && scan["barcode"] != null)
-                    {
-                        string code = scan["barcode"].ToString();
-                        if (!string.IsNullOrEmpty(code))
-                        {
-                            code = code.Trim();
-                            if (code.StartsWith("]") && code.Length >= 3)
-                            {
-                                // Strip leading AIM Symbology Identifier such as "]C1"
-                                code = code.Substring(3);
-                            }
-                        }
-                        // Barcode layout: Guard(1) + Employee(4) + Product(3) + Crop(3) + Check(1) = 12
-                        const int encodedDataLength = 12;
-                        string digitsOnly = new string(code.Where(char.IsDigit).ToArray());
-
-                        // Guard digit recovery: if scanner dropped the first digit,
-                        // we receive 11 digits instead of 12. Prepend the known guard '1'.
-                        if (digitsOnly.Length == 11)
-                        {
-                            digitsOnly = "1" + digitsOnly;
-                        }
-
-                        if (!string.IsNullOrEmpty(digitsOnly) && digitsOnly.Length >= encodedDataLength)
-                        {
-                            string bestUpc = null;
-
-                            // Try all possible 12-digit substrings to find the valid one
-                            // This reliably ignores any scanner-prepended EAN zeros or appended check digits
-                            for (int i = 0; i <= digitsOnly.Length - encodedDataLength; i++)
-                            {
-                                string candidate = digitsOnly.Substring(i, encodedDataLength);
-                                if (candidate.StartsWith("1"))
-                                {
-                                    try 
-                                    {
-                                        string upc11 = candidate.Substring(0, 11);
-                                        int expectedCheckDigit = GetUpcCheckDigit(upc11);
-                                        int actualCheckDigit = candidate[11] - '0';
-                                        
-                                        if (expectedCheckDigit == actualCheckDigit)
-                                        {
-                                            bestUpc = candidate;
-                                            break; // Found the valid sequence!
-                                        }
-                                    } 
-                                    catch { } // Ignore if check digit calc fails
-                                }
-                            }
-
-                            // Fallback if no valid checksum found
-                            if (bestUpc == null)
-                            {
-                                string tempDigits = digitsOnly;
-                                while (tempDigits.Length > encodedDataLength && tempDigits.StartsWith("0"))
-                                {
-                                    tempDigits = tempDigits.Substring(1);
-                                }
-                                bestUpc = tempDigits.Substring(0, encodedDataLength);
-                            }
-
-                            if (string.IsNullOrEmpty(employeeId))
-                            {
-                                employeeId = bestUpc.Substring(1, 4); // skip guard digit
-                            }
-                            if (string.IsNullOrEmpty(productId))
-                            {
-                                productId = bestUpc.Substring(5, 3);
-                            }
-                            if (string.IsNullOrEmpty(cropId))
-                            {
-                                cropId = bestUpc.Substring(8, 3);
-                            }
-
-                        }
-                    }
-                    if (scan.ContainsKey("date"))
-                        date = scan["date"]?.ToString() ?? "";
-                    if (scan.ContainsKey("time"))
-                        time = scan["time"]?.ToString() ?? "";
-
-                    allData.Rows.Add(date, time, serial, blockId, lineId, supplier, cropId, productId, employeeId);
-                }
+                FileInfo fileState = new FileInfo(scansFilePath);
+                fileState.Refresh();   // size and write time as of now, before the read
+                DataTable allData = BuildScansTable(ReadSharedText(scansFilePath));
 
                 // Initialize pagination with all data
                 _scansReadFailures = 0;
-                InitializePagination(allData);
+                RememberScansFile(fileState);
+                InitializePagination(allData, keepPage);
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException ||
                                        ex is ArgumentException || ex is InvalidOperationException)
@@ -5388,6 +5608,50 @@ namespace ScanLink
                 MessageBox.Show($"Error loading scans data: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 InitializePagination(null);
             }
+        }
+
+        private long _scansLoadedLength = -1;
+        private DateTime _scansLoadedWriteUtc;
+        private int _scansReloadSeq;
+
+        /// <summary>Records the size and write time the file had BEFORE it was read (FileInfo keeps
+        /// what it read when first asked), so a write that lands during the read is not mistaken
+        /// for already loaded.</summary>
+        private void RememberScansFile(FileInfo fileState)
+        {
+            _scansLoadedLength = fileState.Exists ? fileState.Length : -1;
+            _scansLoadedWriteUtc = fileState.Exists ? fileState.LastWriteTimeUtc : DateTime.MinValue;
+        }
+
+        /// <summary>
+        /// The file watcher's reload: skipped when scans.txt is unchanged since the last load (the
+        /// watcher fires several times per write), read and parsed off the UI thread, and shown
+        /// on the page the operator was on.
+        /// </summary>
+        private void ReloadScansAfterFileChange()
+        {
+            string path = ResolveScansFilePath();
+            FileInfo fileState = new FileInfo(path);
+            if (fileState.Exists && fileState.Length == _scansLoadedLength && fileState.LastWriteTimeUtc == _scansLoadedWriteUtc) return;
+
+            int seq = ++_scansReloadSeq;
+            bool exists = fileState.Exists;
+            Task.Run(() => exists ? BuildScansTable(ReadSharedText(path)) : null).ContinueWith(t =>
+            {
+                if (IsDisposed || seq != _scansReloadSeq) return;   // a newer reload is on its way
+                if (t.IsFaulted)
+                {
+                    // Locked or half-written by the scanner script: keep what is on screen and
+                    // read again shortly (LoadScansData reports a file that stays unreadable).
+                    Debug.WriteLine("[SCANS] scans file busy or mid-write, retrying: " + t.Exception?.GetBaseException().Message);
+                    ScheduleScansReload();
+                    return;
+                }
+                _scansReadFailures = 0;
+                RememberScansFile(fileState);
+                try { RefreshMetricsIndex(); } catch (Exception ex) { Debug.WriteLine("[SCANS] metrics refresh failed: " + ex.Message); }
+                InitializePagination(t.Result, keepPage: true);
+            }, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
         /// <summary>Reads a file another process may be writing (FileShare.ReadWrite), with
@@ -5418,7 +5682,7 @@ namespace ScanLink
             if (_scansReloadRetry == null)
             {
                 _scansReloadRetry = new System.Windows.Forms.Timer { Interval = 800 };
-                _scansReloadRetry.Tick += (s, e) => { _scansReloadRetry.Stop(); LoadScansData(); };
+                _scansReloadRetry.Tick += (s, e) => { _scansReloadRetry.Stop(); LoadScansData(keepPage: true); };
             }
             _scansReloadRetry.Stop();
             _scansReloadRetry.Start();
@@ -5472,7 +5736,7 @@ namespace ScanLink
                             scannerOutputTextBox.AppendText($"[{timestamp}] 📄 Scans file updated - Refreshing table...\r\n");
                             scannerOutputTextBox.ScrollToCaret();
                         }
-                        LoadScansData();
+                        ReloadScansAfterFileChange();
                         
                         // Fire-and-forget an immediate API upload round so logs 
                         // push up to the cloud instantly when a scan happens
@@ -6429,12 +6693,38 @@ namespace ScanLink
         private void ConnectDetectedScanners()
         {
             if (_scannerComPortManager == null) return;
-            if (Interlocked.CompareExchange(ref _scannerScanInProgress, 1, 0) != 0) return;
+            if (Interlocked.CompareExchange(ref _scannerScanInProgress, 1, 0) != 0)
+            {
+                // A re-plug that lands while a pass is running must not be lost: run again after it.
+                Interlocked.Exchange(ref _scannerScanPending, 1);
+                return;
+            }
 
             Task.Run(() =>
             {
+                bool changed = false;
                 try
                 {
+                    // Close scanners that were unplugged first, so the count drops and a re-plugged
+                    // scanner on the same COM port is reopened instead of being skipped as "already
+                    // connected" while its old handle is dead. A port closed here is not reopened in
+                    // this pass (the driver can release it late, which reads as "in use by another
+                    // application"); the retry timer reopens it a few seconds later.
+                    var justClosed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    HashSet<string> removedPorts;
+                    lock (_removedScannerPorts)
+                    {
+                        removedPorts = new HashSet<string>(_removedScannerPorts, StringComparer.OrdinalIgnoreCase);
+                        _removedScannerPorts.Clear();
+                    }
+                    foreach (var gone in _scannerComPortManager.CloseMissingScanners(ComPortScannerDetection.GetPresentComDevices(), removedPorts))
+                    {
+                        changed = true;
+                        if (gone?.ComPort != null) justClosed.Add(gone.ComPort);
+                        SafeAppendScannerOutput($"🔌 Scanner disconnected: {gone?.DeviceName} ({gone?.ComPort})");
+                    }
+                    if (justClosed.Count > 0) StartScannerAutoReconnect();
+
                     var detected = ComPortScannerDetection.DetectComPortScanners();
                     if (detected == null || detected.Count == 0) return;
 
@@ -6453,7 +6743,8 @@ namespace ScanLink
                         // (sometimes synthetic) PNP id, and serial-port exclusivity is per port name,
                         // so matching only on PNP id would let us re-open a port we already hold.
                         if (_scannerComPortManager.IsScannerOpen(scanner.PNPDeviceID) ||
-                            _scannerComPortManager.IsComPortOpen(scanner.ComPort))
+                            _scannerComPortManager.IsComPortOpen(scanner.ComPort) ||
+                            justClosed.Contains(scanner.ComPort ?? ""))
                             continue;
 
                         if (assignments.TryGetValue(scanner.PNPDeviceID, out var assignment))
@@ -6472,11 +6763,7 @@ namespace ScanLink
                             _scannerInUseDialogShown = false; // re-arm: a port that connects is no longer locked
                             var s = scanner;
                             SafeAppendScannerOutput($"🔌 Auto-connected scanner: {s.DeviceName} ({s.ComPort}) - Line {s.LineID}, Block {s.BlockID}");
-                            if (IsHandleCreated)
-                            {
-                                try { BeginInvoke(new Action(() => { try { UpdateCountLabels(); } catch { } })); }
-                                catch { }
-                            }
+                            changed = true;
                         }
                     }
                 }
@@ -6487,8 +6774,56 @@ namespace ScanLink
                 finally
                 {
                     Interlocked.Exchange(ref _scannerScanInProgress, 0);
+                    if (changed && IsHandleCreated)
+                    {
+                        try { BeginInvoke(new Action(OnScannerSetChanged)); }
+                        catch { }
+                    }
+                    if (Interlocked.Exchange(ref _scannerScanPending, 0) == 1) ConnectDetectedScanners();
                 }
             });
+        }
+
+        /// <summary>
+        /// After the Scanners page saves: reopen every scanner with its new Line / Block / COM
+        /// settings (ConnectDetectedScanners applies scanner_assignments.txt). In the background:
+        /// the close, the port-release wait and detection used to freeze the window for a second
+        /// or more on the UI thread.
+        /// </summary>
+        private void ReconnectScannersAfterSave()
+        {
+            if (scannerOutputTextBox != null)
+            {
+                string ts = DateTime.Now.ToString("HH:mm:ss");
+                scannerOutputTextBox.AppendText($"[{ts}] [C# INFO] Scanner configuration saved — reinitializing scanners...\r\n");
+                scannerOutputTextBox.ScrollToCaret();
+            }
+            Task.Run(() =>
+            {
+                try { _scannerComPortManager?.CloseAllScanners(); } catch (Exception ex) { Debug.WriteLine($"[SAVE] close failed: {ex.Message}"); }
+                // USB-COM drivers release a port a moment after Close; reopening at once
+                // failed with "COM port is already in use by another application".
+                Thread.Sleep(600);
+                ConnectDetectedScanners();
+            });
+            StartScannerAutoReconnect();   // retries for ~20 s in case a port is released late
+        }
+
+        /// <summary>COM ports Windows reported removed (WM_DEVICECHANGE) since the last detection pass.</summary>
+        private readonly HashSet<string> _removedScannerPorts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // A scanner was connected or unplugged: update the status bar count straight away and, if
+        // the Scanners page is open, re-detect so its Status column follows without leaving the page.
+        private void OnScannerSetChanged()
+        {
+            try { UpdateCountLabels(); } catch { }
+            try { StatusRefreshTimer_Tick(null, null); } catch { }
+            // The page holds the result back itself while Line/Block edits are pending, and
+            // refreshes once the edit ends.
+            if (_activePageKey == NavScanners && _scannerManagementPage != null && !_scannerManagementPage.IsDisposed)
+            {
+                try { _scannerManagementPage.RefreshScanners(); } catch { }
+            }
         }
 
         // Thread-safe append to the scanner output box (callable from the background scan task).
@@ -6984,6 +7319,29 @@ namespace ScanLink
         }
 
 
+        /// <summary>
+        /// Notes the COM port of a removed device. Windows broadcasts DBT_DEVICEREMOVECOMPLETE for
+        /// ports with a DEV_BROADCAST_PORT: dbch_size, dbch_devicetype (3 = port), dbch_reserved,
+        /// then the name ("COM3"). The next detection pass closes that port even if the scanner is
+        /// already plugged back in, because its handle is the dead one.
+        /// </summary>
+        private void RememberRemovedPort(IntPtr broadcast)
+        {
+            const int DBT_DEVTYP_PORT = 3;
+            if (broadcast == IntPtr.Zero) return;
+            try
+            {
+                if (System.Runtime.InteropServices.Marshal.ReadInt32(broadcast, 4) != DBT_DEVTYP_PORT) return;
+                string port = System.Runtime.InteropServices.Marshal.PtrToStringUni(IntPtr.Add(broadcast, 12));
+                if (string.IsNullOrWhiteSpace(port)) return;
+                lock (_removedScannerPorts) _removedScannerPorts.Add(port.Trim());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AUTO-RECONNECT] Could not read the removed device: {ex.Message}");
+            }
+        }
+
         protected override void WndProc(ref Message m)
         {
             if (_rawInputManager != null && _rawInputManager.IsRegistered)
@@ -7004,10 +7362,13 @@ namespace ScanLink
             const int WM_DEVICECHANGE = 0x0219;
             const int DBT_DEVNODES_CHANGED = 0x0007;
             const int DBT_DEVICEARRIVAL = 0x8000;
+            const int DBT_DEVICEREMOVECOMPLETE = 0x8004;
             if (m.Msg == WM_DEVICECHANGE)
             {
                 int evt = m.WParam.ToInt32();
-                if (evt == DBT_DEVNODES_CHANGED || evt == DBT_DEVICEARRIVAL)
+                // Removal too: ConnectDetectedScanners closes scanners that were unplugged.
+                if (evt == DBT_DEVICEREMOVECOMPLETE) RememberRemovedPort(m.LParam);
+                if (evt == DBT_DEVNODES_CHANGED || evt == DBT_DEVICEARRIVAL || evt == DBT_DEVICEREMOVECOMPLETE)
                 {
                     OnScannerDeviceChange();
                 }
@@ -7117,8 +7478,15 @@ namespace ScanLink
             {
                 if (scannerDataGridView != null)
                 {
-                    scannerDataGridView.DataSource = null;
-                    scannerDataGridView.Rows.Clear();
+                    // Keep the columns: emptying the bound table shows the empty state without
+                    // the grid rebuilding its columns when the next scan arrives.
+                    DataTable boundTable = scannerDataGridView.DataSource as DataTable;
+                    if (boundTable != null) boundTable.Clear();
+                    else
+                    {
+                        scannerDataGridView.DataSource = null;
+                        scannerDataGridView.Rows.Clear();
+                    }
                 }
                 return;
             }
@@ -7166,56 +7534,81 @@ namespace ScanLink
                 newPageData.Rows.Add(newRow);
             }
 
-            // Update the current page data reference
-            currentPageData = newPageData;
-
             // Update DataGridView
-                    if (scannerDataGridView != null)
+            if (scannerDataGridView != null)
+            {
+                // One repaint per page change. The grid used to clear its columns and rebind on
+                // every load (three times per new scan), so it flashed empty and lost its widths;
+                // with the same columns it now refills the bound table in place.
+                using (new ScanLink.DesignSystem.SLRedrawBatch(scannerDataGridView))
+                {
+                    DataTable bound = scannerDataGridView.DataSource as DataTable;
+                    if (bound != null && SameColumns(bound, newPageData))
                     {
-                // Clear any existing columns to prevent duplicates
-                scannerDataGridView.Columns.Clear();
-                scannerDataGridView.DataSource = currentPageData;
+                        bound.BeginLoadData();
+                        bound.Clear();
+                        foreach (DataRow row in newPageData.Rows) bound.ImportRow(row);
+                        bound.EndLoadData();
+                        currentPageData = bound;
+                    }
+                    else
+                    {
+                        scannerDataGridView.Columns.Clear();
+                        currentPageData = newPageData;
+                        scannerDataGridView.DataSource = currentPageData;
+                    }
 
-                // Update column headers for better display
-                if (scannerDataGridView.Columns.Contains("CropID"))
-                {
-                    scannerDataGridView.Columns["CropID"].HeaderText = "Crops";
+                    // Headers come from StyleScanColumns only. Setting them here as well made the
+                    // last column flip between "Picker" and "Parsed Info".
+                    StyleScanColumns();
+                    UpdateDataGridViewColumnWidths();
                 }
-                if (scannerDataGridView.Columns.Contains("ProductID"))
-                {
-                    scannerDataGridView.Columns["ProductID"].HeaderText = "Products";
-                }
-                if (scannerDataGridView.Columns.Contains("ParsedInfo"))
-                {
-                    scannerDataGridView.Columns["ParsedInfo"].HeaderText = "Parsed Info";
-                }
-
-                // Set column widths to utilize full available space
-                UpdateDataGridViewColumnWidths();
-
-                // Force refresh of the DataGridView
-                scannerDataGridView.Refresh();
             }
+        }
+
+        private static bool SameColumns(DataTable a, DataTable b)
+        {
+            if (a.Columns.Count != b.Columns.Count) return false;
+            for (int i = 0; i < a.Columns.Count; i++)
+                if (a.Columns[i].ColumnName != b.Columns[i].ColumnName) return false;
+            return true;
         }
 
         private void UpdateDataGridViewColumnWidths()
         {
             if (scannerDataGridView != null && scannerDataGridView.Columns.Count >= 9)
             {
-                // Calculate available width for columns (subtract some margin for scrollbar)
-                int availableWidth = scannerDataGridView.Width - 20; // Reserve 20px for potential scrollbar
-
-                // Distribute width proportionally based on content importance and typical length
-                scannerDataGridView.Columns["Date"].Width = (int)(availableWidth * 0.08);
-                scannerDataGridView.Columns["Time"].Width = (int)(availableWidth * 0.06);
-                scannerDataGridView.Columns["SerialNumber"].Width = (int)(availableWidth * 0.09);
-                scannerDataGridView.Columns["BlockNumber"].Width = (int)(availableWidth * 0.08);
-                scannerDataGridView.Columns["LineNumber"].Width = (int)(availableWidth * 0.08);
-                scannerDataGridView.Columns["Supplier"].Width = (int)(availableWidth * 0.10);
-                scannerDataGridView.Columns["CropID"].Width = (int)(availableWidth * 0.13);
-                scannerDataGridView.Columns["ProductID"].Width = (int)(availableWidth * 0.22);
-                scannerDataGridView.Columns["ParsedInfo"].Width = (int)(availableWidth * 0.16);
+                // Fill mode: the columns follow the grid's width by FillWeight (StyleScanColumns),
+                // so nothing has to run on resize. Date and time must always show in full (a
+                // cut-off date makes an old scan look like today's): they keep the width their
+                // text needs as a minimum, with a token weight so they take no more.
+                if (scannerDataGridView.AutoSizeColumnsMode != DataGridViewAutoSizeColumnsMode.Fill)
+                    scannerDataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                foreach (string name in new[] { "Date", "Time" })
+                {
+                    FitScanColumnWidth(name);
+                    scannerDataGridView.Columns[name].FillWeight = 1;
+                }
             }
+        }
+
+        // Width that shows the header and every value on the current page without truncation,
+        // measured with the fonts and padding SLTableStyle paints with.
+        private int FitScanColumnWidth(string columnName)
+        {
+            DataGridViewColumn column = scannerDataGridView.Columns[columnName];
+            int widest = TextRenderer.MeasureText((column.HeaderText ?? "").ToUpperInvariant(), Theme.FontXsSemibold).Width;
+            if (currentPageData != null && currentPageData.Columns.Contains(columnName))
+            {
+                foreach (DataRow row in currentPageData.Rows)
+                {
+                    string value = row[columnName]?.ToString() ?? "";
+                    widest = Math.Max(widest, TextRenderer.MeasureText(value, Theme.FontSm).Width);
+                }
+            }
+            int width = widest + ScanLink.DesignSystem.SLTableStyle.CellPadX * 2 + 6; // + grid line and rounding slack
+            column.MinimumWidth = Math.Max(2, width);
+            return width;
         }
 
         private string GetCropNameFromCache(string cropId)
@@ -7266,33 +7659,27 @@ namespace ScanLink
             UpdateScanCountLabel();   // v2 count readout follows every reload, not only DataSource changes
         }
 
-        private void InitializePagination(DataTable data)
+        /// <summary>
+        /// Shows freshly loaded scans. The filters stay applied and, when
+        /// <paramref name="keepPage"/> is set (a reload after a new scan), so does the page. It used
+        /// to refill both filter lists (each change re-ran the filters and reloaded the page), clear
+        /// the grid's columns and jump to page 1, so every scan flashed the table empty up to three
+        /// times. The filter lists are filled where the product cache changes; here only once.
+        /// </summary>
+        private void InitializePagination(DataTable data, bool keepPage = false)
         {
-            if (data == null)
-            {
-                allScannerData = new DataTable();
-                filteredScannerData = new DataTable();
-                totalPages = 1;
-                currentPage = 1;
-            }
-            else
-            {
-                allScannerData = data.Copy();
-                filteredScannerData = data.Copy(); // Start with all data
-                totalPages = Math.Max(1, (int)Math.Ceiling((double)allScannerData.Rows.Count / pageSize));
-                currentPage = 1;
-            }
+            allScannerData = data ?? new DataTable();
+            ApplyFiltersToData();
+            DataTable shown = filteredScannerData ?? allScannerData;
+            totalPages = Math.Max(1, (int)Math.Ceiling((double)shown.Rows.Count / pageSize));
+            currentPage = keepPage ? Math.Max(1, Math.Min(currentPage, totalPages)) : 1;
 
-            // Populate product and crop ID combo boxes (fixed ranges)
-            PopulateProductIdComboBox();
-            PopulateCropIdComboBox();
-
-            // Clear the DataGridView completely before setting up pagination
-                    if (scannerDataGridView != null)
-                    {
-                scannerDataGridView.Columns.Clear();
-                scannerDataGridView.DataSource = null;
-                scannerDataGridView.Rows.Clear();
+            if ((productIdComboBox != null && productIdComboBox.Items.Count == 0) ||
+                (cropIdComboBox != null && cropIdComboBox.Items.Count == 0))
+            {
+                // Populate product and crop ID combo boxes (fixed ranges)
+                PopulateProductIdComboBox();
+                PopulateCropIdComboBox();
             }
 
             LoadCurrentPage();
@@ -7379,9 +7766,11 @@ namespace ScanLink
         /// <summary>
         /// True when any visible column contains the term. Searching a fixed list of
         /// columns rather than every column keeps internal fields such as ParsedInfo from
-        /// producing matches the operator cannot see the reason for.
+        /// producing matches the operator cannot see the reason for. Crop and product are
+        /// stored as codes but shown as names (LoadCurrentPage), so both are matched;
+        /// <paramref name="displayNames"/> caches the code-to-name lookups for one filter pass.
         /// </summary>
-        private static bool RowMatchesSearch(DataRow row, string term)
+        private bool RowMatchesSearch(DataRow row, string term, Dictionary<string, string> displayNames)
         {
             string[] searchable = { "SerialNumber", "BlockNumber", "LineNumber", "Supplier", "CropID", "ProductID" };
             foreach (string column in searchable)
@@ -7389,6 +7778,18 @@ namespace ScanLink
                 if (!row.Table.Columns.Contains(column)) continue;
                 string value = row[column]?.ToString() ?? "";
                 if (value.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+
+                if (column == "CropID" || column == "ProductID")
+                {
+                    string key = column + ":" + value;
+                    string name;
+                    if (!displayNames.TryGetValue(key, out name))
+                    {
+                        name = column == "CropID" ? GetCropNameFromCache(value) : GetProductNameFromCache(value);
+                        displayNames[key] = name ?? "";
+                    }
+                    if (!string.IsNullOrEmpty(name) && name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                }
             }
             return false;
         }
@@ -7403,6 +7804,7 @@ namespace ScanLink
 
             // Create filtered DataTable
             filteredScannerData = allScannerData.Clone(); // Copy structure only
+            var searchDisplayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (DataRow row in allScannerData.Rows)
             {
@@ -7461,7 +7863,7 @@ namespace ScanLink
                 // excludes it.
                 if (includeRow && !string.IsNullOrEmpty(filterSearchText))
                 {
-                    includeRow = RowMatchesSearch(row, filterSearchText);
+                    includeRow = RowMatchesSearch(row, filterSearchText, searchDisplayNames);
                 }
 
                 if (includeRow)
@@ -7799,8 +8201,11 @@ namespace ScanLink
                     ["XCoordinate"] = numericUpDown_xCoordinate?.Value.ToString() ?? "250",
                     ["TwoUpEnabled"] = checkBox_twoUp?.Checked.ToString() ?? "False",
                     ["X2Coordinate"] = numericUpDown_x2Coordinate?.Value.ToString() ?? "0",
+                    ["YOffset"] = numericUpDown_yOffset?.Value.ToString() ?? "0",
+                    ["BarWidth"] = (comboBox_barWidth?.SelectedIndex ?? 0).ToString(),   // 0 = Auto
                     ["Gap"] = numericUpDown_gap?.Value.ToString() ?? "2",
                     ["Darkness"] = trackBar_darkness?.Value.ToString() ?? "5",
+                    ["DarknessScale"] = "15",   // Darkness is 0-15 as sent to the printer (older files: 1-30)
                     ["PrintSpeed"] = comboBox_speed?.SelectedItem?.ToString() ?? "5 - Medium",
                     ["DPI"] = numericUpDown_dpi?.Value.ToString() ?? "203",
                     // Printer connection: without these the app forgot the printer on every
@@ -8000,6 +8405,12 @@ namespace ScanLink
                     }
                 }
 
+                if (settings.TryGetValue("YOffset", out v) && numericUpDown_yOffset != null && decimal.TryParse(v, out decimal yOffset))
+                    numericUpDown_yOffset.Value = Math.Max(numericUpDown_yOffset.Minimum, Math.Min(numericUpDown_yOffset.Maximum, yOffset));
+                if (settings.TryGetValue("BarWidth", out v) && comboBox_barWidth != null && int.TryParse(v, out int barWidth)
+                    && barWidth >= 0 && barWidth < comboBox_barWidth.Items.Count)
+                    comboBox_barWidth.SelectedIndex = barWidth;
+
                 // X Coordinate
                 if (settings.ContainsKey("XCoordinate") && numericUpDown_xCoordinate != null)
                 {
@@ -8042,8 +8453,11 @@ namespace ScanLink
                 {
                     if (int.TryParse(settings["Darkness"], out int darkness))
                     {
+                        // Files saved before the 0-15 slider hold 1-30, of which min(15, value - 1)
+                        // was sent; convert so an existing site keeps printing exactly as dark.
+                        if (!settings.ContainsKey("DarknessScale")) darkness = Math.Min(15, darkness - 1);
                         trackBar_darkness.Value = Math.Max(trackBar_darkness.Minimum, Math.Min(trackBar_darkness.Maximum, darkness));
-                        label_darknessValue.Text = darkness.ToString();
+                        label_darknessValue.Text = trackBar_darkness.Value.ToString();
                     }
                 }
 
@@ -8069,6 +8483,9 @@ namespace ScanLink
                         numericUpDown_dpi.Value = Math.Max(numericUpDown_dpi.Minimum, Math.Min(numericUpDown_dpi.Maximum, dpi));
                     }
                 }
+
+                // A saved Barcode Type is applied above; Custom Preset still shows the type it prints.
+                SyncBarcodeTypeLock();
             }
             catch (Exception ex)
             {
@@ -8087,23 +8504,7 @@ namespace ScanLink
         {
             // Open the scanner management form
 			ScannerManagementForm scannerManagementForm = new ScannerManagementForm();
-			scannerManagementForm.ScannersSaved += (s, args) =>
-			{
-				if (scannerOutputTextBox != null)
-				{
-					string ts = DateTime.Now.ToString("HH:mm:ss");
-					scannerOutputTextBox.AppendText($"[{ts}] [C# INFO] Scanner configuration saved — reinitializing scanners...\r\n");
-					scannerOutputTextBox.ScrollToCaret();
-				}
-				_scannerComPortManager?.CloseAllScanners();
-				// USB-COM drivers release a port a moment after Close; reopening at once
-				// failed with "COM port is already in use by another application".
-				System.Threading.Thread.Sleep(600);
-				InitializeComPortScanners();
-
-				// Update count labels after reinitialization
-				UpdateCountLabels();
-			};
+			scannerManagementForm.ScannersSaved += (s, args) => ReconnectScannersAfterSave();
 			scannerManagementForm.ShowDialog();
         }
 

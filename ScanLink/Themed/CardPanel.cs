@@ -194,6 +194,13 @@ namespace ScanLink.Themed
             Invalidate();
         }
 
+        /// <summary>The page behind the rounded corners: a flat fill when the parent is one colour
+        /// (nearly always), instead of WinForms repainting the parent behind the card each time.</summary>
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            if (!ScanLink.DesignSystem.SLPaint.TryFillBackdrop(this, e.Graphics)) base.OnPaintBackground(e);
+        }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             // Collapsed cards are sized to zero rather than hidden, so there is nothing to

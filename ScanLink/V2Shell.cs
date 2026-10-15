@@ -38,6 +38,10 @@ namespace ScanLink
         {
             if (_shellRoot != null) return;
 
+            // Deliberately not WS_EX_COMPOSITED: tried in a test build, it left parts of the Print
+            // labels page showing the previous frame after a step change (a composited ancestor
+            // and the WM_SETREDRAW batches don't mix). Double-buffered panels and the batches
+            // removed the flicker without it.
             _shellRoot = new Panel
             {
                 Dock = DockStyle.Fill,
@@ -119,6 +123,10 @@ namespace ScanLink
             // Any button nobody re-themed (Daily Stats Logger's Save/Debug, and anything
             // buried in the print panels) picks up the secondary variant here.
             ThemeStyles.StyleRemainingButtons(this);
+
+            // Every panel in the shell paints off-screen, including pages built later; plain
+            // Panels and TableLayoutPanels otherwise erase and repaint on screen (flicker).
+            ScanLink.DesignSystem.SLLayout.DoubleBufferPanels(_shellRoot);
 
             _shellRoot.SendToBack();
         }
